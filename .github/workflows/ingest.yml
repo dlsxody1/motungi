@@ -1,0 +1,29 @@
+name: Data Ingest (batch)
+
+# 공공데이터 → Supabase 배치 적재 (기획서 §9). 별도 서버·스케줄러 없이 크론으로.
+# TODO: scripts/ingest 구현 후 활성화. 지금은 스캐폴드.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 18 * * *" # 매일 03:00 KST (UTC+9)
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    if: false # 파이프라인 구현 전까지 비활성
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # - run: pnpm --filter @motungi/core exec tsx scripts/ingest.ts
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
+          YOUTH_POLICY_API_KEY: ${{ secrets.YOUTH_POLICY_API_KEY }}

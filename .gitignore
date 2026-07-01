@@ -1,0 +1,35 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+.next/
+out/
+.turbo/
+.expo/
+web-build/
+*.tsbuildinfo
+
+# env
+.env
+.env.*
+!.env.example
+
+# supabase (local)
+supabase/.branches/
+supabase/.temp/
+
+# native
+*.keystore
+ios/
+android/
+
+# logs / os
+*.log
+.DS_Store
+
+# editor
+.idea/
+.vscode/*
+!.vscode/extensions.json

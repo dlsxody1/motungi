@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "모퉁이 Corner",
+    "slug": "motungi",
+    "scheme": "motungi",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.motungi.app"
+    },
+    "android": {
+      "package": "com.motungi.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
