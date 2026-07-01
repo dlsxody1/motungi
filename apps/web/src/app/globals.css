@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+/*
+ * 모퉁이 Corner — 디자인시스템 테마.
+ * 값은 @motungi/tokens 와 1:1로 맞춘다(트와일라잇 로즈 팔레트).
+ * @theme 안의 토큰은 자동으로 Tailwind 유틸리티(bg-*, text-*, rounded-* 등)가 된다.
+ */
+@theme {
+  /* ── 색상 ── */
+  --color-primary: #e25067;
+  --color-primary-deep: #b0344e;
+  --color-tint: #fbe8ec;
+  --color-sun: #f2a06a;
+  --color-purple: #6e4e9c;
+  --color-mint: #1e6e64;
+  --color-mint-tint: #e0f0ec;
+
+  --color-bg: #f4f0eb;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f1ede6;
+  --color-ink: #1c1a17;
+  --color-label: #4a453e;
+  --color-muted: #8a8378;
+  --color-faint: #b4ada1;
+  --color-line: #6e4e3c2e;
+  --color-line-alt: #6e4e3c17;
+
+  --color-negative: #ff4242;
+
+  /* ── 반경 ── */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-pill: 999px;
+
+  /* ── 폰트 ── */
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system,
+    BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  /* ── 그림자 ── */
+  --shadow-card: 0 1px 2px rgba(46, 42, 36, 0.04),
+    0 8px 24px rgba(46, 42, 36, 0.06);
+  --shadow-hero: 0 12px 32px rgba(176, 52, 78, 0.18);
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* 히트타깃 최소 44px(§8) 도우미 */
+  .tap-safe {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@keyframes corner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.corner-spinner {
+  animation: corner-spin 0.9s linear infinite;
+}
