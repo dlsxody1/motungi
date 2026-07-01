@@ -13,6 +13,10 @@ export default [
       '**/.expo/**',
       '**/out/**',
       '**/*.tsbuildinfo',
+      // 설치된 스킬/훅 도구 (impeccable 등) — 벤더 스크립트라 lint 대상 아님
+      '.claude/skills/**',
+      '.github/skills/**',
+      '.github/hooks/**',
       // TS/TSX/JSX 는 앱별 도구가 담당 (루트에는 TS 파서 미설치)
       '**/*.ts',
       '**/*.tsx',
