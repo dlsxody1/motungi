@@ -1,6 +1,10 @@
 ---
 name: react-patterns
-description: React 18/19 patterns including hooks discipline, server/client component boundaries, Suspense + error boundaries, form actions, data fetching, state management decision trees, and accessibility-first composition. Use when writing or reviewing React components.
+description: >
+  모퉁이(motungi) 웹앱(apps/web)의 React 컴포넌트 스킬. React 18/19 훅 규율, 서버/클라이언트
+  컴포넌트 경계, Suspense·에러 바운더리, form actions, 데이터 페칭, 상태 관리 결정 트리,
+  접근성 우선 조합. Next.js App Router의 .tsx 컴포넌트를 작성·리뷰할 때 사용.
+  (모바일은 frontend-patterns 참고 — React Native와 구분)
 origin: ECC
 ---
 

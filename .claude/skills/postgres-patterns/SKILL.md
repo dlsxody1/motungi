@@ -1,9 +1,9 @@
 ---
 name: postgres-patterns
 description: >
-  PostgreSQL database patterns for query optimization, schema design, indexing,
-  and security. Quick reference for common patterns, index types, data types,
-  and anti-pattern detection. Based on Supabase best practices.
+  모퉁이(motungi)의 Supabase Postgres 스키마/쿼리 스킬. supabase/ 스키마·시드(seed.sql)를
+  설계하거나, 상권·정책·기회 데이터 쿼리를 최적화하거나, RLS(Row Level Security)를 적용할 때 사용.
+  인덱스 타입, 데이터 타입, 안티패턴 탐지. Supabase 베스트프랙티스 기반.
 metadata:
   origin: ECC
   credit: Supabase team (MIT License)

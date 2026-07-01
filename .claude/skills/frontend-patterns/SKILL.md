@@ -1,7 +1,9 @@
 ---
 name: frontend-patterns
 description: >
-  Frontend development patterns for React, Next.js, state management, performance optimization, and UI best practices.
+  모퉁이(motungi) 프론트엔드 패턴 스킬. Next.js 웹앱(apps/web)이나 Expo 모바일앱(apps/mobile)
+  화면을 만들 때 사용. 상태 관리, 성능 최적화, 큐레이션 피드/카드 UI, 공유 패키지(packages/tokens)
+  활용 등 UI 베스트프랙티스. React Native와 React DOM 양쪽 컨텍스트를 구분해 적용.
 metadata:
   origin: ECC
 ---

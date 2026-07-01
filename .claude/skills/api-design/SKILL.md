@@ -1,7 +1,9 @@
 ---
 name: api-design
 description: >
-  REST API design patterns including resource naming, status codes, pagination, filtering, error responses, versioning, and rate limiting for production APIs.
+  모퉁이(motungi) API 설계 스킬. Supabase Edge Functions 또는 Next.js Route Handler(apps/web)로
+  REST 엔드포인트를 만들거나, 외부 데이터 소스(소상공인 상권정보·온통청년·쿠팡파트너스) 응답을
+  래핑할 때 사용. 리소스 네이밍, 상태 코드, 페이지네이션, 필터링, 에러 응답, 버저닝, 레이트 리밋 패턴.
 metadata:
   origin: ECC
 ---

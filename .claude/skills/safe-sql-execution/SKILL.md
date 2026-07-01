@@ -1,6 +1,10 @@
 ---
 name: safe-sql-execution
-description: Safely execute SQL queries against a user database without risking SQL injection or other security vulnerabilities.
+description: >
+  모퉁이(motungi)에서 사용자·외부 입력이 섞인 SQL을 실행할 때(적재 배치, Edge Function,
+  동적 쿼리) SQL injection 없이 안전하게 실행하는 스킬. "작성자 증명(proven authorship)"
+  보안 모델과 SafeSqlFragment 타입 패턴. 신뢰되지 않은 입력으로 쿼리를 구성할 때 사용.
+  (원본: Supabase Studio)
 ---
 
 # Safe SQL execution

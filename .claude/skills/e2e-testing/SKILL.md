@@ -1,7 +1,9 @@
 ---
 name: e2e-testing
 description: >
-  Playwright E2E testing patterns, Page Object Model, configuration, CI/CD integration, artifact management, and flaky test strategies.
+  모퉁이(motungi) E2E 테스트 스킬. Next.js 웹앱(apps/web)의 사용자 플로우를 Playwright로
+  검증할 때 사용. Page Object Model, 설정, GitHub Actions(.github/workflows) CI 연동,
+  아티팩트 관리, flaky 테스트 대응 전략.
 metadata:
   origin: ECC
 ---

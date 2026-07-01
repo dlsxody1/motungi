@@ -1,7 +1,9 @@
 ---
 name: security-review
 description: >
-  Use this skill when adding authentication, handling user input, working with secrets, creating API endpoints, or implementing payment/sensitive features. Provides comprehensive security checklist and patterns.
+  모퉁이(motungi) 보안 리뷰 스킬. Supabase 인증, 사용자 입력 처리, 시크릿/환경변수
+  (SUPABASE_SERVICE_ROLE_KEY·API 키 등 절대 클라이언트 노출 금지), API 엔드포인트,
+  외부 데이터 소스 연동, 제휴(쿠팡파트너스) 처리 코드를 작성한 뒤 사용. 종합 보안 체크리스트 제공.
 metadata:
   origin: ECC
 ---

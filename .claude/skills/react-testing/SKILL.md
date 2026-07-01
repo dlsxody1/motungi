@@ -1,6 +1,9 @@
 ---
 name: react-testing
-description: React component testing with React Testing Library, Vitest/Jest, MSW for network mocking, accessibility assertions with axe, and the decision boundary between component tests and Playwright/Cypress end-to-end runs. Use when writing or fixing tests for React components, hooks, or pages.
+description: >
+  모퉁이(motungi)의 React 컴포넌트/훅 테스트 스킬. React Testing Library + Vitest,
+  MSW 네트워크 모킹, axe 접근성 단언을 사용. apps/web의 컴포넌트·훅·페이지 테스트를
+  작성·수정할 때 사용. 컴포넌트 테스트와 Playwright E2E의 경계 판단 포함. (Jest/Cypress 아님)
 origin: ECC
 ---
 

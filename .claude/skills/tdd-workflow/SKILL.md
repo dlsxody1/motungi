@@ -1,8 +1,9 @@
 ---
 name: tdd-workflow
 description: >
-  Use this skill when writing new features, fixing bugs, or refactoring code.
-  Enforces test-driven development with 80%+ coverage including unit, integration, and E2E tests.
+  모퉁이(motungi) TDD 스킬. 새 기능(특히 packages/core의 scoring·diagnosis 등 순수 로직)을
+  구현하거나 버그 수정·리팩터링할 때 사용. Vitest 기반 Red-Green-Refactor 사이클,
+  단위·통합·E2E 커버리지 80%+ 지향. 기존 packages/core/src/*.test.ts 컨벤션을 따름.
 metadata:
   origin: ECC
   version: "1.0"

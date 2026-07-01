@@ -1,6 +1,8 @@
 ---
 name: nextjs-turbopack
-description: Next.js 16+ and Turbopack — incremental bundling, FS caching, dev speed, and when to use Turbopack vs webpack.
+description: >
+  모퉁이(motungi) 웹앱(apps/web)의 Next.js 빌드/번들링 스킬. dev 속도, 증분 번들링, FS 캐싱,
+  Turbopack vs webpack 선택을 다룰 때 사용. turbo 모노레포(turbo.json) 빌드 파이프라인과 함께 고려.
 origin: ECC
 ---
 

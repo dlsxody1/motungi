@@ -1,10 +1,9 @@
 ---
 name: database-migrations
 description: >
-  Database migration best practices for schema changes, data migrations, rollbacks,
-  and zero-downtime deployments across PostgreSQL, MySQL, and common ORMs (Prisma,
-  Drizzle, Django, TypeORM, golang-migrate). Use when planning or implementing
-  database schema changes.
+  모퉁이(motungi) DB 마이그레이션 스킬. supabase/migrations/ 아래 SQL 마이그레이션 파일을
+  추가·수정하거나(예: 0001_init.sql), Supabase Postgres 스키마를 변경할 때 사용.
+  스키마 변경, 데이터 백필, 롤백, 무중단 배포 전략을 다룸. (ORM 아님 — 순수 SQL 마이그레이션 기준)
 metadata:
   origin: ECC
 ---
