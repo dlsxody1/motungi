@@ -167,8 +167,8 @@ const styles = StyleSheet.create({
   optTitle: { fontSize: 16, fontWeight: "700" },
   optDesc: { marginTop: 2, fontSize: 13, color: C.muted },
   soon: { backgroundColor: C.surface, borderRadius: R.md, paddingHorizontal: 8, paddingVertical: 4 },
-  soonLabel: { fontSize: 11, fontWeight: "600", color: C.faint },
-  autoHint: { textAlign: "center", fontSize: 13, color: C.faint },
+  soonLabel: { fontSize: 11, fontWeight: "600", color: C.muted },
+  autoHint: { textAlign: "center", fontSize: 13, color: C.muted },
   resultBtn: { height: 52, borderRadius: R.lg, backgroundColor: C.primary, alignItems: "center", justifyContent: "center" },
   resultLabel: { fontSize: 16, fontWeight: "700", color: C.white },
 });

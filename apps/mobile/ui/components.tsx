@@ -82,6 +82,7 @@ export function Chip({
   return (
     <Pressable
       onPress={onPress}
+      hitSlop={{ top: 6, bottom: 6 }}
       style={[
         styles.chip,
         active

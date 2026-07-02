@@ -23,7 +23,7 @@ export function BottomNav({ active }: { active: TabKey }) {
             key={key}
             href={href}
             className={`flex flex-1 flex-col items-center gap-1 pb-1 pt-0.5 ${
-              on ? "text-primary" : "text-faint"
+              on ? "text-primary" : "text-muted"
             }`}
           >
             <Icon size={24} strokeWidth={on ? 2.2 : 1.8} />

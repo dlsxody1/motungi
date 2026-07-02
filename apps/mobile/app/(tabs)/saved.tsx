@@ -48,7 +48,7 @@ export default function SavedScreen() {
           <Text style={styles.bannerTitle}>이번 주 동네 기회 다시 보기</Text>
           <Text style={styles.bannerSub}>상황이 바뀌었나요? 60초면 재진단해요.</Text>
         </View>
-        <Pressable style={styles.redo} onPress={() => router.push("/diagnosis")}>
+        <Pressable style={styles.redo} hitSlop={8} onPress={() => router.push("/diagnosis")}>
           <Text style={styles.redoLabel}>재진단</Text>
         </Pressable>
       </View>
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   },
   bannerTitle: { fontSize: 15, fontWeight: "700", color: C.ink },
   bannerSub: { marginTop: 2, fontSize: 13, color: C.muted },
-  redo: { borderRadius: 999, backgroundColor: C.primary, paddingHorizontal: 16, paddingVertical: 10 },
+  redo: { minHeight: 44, borderRadius: 999, backgroundColor: C.primary, paddingHorizontal: 16, justifyContent: "center" },
   redoLabel: { fontSize: 14, fontWeight: "700", color: C.white },
   savedHead: { marginTop: 24, marginBottom: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   count: { fontSize: 13, color: C.muted },

@@ -21,7 +21,7 @@ export default function ReportScreen() {
             도윤님 맞는 기회 3개예요
           </Txt>
         </View>
-        <Pressable style={styles.redo} onPress={() => router.push("/diagnosis")}>
+        <Pressable style={styles.redo} hitSlop={8} onPress={() => router.push("/diagnosis")}>
           <Refresh size={15} color={C.label} />
           <Text style={styles.redoLabel}>재진단</Text>
         </Pressable>
@@ -117,8 +117,8 @@ const styles = StyleSheet.create({
   redoLabel: { fontSize: 13, fontWeight: "600", color: C.label },
   hero: {
     borderRadius: R["2xl"],
-    borderLeftWidth: 5,
-    borderLeftColor: C.primary,
+    borderWidth: 1,
+    borderColor: "rgba(226,80,103,0.25)",
     backgroundColor: C.surface,
     overflow: "hidden",
     ...cardShadow,
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  incomeCap: { fontSize: 12, fontWeight: "600", color: "rgba(176,52,78,0.7)" },
+  incomeCap: { fontSize: 12, fontWeight: "600", color: C.primaryDeep },
   incomeVal: { fontSize: 26, fontWeight: "800", color: C.primaryDeep },
   incomeNote: { textAlign: "right", fontSize: 12, lineHeight: 16, color: C.muted },
   heroCta: { height: 50, borderRadius: R.lg, backgroundColor: C.primary, alignItems: "center", justifyContent: "center" },
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   relTitle: { marginTop: 4, fontSize: 16, fontWeight: "700", color: C.ink },
   relSummary: { marginTop: 2, fontSize: 13, color: C.muted },
   relIncome: { fontSize: 16, fontWeight: "800" },
-  relMore: { fontSize: 12, color: C.faint },
+  relMore: { fontSize: 12, color: C.muted },
   sumBanner: {
     marginTop: 12,
     flexDirection: "row",

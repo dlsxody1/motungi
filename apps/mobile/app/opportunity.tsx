@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   locRow: { marginTop: 8, flexDirection: "row", alignItems: "center", gap: 4 },
   locText: { fontSize: 14, color: C.muted },
   incomeCard: { marginTop: 16, backgroundColor: "rgba(251,232,236,0.6)", borderRadius: R.lg, padding: 16 },
-  incomeCap: { fontSize: 12, fontWeight: "600", color: "rgba(176,52,78,0.7)" },
+  incomeCap: { fontSize: 12, fontWeight: "600", color: C.primaryDeep },
   incomeVal: { fontSize: 30, fontWeight: "800", color: C.primaryDeep },
   incomeUnit: { fontSize: 15, fontWeight: "700", color: C.muted },
   incomeLine: { marginTop: 8, height: 1, backgroundColor: "rgba(226,80,103,0.15)" },

@@ -3,7 +3,41 @@
  * 모바일-퍼스트 반응형: 폰에선 화면을 꽉 채우고, 넓은 화면에선 앱 폭(420px)으로
  * 가운데 정렬해 앱과 동일한 레이아웃을 유지한다.
  */
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ElementType, ReactNode } from "react";
+
+/* ────────────────────────────────────────────────────────────
+ * 타이포 스케일 (DESIGN.md · @motungi/tokens 와 1:1)
+ *  페이지가 즉흥 text-[Npx] 를 쓰지 않도록 역할별 프리셋을 노출한다.
+ *  size/leading/weight/tracking 을 한 클래스로 묶어 위계를 한 곳에서 보장.
+ *  heroDisplay 는 데스크탑 marketing 히어로 전용(스케일 밖 대형 제목).
+ * ──────────────────────────────────────────────────────────── */
+export const text = {
+  heroDisplay: "text-[clamp(2.25rem,4vw,3.5rem)] font-extrabold leading-[1.14] tracking-[-0.035em]",
+  display: "text-[30px] font-extrabold leading-[39px] tracking-[-0.02em]",
+  heading1: "text-[22px] font-bold leading-[30px] tracking-[-0.01em]",
+  heading2: "text-[19px] font-bold leading-[27px] tracking-[-0.01em]",
+  headline1: "text-[18px] font-semibold leading-[26px] tracking-[-0.01em]",
+  headline2: "text-[17px] font-semibold leading-[24px]",
+  body1: "text-[15px] font-normal leading-[23px]",
+  body2: "text-[14px] font-normal leading-[22px]",
+  label: "text-[13px] font-medium leading-[18px]",
+  caption: "text-[11px] font-medium leading-[16px] tracking-[0.02em]",
+} as const;
+
+/** 타이포 프리셋을 적용하는 텍스트 요소. 기본 색은 상속(부모에서 지정). */
+export function Txt({
+  as: Tag = "p",
+  preset = "body1",
+  className = "",
+  children,
+}: {
+  as?: ElementType;
+  preset?: keyof typeof text;
+  className?: string;
+  children: ReactNode;
+}) {
+  return <Tag className={`${text[preset]} ${className}`}>{children}</Tag>;
+}
 
 /* ────────────────────────────────────────────────────────────
  * 화면 컨테이너 (반응형)

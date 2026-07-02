@@ -2,6 +2,10 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    // Expo 52 base가 상속시키는 moduleResolution:"node"(node10)는 TS 5.7+에서
+    // deprecated. Metro 번들러 환경이므로 "bundler"로 덮어쓴다(웹과 동일).
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "paths": {
       "@/*": ["./*"]
     }

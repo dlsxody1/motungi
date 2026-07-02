@@ -6,11 +6,11 @@ import { createClient } from "@supabase/supabase-js";
  * 세션은 AsyncStorage에 저장. EXPO_PUBLIC_ 접두어 변수만 클라이언트 노출됨.
  */
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const publishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 export const supabase =
-  url && anonKey
-    ? createClient(url, anonKey, {
+  url && publishableKey
+    ? createClient(url, publishableKey, {
         auth: {
           storage: AsyncStorage,
           autoRefreshToken: true,

@@ -20,8 +20,10 @@
   --color-surface-alt: #f1ede6;
   --color-ink: #1c1a17;
   --color-label: #4a453e;
-  --color-muted: #8a8378;
-  --color-faint: #b4ada1;
+  /* 보조 텍스트 — bg/surface 대비 ≥4.5:1(WCAG AA) */
+  --color-muted: #6b645a;
+  /* 흐린 텍스트 — 장식·아이콘·구분선 전용(본문 금지) */
+  --color-faint: #807970;
   --color-line: #6e4e3c2e;
   --color-line-alt: #6e4e3c17;
 

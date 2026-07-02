@@ -29,7 +29,7 @@ export default function MyScreen() {
             <Text style={styles.meta}>망원동 기준 · 활동형</Text>
           </View>
         </View>
-        <Pressable style={styles.redo} onPress={() => router.push("/diagnosis")}>
+        <Pressable style={styles.redo} hitSlop={8} onPress={() => router.push("/diagnosis")}>
           <Text style={styles.redoLabel}>재진단</Text>
         </Pressable>
       </View>
@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
   avatar: { width: 48, height: 48, borderRadius: 999, backgroundColor: C.tint, alignItems: "center", justifyContent: "center" },
   name: { fontSize: 16, fontWeight: "700", color: C.ink },
   meta: { fontSize: 13, color: C.muted },
-  redo: { borderRadius: 999, backgroundColor: C.primary, paddingHorizontal: 14, paddingVertical: 8 },
+  redo: { minHeight: 44, borderRadius: 999, backgroundColor: C.primary, paddingHorizontal: 16, justifyContent: "center" },
   redoLabel: { fontSize: 13, fontWeight: "700", color: C.white },
   menu: { marginTop: 16, backgroundColor: C.surface, borderRadius: R.xl, ...cardShadow },
   menuItem: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16 },

@@ -33,3 +33,6 @@ android/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# impeccable skill 산출물 (캐시/라이브 프리뷰)
+.impeccable/

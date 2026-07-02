@@ -18,16 +18,16 @@ export default function ExploreScreen() {
       {/* 헤더 */}
       <View style={styles.header}>
         <Txt preset="h1" style={{ fontSize: 24 }}>탐색</Txt>
-        <Pressable style={styles.dong}>
+        <Pressable style={styles.dong} hitSlop={8}>
           <Text style={styles.dongLabel}>망원동</Text>
-          <ChevronDown size={16} color={C.faint} />
+          <ChevronDown size={16} color={C.muted} />
         </Pressable>
       </View>
 
       {/* 검색 */}
       <View style={styles.search}>
-        <Search size={20} color={C.faint} />
-        <TextInput style={styles.searchInput} placeholder="기회·키워드 검색" placeholderTextColor={C.faint} />
+        <Search size={20} color={C.muted} />
+        <TextInput style={styles.searchInput} placeholder="기회·키워드 검색" placeholderTextColor={C.muted} />
       </View>
 
       {/* 필터 */}
@@ -98,5 +98,5 @@ const styles = StyleSheet.create({
   title: { marginTop: 4, fontSize: 16, fontWeight: "700", color: C.ink },
   summary: { marginTop: 2, fontSize: 13, color: C.muted },
   income: { fontSize: 15, fontWeight: "800" },
-  match: { fontSize: 12, color: C.faint },
+  match: { fontSize: 12, color: C.muted },
 });

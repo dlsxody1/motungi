@@ -43,7 +43,7 @@ export default function LocationScreen() {
         {/* 구분선 */}
         <View style={styles.divider}>
           <View style={styles.line} />
-          <Txt preset="caption" color={C.faint}>또는 직접 선택</Txt>
+          <Txt preset="caption" color={C.muted}>또는 직접 선택</Txt>
           <View style={styles.line} />
         </View>
 
@@ -53,7 +53,7 @@ export default function LocationScreen() {
           <TextInput
             style={styles.searchInput}
             placeholder="동네 이름 검색 (예: 망원동)"
-            placeholderTextColor={C.faint}
+            placeholderTextColor={C.muted}
           />
         </View>
 
