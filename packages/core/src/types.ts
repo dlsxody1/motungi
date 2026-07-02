@@ -11,8 +11,18 @@ export type OpportunityCategory =
   | "class_talent" // 클래스·재능
   | "space_used"; // 공간·중고
 
-/** 데이터 소스 (기획서 §7) */
-export type SourceKind = "commercial_area" | "youth_policy" | "affiliate_feed";
+/**
+ * 데이터 소스 (기획서 §7 + docs/DATA-SOURCES.md).
+ * - seoul_jobs: 서울시 일자리플러스센터 채용정보 (side_job/gig_deal 본체). 워크넷 대체.
+ * - youth_policy: 온통청년 청년정책 (subsidy).
+ * - commercial_area: 소상공인 상권정보 (추천 근거 맥락).
+ * - affiliate_feed: 제휴 피드 (보류).
+ */
+export type SourceKind =
+  | "seoul_jobs"
+  | "youth_policy"
+  | "commercial_area"
+  | "affiliate_feed";
 
 /** 행정동 단위 위치 */
 export interface GeoPoint {
