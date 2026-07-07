@@ -7,7 +7,7 @@ import { CheckCircleIcon, CheckIcon, ChevronLeftIcon, CloseIcon, ShieldIcon, Tim
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { WebLogo } from "@/components/web-shell";
 
-/** 4문항 정의 — @motungi/core 의 DIAGNOSIS_STEPS 순서와 맞춤. */
+/** 3문항 정의 — @motungi/core 의 DIAGNOSIS_STEPS(interests·timeSlot·energy) 순서와 맞춤. */
 type Option = { value: string; title: string; desc: string; soon?: boolean };
 type Question = {
   eyebrow: string;
@@ -20,54 +20,40 @@ type Question = {
 
 const QUESTIONS: Question[] = [
   {
-    eyebrow: "Q1. 본업 직군",
-    short: "본업 직군",
-    title: "어떤 일을 하고 계세요?",
-    hint: "MVP는 마케팅·개발·디자인부터 시작해요.",
-    auto: true,
-    options: [
-      { value: "office", title: "마케팅", desc: "콘텐츠 · 퍼포먼스 · 브랜드" },
-      { value: "dev", title: "개발", desc: "프론트 · 백엔드 · 데이터" },
-      { value: "design", title: "디자인", desc: "UX · 그래픽 · 브랜드" },
-      { value: "etc", title: "그 외 직군", desc: "", soon: true },
-    ],
-  },
-  {
-    eyebrow: "Q2. 가용 시간",
-    short: "가용 시간",
-    title: "부업에 쓸 수 있는\n시간은 언제인가요?",
-    hint: "퇴근 후·주말 중 잡기 좋은 걸 골라드려요.",
-    auto: true,
-    options: [
-      { value: "weekend_am", title: "주말 오전", desc: "토·일 오전 단타임" },
-      { value: "weekday_evening", title: "평일 저녁", desc: "퇴근 후 2~3시간" },
-      { value: "weekend_pm", title: "주말 오후", desc: "토·일 오후 여유" },
-      { value: "flexible", title: "자투리 · 유동", desc: "그때그때 가능한 시간" },
-    ],
-  },
-  {
-    eyebrow: "Q3. 체력·에너지",
-    short: "퇴근 후 체력",
-    title: "요즘 에너지는 어떠세요?",
-    hint: "무리 없는 난이도로 맞춰드려요.",
-    auto: true,
-    options: [
-      { value: "drained", title: "방전형", desc: "가볍게 · 부담 없이" },
-      { value: "moderate", title: "보통", desc: "적당한 몰입까지 OK" },
-      { value: "active", title: "활동형", desc: "제대로 벌고 싶어요" },
-    ],
-  },
-  {
-    eyebrow: "Q4. 목표 월 수익",
-    short: "목표 월 수익",
-    title: "얼마를 벌고 싶으세요?",
-    hint: "목표에 맞춰 기회를 정렬해요.",
+    eyebrow: "Q1. 관심사",
+    short: "관심사",
+    title: "퇴근하고 뭐 하고\n싶으세요?",
+    hint: "끌리는 걸 하나 골라주세요. 그쪽부터 골라드려요.",
     auto: false,
     options: [
-      { value: "under_30", title: "30만 원 이하", desc: "용돈벌이면 충분" },
-      { value: "30_to_50", title: "30~50만 원", desc: "고정비 한 축 커버" },
-      { value: "50_to_100", title: "50~100만 원", desc: "제대로 사이드잡" },
-      { value: "over_100", title: "100만 원 이상", desc: "본격적으로" },
+      { value: "culture", title: "문화·공연", desc: "전시 · 공연 · 영화" },
+      { value: "active", title: "운동·산책", desc: "러닝 · 걷기길 · 클래스" },
+      { value: "food", title: "먹거리·마켓", desc: "맛집 · 야시장 · 플리마켓" },
+      { value: "side_job", title: "가벼운 부업", desc: "퇴근 후 파트 · 단기" },
+    ],
+  },
+  {
+    eyebrow: "Q2. 시간대",
+    short: "시간대",
+    title: "주로 언제\n시간이 나세요?",
+    hint: "퇴근 후·주말 중 즐기기 좋은 걸 맞춰드려요.",
+    auto: true,
+    options: [
+      { value: "weekday_evening", title: "평일 저녁", desc: "퇴근 후 2~3시간" },
+      { value: "weekend", title: "주말", desc: "토·일 여유롭게" },
+      { value: "flexible", title: "유동적", desc: "그때그때 가능한 시간" },
+    ],
+  },
+  {
+    eyebrow: "Q3. 에너지",
+    short: "오늘 에너지",
+    title: "요즘 에너지는 어떠세요?",
+    hint: "무리 없는 강도로 맞춰드려요.",
+    auto: false,
+    options: [
+      { value: "drained", title: "방전형", desc: "가볍게 · 앉아서 쉬듯" },
+      { value: "moderate", title: "보통", desc: "적당한 활동까지 OK" },
+      { value: "active", title: "활동형", desc: "몸 좀 움직이고 싶어요" },
     ],
   },
 ];

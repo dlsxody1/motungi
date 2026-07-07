@@ -25,11 +25,17 @@
 - **API 발급 완료**: data.go.kr 공용키(상권·두루누비·문화정보) + 서울 일자리(OA-13341).
 - **Supabase 신규 키 체계 적용**: publishable/secret key로 웹·앱 클라이언트 코드 갱신 완료.
 
+### 옛 기획 잔재 정리 — 완료 (2026-07-03)
+§3 인벤토리 전면 처리 완료:
+- **core**: `OpportunityCategory`(culture/active/side_job/class/food/market)·`SourceKind`(6종)·`estimatedIncomeKrw→costKrw`·`timeWindow`·`UserAnchors` 신설. `diagnosis.ts` jobGroup/incomeGoal 제거→`interests` 신설(4→3문항). `scoring.ts` income→cost+time 가중치, fit=interests↔category 구현, 2앵커 min 거리. youth-policy 어댑터 제거, seoul-jobs 존치(side_job).
+- **DB**: `0003_pivot_categories.sql`(enum 확장, estimated_income_krw→cost_krw, time_*_hour, profiles work 앵커), `seed.sql` 문화·여가로 교체.
+- **UI**: web/mobile 목업 동기 교체, 전 화면(진단·리포트·상세·탐색·홈·랜딩·저장·쉘) 카피 전환. 모바일 온보딩 오타 수정. 메타데이터·PRODUCT·README 갱신.
+- **검증**: core 테스트 18개 통과, web/mobile typecheck 통과. (§2의 "테스트 21개"는 실제 18개였음.)
+
 ### 진행 중 / 미완
-- 옛 기획 잔재 정리(§3 인벤토리) — **최우선**.
-- core 도메인 값 재정의(카테고리·진단·스코어링 2앵커/시간축).
 - Kakao REST 키 발급(위치 프록시).
 - 적재 Edge Function + Cron, 목업→Supabase 읽기 전환.
+- culture/active 어댑터 구현(발급 응답으로 `Raw*` 확정 후).
 
 ## 3. 바꿔야 할 것 인벤토리 (옛 기획 잔재)
 

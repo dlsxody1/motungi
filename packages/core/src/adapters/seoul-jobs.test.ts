@@ -28,9 +28,9 @@ describe("classifyEmployment", () => {
     expect(classifyEmployment("파트타임")).toBe("side_job");
     expect(classifyEmployment("시간제")).toBe("side_job");
   });
-  it("일용/단기 → gig_deal", () => {
-    expect(classifyEmployment("일용직")).toBe("gig_deal");
-    expect(classifyEmployment("단기")).toBe("gig_deal");
+  it("일용/단기 → side_job", () => {
+    expect(classifyEmployment("일용직")).toBe("side_job");
+    expect(classifyEmployment("단기")).toBe("side_job");
   });
   it("정규직 등 풀타임 → null(카드 제외)", () => {
     expect(classifyEmployment("정규직")).toBeNull();
@@ -60,7 +60,7 @@ describe("normalizeSeoulJob", () => {
     expect(o.id).toBe("seoul-job:SJ-2026-0001");
     expect(o.source).toBe("seoul_jobs");
     expect(o.category).toBe("side_job");
-    expect(o.estimatedIncomeKrw).toBe(12_000);
+    expect(o.costKrw).toBe(12_000);
     expect(o.ctaUrl).toContain("job.seoul.go.kr");
     expect(o.deadline).toBe("2026-07-31");
     expect(o.location?.dongName).toBe("망원동");

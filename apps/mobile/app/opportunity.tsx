@@ -24,20 +24,20 @@ export default function OpportunityScreen() {
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}>
         <Tag label={o.categoryLabel} />
-        <Text style={styles.title}>주말 오전, 동네 카페{"\n"}오픈 바리스타 파트</Text>
+        <Text style={styles.title}>퇴근길 20분, 망원 한강{"\n"}야간 재즈 소품 공연</Text>
         <View style={styles.locRow}>
           <Location size={16} color={C.primary} />
-          <Text style={styles.locText}>망원동 · 집에서 도보 8분 반경</Text>
+          <Text style={styles.locText}>망원동 · 회사에서 도보 15분</Text>
         </View>
 
-        {/* 수입 카드 */}
+        {/* 참가비 카드 */}
         <View style={styles.incomeCard}>
-          <Text style={styles.incomeCap}>예상 월 수입</Text>
+          <Text style={styles.incomeCap}>참가비</Text>
           <Text style={styles.incomeVal}>
-            {o.incomeLabel} <Text style={styles.incomeUnit}>/ 월</Text>
+            {o.costLabel} <Text style={styles.incomeUnit}>/ 1인</Text>
           </Text>
           <View style={styles.incomeLine} />
-          <Text style={styles.incomeSub}>시급 12,000원 × 주 8시간 × 4.3주 기준</Text>
+          <Text style={styles.incomeSub}>저녁 7시 · 예약 없이 그냥 가면 돼요</Text>
         </View>
 
         {/* 메타 3칸 */}
@@ -50,8 +50,8 @@ export default function OpportunityScreen() {
           ))}
         </View>
 
-        {/* 시작 방법 */}
-        <Text style={styles.sectionTitle}>시작 방법</Text>
+        {/* 즐기는 방법 */}
+        <Text style={styles.sectionTitle}>즐기는 방법</Text>
         <View style={{ gap: 16 }}>
           {o.steps?.map((s, i) => (
             <View key={i} style={styles.step}>
@@ -64,8 +64,8 @@ export default function OpportunityScreen() {
         </View>
 
         <Text style={styles.disclaimer}>
-          시작하기를 누르면 제휴 채널로 이동해요. 모퉁이는 중개·소개만 하며 근로계약의 당사자가
-          아니에요.
+          보러 가기를 누르면 주최·출처 채널로 이동해요. 모퉁이는 공공·제휴 정보를 모아 소개할 뿐,
+          예약·주최 당사자가 아니에요.
         </Text>
       </ScrollView>
 
@@ -75,7 +75,7 @@ export default function OpportunityScreen() {
           <Bookmark size={22} color={C.label} />
         </Pressable>
         <Pressable style={styles.startBtn} onPress={() => o.ctaUrl && Linking.openURL(o.ctaUrl)}>
-          <Text style={styles.startLabel}>시작하기</Text>
+          <Text style={styles.startLabel}>보러 가기</Text>
           <ExternalLink size={18} color={C.white} />
         </Pressable>
       </View>

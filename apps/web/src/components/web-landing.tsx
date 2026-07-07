@@ -17,32 +17,32 @@ const VALUE_PROPS = [
   {
     Icon: BoltIcon,
     title: "마찰 제로",
-    desc: "수백 개 공고를 뒤질 필요 없이, 60초 진단으로 지금 잡을 기회만 골라드려요.",
+    desc: "뭐 할지 검색하고 고민할 필요 없이, 60초 진단으로 오늘 할 것만 골라드려요.",
   },
   {
     Icon: SparkleIcon,
     title: "원픽",
-    desc: "오늘 딱 하나. 내 상황·동네·시간에 가장 잘 맞는 기회 1~3개만 추려서 보여줘요.",
+    desc: "오늘 딱 하나. 내 관심사·동네·시간에 가장 잘 맞는 활동 1~3개만 추려서 보여줘요.",
   },
   {
     Icon: LocationIcon,
     title: "하이퍼로컬",
-    desc: "내가 사는 행정동을 기준으로, 걸어서 닿는 거리의 진짜 동네 기회를 찾아요.",
+    desc: "집과 회사를 기준으로, 퇴근길·주말에 걸어서 닿는 진짜 동네 활동을 찾아요.",
   },
 ];
 
 const STEPS = [
-  { n: 1, title: "내 동네 설정", desc: "행정동만 정하면 준비 끝." },
-  { n: 2, title: "60초 진단", desc: "4문항으로 취향·여건 파악." },
-  { n: 3, title: "동네 리포트", desc: "오늘의 원픽과 기회 목록." },
+  { n: 1, title: "내 동네 설정", desc: "집·회사만 정하면 준비 끝." },
+  { n: 2, title: "60초 진단", desc: "3문항으로 관심사·여건 파악." },
+  { n: 3, title: "동네 리포트", desc: "오늘의 원픽과 활동 목록." },
 ];
 
 const CATEGORIES = [
-  { label: "동네 기반 부업", cls: "bg-tint text-primary-deep border border-primary/30" },
-  { label: "내게 맞는 지원금", cls: "bg-mint-tint text-mint" },
-  { label: "동네 긱 · 딜", cls: "bg-purple-tint text-purple" },
-  { label: "클래스 · 재능", cls: "bg-surface text-muted border border-line" },
-  { label: "공간 · 중고", cls: "bg-surface text-muted border border-line" },
+  { label: "문화·공연", cls: "bg-tint text-primary-deep border border-primary/30" },
+  { label: "운동·산책", cls: "bg-mint-tint text-mint" },
+  { label: "먹거리·마켓", cls: "bg-purple-tint text-purple" },
+  { label: "클래스·배움", cls: "bg-surface text-muted border border-line" },
+  { label: "퇴근후 부업", cls: "bg-surface text-muted border border-line" },
 ];
 
 export function WebLanding() {
@@ -70,15 +70,15 @@ export function WebLanding() {
           <div className="max-w-[560px] flex-1">
             <span className="inline-flex items-center gap-1.5 rounded-pill bg-white/20 px-3.5 py-2 text-[13px] font-semibold text-white">
               <LocationIcon size={15} />
-              하이퍼로컬 기회 내비게이션
+              하이퍼로컬 여가 큐레이션
             </span>
             <h1 className="mt-6 text-[56px] font-extrabold leading-[1.14] tracking-[-0.035em] text-white">
-              내 동네 모퉁이에,
+              퇴근하고
               <br />
-              기회가 있다
+              뭐하지?
             </h1>
             <p className="mt-5 max-w-[30rem] text-[19px] leading-[1.6] font-medium text-white/95">
-              수백 개 대신 딱 1~3개. 내 동네에서 지금 잡을 수 있는 부업·지원금·긱을 60초 만에 골라드려요.
+              수백 개 대신 딱 1~3개. 퇴근 후·주말 내 동네에서 즐길 문화·여가·활동을 60초 만에 골라드려요.
             </p>
 
             {/* 위치 검색바 */}
@@ -91,7 +91,7 @@ export function WebLanding() {
                 href="/location"
                 className="flex h-[52px] shrink-0 items-center gap-1.5 rounded-[11px] bg-primary px-[26px] text-[16px] font-bold text-white transition-colors hover:bg-primary-deep"
               >
-                내 동네 기회 보기
+                내 동네에서 찾기
                 <ArrowRightIcon size={18} />
               </Link>
             </div>
@@ -106,17 +106,17 @@ export function WebLanding() {
             <div className="rounded-[22px] bg-surface p-[22px] shadow-[0_30px_60px_rgba(40,20,10,0.28)]">
               <div className="flex items-center justify-between">
                 <span className="rounded-md bg-primary px-2 py-1 text-[11px] font-bold text-white">
-                  오늘의 원픽 · 동네 부업
+                  오늘의 원픽 · 동네 문화
                 </span>
                 <span className="text-[13px] font-bold text-primary">매칭 94%</span>
               </div>
               <h3 className="mt-3 break-keep text-[21px] font-extrabold leading-[1.35] tracking-[-0.01em] text-ink">
-                주말 오전, 동네 카페 오픈 바리스타 파트
+                퇴근길 20분, 망원 한강 야간 재즈 소품 공연
               </h3>
               <div className="mt-4 rounded-xl bg-tint px-4 py-3.5">
-                <p className="text-[12px] font-semibold text-primary-deep">예상 월 수입</p>
-                <p className="text-[28px] font-extrabold leading-tight text-primary-deep">+48만 원</p>
-                <p className="mt-0.5 text-[12px] text-muted">한 달이면 에어팟 프로 2개</p>
+                <p className="text-[12px] font-semibold text-primary-deep">참가비</p>
+                <p className="text-[28px] font-extrabold leading-tight text-primary-deep">무료</p>
+                <p className="mt-0.5 text-[12px] text-muted">저녁 7시 · 회사에서 도보 15분</p>
               </div>
             </div>
             {/* 겹치는 미니 카드 — 카드 좌하단 모서리에 살짝 걸치되 본문은 가리지 않음 */}
@@ -125,8 +125,8 @@ export function WebLanding() {
                 <SavingsIcon size={20} />
               </span>
               <span>
-                <span className="block text-[12px] text-muted">청년 월세 지원</span>
-                <span className="block text-[16px] font-extrabold text-mint">연 240만</span>
+                <span className="block text-[12px] text-muted">경의선숲길 산책</span>
+                <span className="block text-[16px] font-extrabold text-mint">무료</span>
               </span>
             </div>
           </div>

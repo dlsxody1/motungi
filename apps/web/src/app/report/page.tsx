@@ -29,7 +29,7 @@ export default function ReportPage() {
                     <LocationIcon size={18} className="text-primary" />
                     망원동 기준
                   </p>
-                  <p className="mt-0.5 text-[13px] text-muted">도윤님 맞는 기회 3개예요</p>
+                  <p className="mt-0.5 text-[13px] text-muted">퇴근하고 즐길 거 3개 골랐어요</p>
                 </div>
                 <Link
                   href="/diagnosis"
@@ -54,25 +54,25 @@ export default function ReportPage() {
                     </span>
                   </div>
                   <h2 className="mt-3 text-[21px] font-extrabold leading-snug tracking-[-0.01em] text-ink">
-                    주말 오전, 동네 카페
+                    퇴근길 20분, 망원 한강
                     <br />
-                    오픈 바리스타 파트
+                    야간 재즈 소품 공연
                   </h2>
                   <p className="mt-2.5 text-[14px] leading-relaxed text-label">
-                    망원동은 카페 밀도 <b className="text-primary-deep">상위 5%</b>. 방전형인
-                    도윤님께 맞는 주말 오전 단타임 수요가 많아요.
+                    망원 한강공원은 회사에서 <b className="text-primary-deep">15분</b>. 방전형인
+                    도윤님도 앉아서 즐기기 좋은 무료 야외 공연이에요.
                   </p>
                   <div className="mt-4 flex items-end justify-between rounded-xl bg-tint px-4 py-3">
                     <div>
-                      <p className="text-[12px] font-semibold text-primary-deep">예상 월 수입</p>
+                      <p className="text-[12px] font-semibold text-primary-deep">참가비</p>
                       <p className="text-[26px] font-extrabold leading-none text-primary-deep">
-                        {ONE_PICK.incomeLabel}
+                        {ONE_PICK.costLabel}
                       </p>
                     </div>
                     <p className="text-right text-[12px] leading-tight text-muted">
-                      한 달이면
+                      저녁 7시
                       <br />
-                      에어팟 프로 2개
+                      예약 없이 그냥
                     </p>
                   </div>
                 </div>
@@ -96,7 +96,7 @@ export default function ReportPage() {
                     </div>
                     <div className="shrink-0 text-right">
                       <p className={`text-[16px] font-extrabold ${o.tone === "mint" ? "text-mint" : "text-primary"}`}>
-                        {o.incomeLabel}
+                        {o.costLabel}
                       </p>
                       <p className="text-[12px] text-muted">자세히 →</p>
                     </div>
@@ -106,8 +106,8 @@ export default function ReportPage() {
 
               <div className="mt-3 flex items-center justify-between rounded-xl bg-surface-alt px-4 py-3.5">
                 <div>
-                  <p className="text-[14px] font-bold text-ink">이거 다 하면 1년에 얼마?</p>
-                  <p className="text-[12px] text-muted">정책+부업+딜 합산 시뮬</p>
+                  <p className="text-[14px] font-bold text-ink">이거 묶어서 하루 코스로?</p>
+                  <p className="text-[12px] text-muted">관심사·시간대로 저녁 코스 짜기</p>
                 </div>
                 <span className="rounded-pill border border-line bg-surface px-3 py-1.5 text-[12px] font-semibold text-muted">
                   곧 공개
@@ -128,10 +128,10 @@ export default function ReportPage() {
             <div>
               <h1 className="flex items-center gap-2 text-[28px] font-extrabold tracking-[-0.02em] text-ink">
                 <LocationIcon size={26} className="text-primary" />
-                망원동 기회 리포트
+                망원동 저녁 리포트
               </h1>
               <p className="mt-1.5 text-[15px] text-muted">
-                도윤님 상황에 맞는 기회 3개를 찾았어요 · 2026.07.01 갱신
+                도윤님이 퇴근하고 즐길 거 3개를 찾았어요 · 2026.07.01 갱신
               </p>
             </div>
             <div className="flex items-center gap-2.5">
@@ -163,17 +163,17 @@ export default function ReportPage() {
                       </span>
                     </div>
                     <h2 className="mt-3 text-[27px] font-extrabold leading-[1.32] tracking-[-0.01em] text-ink">
-                      주말 오전, 동네 카페 오픈 바리스타 파트
+                      퇴근길 20분, 망원 한강 야간 재즈 소품 공연
                     </h2>
                     <p className="mt-3 text-[15px] leading-relaxed text-label">
-                      망원동은 카페 밀도 <b className="text-primary-deep">상위 5%</b>. 방전형인
-                      도윤님께 맞는 주말 오전 단타임 수요가 많아요.
+                      망원 한강공원은 회사에서 <b className="text-primary-deep">15분</b>. 방전형인
+                      도윤님도 앉아서 즐기기 좋은 무료 야외 공연이에요.
                     </p>
                     <div className="mt-5 grid grid-cols-3 gap-2.5">
                       {[
-                        { l: "예상 시간", v: "주 8시간", mint: false },
-                        { l: "난이도", v: "낮음", mint: true },
-                        { l: "정산", v: "주급", mint: false },
+                        { l: "소요 시간", v: "약 1시간", mint: false },
+                        { l: "강도", v: "낮음", mint: true },
+                        { l: "시간대", v: "저녁 7시", mint: false },
                       ].map((m) => (
                         <div key={m.l} className="rounded-xl bg-bg px-3 py-3 text-center">
                           <p className="text-[11px] text-muted">{m.l}</p>
@@ -184,7 +184,7 @@ export default function ReportPage() {
                       ))}
                     </div>
                   </div>
-                  {/* 우 수입 박스 */}
+                  {/* 우 참가비 박스 */}
                   <div className="w-full shrink-0 md:w-[220px]">
                     <div
                       className="rounded-2xl p-5 text-white"
@@ -193,13 +193,13 @@ export default function ReportPage() {
                           "linear-gradient(150deg, var(--color-primary), var(--color-primary-deep))",
                       }}
                     >
-                      <p className="text-[12px] font-semibold text-white/80">예상 월 수입</p>
-                      <p className="text-[30px] font-extrabold leading-tight">+48만 원</p>
+                      <p className="text-[12px] font-semibold text-white/80">참가비</p>
+                      <p className="text-[30px] font-extrabold leading-tight">무료</p>
                       <p className="mt-1 text-[12px] text-white/85">
-                        시급 12,000원 × 주 8시간 × 4.3주
+                        저녁 7시 · 예약 없이 그냥 가면 돼요
                       </p>
                       <p className="mt-3 rounded-pill bg-white/15 px-3 py-1.5 text-center text-[12px] font-semibold">
-                        한 달이면 에어팟 프로 2개
+                        회사에서 도보 15분
                       </p>
                     </div>
                     <div className="mt-3 flex gap-2.5">
@@ -242,7 +242,7 @@ export default function ReportPage() {
                     </div>
                     <div className="shrink-0 text-right">
                       <p className={`text-[17px] font-extrabold ${o.tone === "mint" ? "text-mint" : "text-purple"}`}>
-                        {o.incomeLabel}
+                        {o.costLabel}
                       </p>
                       <p className="text-[12px] text-muted">매칭 {o.matchScore}%</p>
                     </div>
@@ -264,9 +264,9 @@ export default function ReportPage() {
                 <p className="mt-1 text-[18px] font-extrabold">망원동은 이런 동네예요</p>
                 <div className="mt-4 space-y-2">
                   {[
-                    { l: "카페 밀도", v: "상위 5%" },
+                    { l: "문화·공연 밀도", v: "상위 5%" },
                     { l: "청년(2030) 인구", v: "38%" },
-                    { l: "합산 잠재 수입", v: "월 60만+" },
+                    { l: "도보 10분 내 활동", v: "24곳+" },
                   ].map((s) => (
                     <div
                       key={s.l}
@@ -287,7 +287,7 @@ export default function ReportPage() {
                   </Link>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {["마케팅 3년차", "주말 오전", "방전형", "목표 +50만"].map((t) => (
+                  {["문화·공연", "평일 저녁", "방전형", "무료 위주"].map((t) => (
                     <span key={t} className="rounded-pill bg-bg px-3 py-1.5 text-[12px] font-semibold text-label">
                       {t}
                     </span>
@@ -297,8 +297,8 @@ export default function ReportPage() {
 
               <div className="flex items-center justify-between rounded-[20px] border-[1.5px] border-dashed border-line bg-info-bg px-5 py-4">
                 <div>
-                  <p className="text-[14px] font-bold text-ink">이거 다 하면 1년에 얼마?</p>
-                  <p className="mt-0.5 text-[12px] text-muted">정책+부업+딜 합산 시뮬</p>
+                  <p className="text-[14px] font-bold text-ink">이거 묶어서 하루 코스로?</p>
+                  <p className="mt-0.5 text-[12px] text-muted">관심사·시간대로 저녁 코스 짜기</p>
                 </div>
                 <span className="rounded-pill border border-line bg-surface px-3 py-1.5 text-[12px] font-semibold text-muted">
                   곧 공개

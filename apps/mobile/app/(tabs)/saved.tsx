@@ -6,19 +6,19 @@ import { C, R } from "@/ui/theme";
 
 const SAVED = [
   {
-    id: "cafe-barista",
-    categoryLabel: "동네 기반 부업",
-    title: "주말 오전 카페 바리스타 파트",
-    meta: "망원동 · 도보 8분",
-    income: "+48만/월",
+    id: "hangang-jazz",
+    categoryLabel: "동네 문화·공연",
+    title: "망원 한강 야간 재즈 소품 공연",
+    meta: "망원동 · 도보 15분",
+    cost: "무료",
     tone: "brand" as const,
   },
   {
-    id: "youth-rent",
-    categoryLabel: "내게 맞는 지원금",
-    title: "청년 월세 한시 특별지원",
-    meta: "마포구 · 만 19~34세",
-    income: "연 240만",
+    id: "gyeongui-walk",
+    categoryLabel: "동네 산책·운동",
+    title: "경의선숲길 저녁 산책 코스",
+    meta: "연남동 · 3km 걷기길",
+    cost: "무료",
     tone: "mint" as const,
   },
 ];
@@ -45,7 +45,7 @@ export default function SavedScreen() {
       {/* 재진단 배너 */}
       <View style={styles.banner}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.bannerTitle}>이번 주 동네 기회 다시 보기</Text>
+          <Text style={styles.bannerTitle}>이번 주 동네 다시 보기</Text>
           <Text style={styles.bannerSub}>상황이 바뀌었나요? 60초면 재진단해요.</Text>
         </View>
         <Pressable style={styles.redo} hitSlop={8} onPress={() => router.push("/diagnosis")}>
@@ -53,9 +53,9 @@ export default function SavedScreen() {
         </Pressable>
       </View>
 
-      {/* 저장한 기회 */}
+      {/* 저장한 활동 */}
       <View style={styles.savedHead}>
-        <Txt preset="headline">저장한 기회</Txt>
+        <Txt preset="headline">저장한 활동</Txt>
         <Text style={styles.count}>{SAVED.length}개</Text>
       </View>
 
@@ -75,7 +75,7 @@ export default function SavedScreen() {
             </View>
             <View style={{ alignItems: "flex-end", gap: 6 }}>
               <Text style={[styles.income, { color: s.tone === "mint" ? C.mint : C.primary }]}>
-                {s.income}
+                {s.cost}
               </Text>
               <Bookmark size={20} filled color={C.primary} />
             </View>

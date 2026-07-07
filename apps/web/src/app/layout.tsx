@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "모퉁이 Corner",
-  description: "내 동네 모퉁이에, 기회가 있다 — 하이퍼로컬 기회 내비게이션.",
+  description: "퇴근하고 뭐하지? — 퇴근 후·주말 내 동네 문화·여가 큐레이션.",
 };
 
 export const viewport: Viewport = {

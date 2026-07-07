@@ -6,9 +6,9 @@ import { Logo } from "@/ui/components";
 import { C } from "@/ui/theme";
 
 const TEASERS = [
-  { k: "마챌 세일", v: "인근샵 60초면 끝나요" },
+  { k: "마찰 제로", v: "진단 60초면 끝나요" },
   { k: "원픽", v: "수백 개 대신 딱 1~3개만" },
-  { k: "아이어로컬", v: "내 동네 기준으로 추천돼요" },
+  { k: "하이퍼로컬", v: "내 동네 기준으로 추천돼요" },
 ];
 
 /** A1 · 온보딩 — 선셋 그라데이션 히어로 */
@@ -27,9 +27,9 @@ export default function OnboardingScreen() {
           <Logo onDark size={30} />
 
           <View style={{ marginTop: 56 }}>
-            <Text style={styles.title}>내 동네 모퉁이에,{"\n"}기회가 있다</Text>
+            <Text style={styles.title}>퇴근하고{"\n"}뭐하지?</Text>
             <Text style={styles.sub}>
-              최근 내 우리 동네에서 잡을 수 있는 기회,{"\n"}딱 1~3개만 골라드려요.
+              퇴근 후·주말 내 동네에서 할 만한 것,{"\n"}딱 1~3개만 골라드려요.
             </Text>
           </View>
 
@@ -44,7 +44,7 @@ export default function OnboardingScreen() {
 
           <View style={styles.actions}>
             <Pressable style={styles.cta} onPress={() => router.push("/location")}>
-              <Text style={styles.ctaLabel}>내 동네 기회 보기</Text>
+              <Text style={styles.ctaLabel}>내 동네에서 찾기</Text>
             </Pressable>
             <Pressable style={styles.ghost} onPress={() => router.push("/report")}>
               <Text style={styles.ghostLabel}>로그인 없이 바로 시작</Text>

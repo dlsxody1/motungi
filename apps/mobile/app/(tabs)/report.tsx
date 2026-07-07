@@ -18,7 +18,7 @@ export default function ReportScreen() {
             <Text style={styles.hTitle}>망원동 기준</Text>
           </View>
           <Txt preset="label" color={C.muted} style={{ marginTop: 2, fontWeight: "400" }}>
-            도윤님 맞는 기회 3개예요
+            퇴근하고 즐길 거 3개 골랐어요
           </Txt>
         </View>
         <Pressable style={styles.redo} hitSlop={8} onPress={() => router.push("/diagnosis")}>
@@ -38,23 +38,23 @@ export default function ReportScreen() {
             <Tag label={ONE_PICK.categoryLabel} />
             <Text style={styles.match}>매칭 {ONE_PICK.matchScore}%</Text>
           </View>
-          <Text style={styles.heroTitle}>주말 오전, 동네 카페{"\n"}오픈 바리스타 파트</Text>
+          <Text style={styles.heroTitle}>퇴근길 20분, 망원 한강{"\n"}야간 재즈 소품 공연</Text>
           <Text style={styles.heroSummary}>
-            망원동은 카페 밀도 <Text style={{ color: C.primaryDeep, fontWeight: "700" }}>상위 5%</Text>.
-            방전형인 도윤님께 맞는 주말 오전 단타임 수요가 많아요.
+            망원 한강공원은 회사에서 <Text style={{ color: C.primaryDeep, fontWeight: "700" }}>15분</Text>.
+            방전형인 도윤님도 앉아서 즐기기 좋은 무료 야외 공연이에요.
           </Text>
 
           <View style={styles.incomeBox}>
             <View>
-              <Text style={styles.incomeCap}>예상 월 수입</Text>
-              <Text style={styles.incomeVal}>{ONE_PICK.incomeLabel}</Text>
+              <Text style={styles.incomeCap}>참가비</Text>
+              <Text style={styles.incomeVal}>{ONE_PICK.costLabel}</Text>
             </View>
-            <Text style={styles.incomeNote}>한 달이면{"\n"}에어팟 프로 2개</Text>
+            <Text style={styles.incomeNote}>저녁 7시{"\n"}예약 없이 그냥</Text>
           </View>
         </View>
         <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
           <View style={styles.heroCta}>
-            <Text style={styles.heroCtaLabel}>자세히 보고 시작하기</Text>
+            <Text style={styles.heroCtaLabel}>자세히 보기</Text>
           </View>
         </View>
       </Pressable>
@@ -77,7 +77,7 @@ export default function ReportScreen() {
             </View>
             <View style={{ alignItems: "flex-end" }}>
               <Text style={[styles.relIncome, { color: o.tone === "mint" ? C.mint : C.primary }]}>
-                {o.incomeLabel}
+                {o.costLabel}
               </Text>
               <Text style={styles.relMore}>자세히 →</Text>
             </View>
@@ -88,8 +88,8 @@ export default function ReportScreen() {
       {/* 합산 배너 */}
       <View style={styles.sumBanner}>
         <View>
-          <Text style={styles.sumTitle}>이거 다 하면 1년에 얼마?</Text>
-          <Text style={styles.sumSub}>정책+부업+딜 합산 시뮬</Text>
+          <Text style={styles.sumTitle}>이거 묶어서 하루 코스로?</Text>
+          <Text style={styles.sumSub}>관심사·시간대로 저녁 코스 짜기</Text>
         </View>
         <View style={styles.sumPill}>
           <Text style={styles.sumPillLabel}>곧 공개</Text>

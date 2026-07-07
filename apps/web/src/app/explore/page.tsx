@@ -15,15 +15,15 @@ import { Chip, MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { EXPLORE_LIST } from "@/data/opportunities";
 
-const FILTERS = ["전체", "부업", "지원금", "긱 · 딜", "클래스 · 재능"];
+const FILTERS = ["전체", "문화·공연", "운동·산책", "먹거리·마켓", "클래스", "부업"];
 
 const CATEGORIES = [
   { label: "전체", count: 42 },
-  { label: "동네 기반 부업", count: 14 },
-  { label: "내게 맞는 지원금", count: 7 },
-  { label: "동네 긱 · 딜", count: 12 },
-  { label: "클래스 · 재능", count: 6 },
-  { label: "공간 · 중고", count: 3 },
+  { label: "문화·공연", count: 16 },
+  { label: "운동·산책", count: 11 },
+  { label: "먹거리·마켓", count: 8 },
+  { label: "클래스·배움", count: 4 },
+  { label: "퇴근후 부업", count: 3 },
 ];
 
 /** B1 · 탐색 (전체 기회) — 반응형 */
@@ -50,7 +50,7 @@ export default function ExplorePage() {
                 <SearchIcon size={20} className="text-faint" />
                 <input
                   className="flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-muted"
-                  placeholder="기회·키워드 검색"
+                  placeholder="활동·키워드 검색"
                 />
               </div>
 
@@ -74,7 +74,7 @@ export default function ExplorePage() {
                     </div>
                     <div className="shrink-0 text-right">
                       <p className={`text-[15px] font-extrabold ${o.tone === "mint" ? "text-mint" : "text-primary"}`}>
-                        {o.incomeLabel}
+                        {o.costLabel}
                       </p>
                       <p className="text-[12px] text-muted">매칭 {o.matchScore}%</p>
                     </div>
@@ -94,9 +94,9 @@ export default function ExplorePage() {
           {/* 헤더 */}
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-ink">망원동 전체 기회</h1>
+              <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-ink">망원동에서 할 만한 것</h1>
               <p className="mt-1.5 text-[15px] text-muted">
-                지금 실행 가능한 기회 42건 · 도윤님 진단 기준 정렬
+                퇴근 후·주말 활동 42건 · 도윤님 진단 기준 정렬
               </p>
             </div>
             <div className="flex items-center gap-2.5">
@@ -104,7 +104,7 @@ export default function ExplorePage() {
                 <SearchIcon size={18} className="text-faint" />
                 <input
                   className="flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-muted"
-                  placeholder="기회 검색"
+                  placeholder="활동 검색"
                 />
               </div>
               <button className="flex h-11 items-center gap-1.5 rounded-[11px] border border-line bg-surface px-4 text-[14px] font-semibold text-label hover:border-faint">
@@ -178,7 +178,7 @@ export default function ExplorePage() {
                   낮은 난이도 <CloseIcon size={13} />
                 </span>
                 <span className="flex items-center gap-1 rounded-pill bg-primary px-3 py-1.5 text-[13px] font-semibold text-white">
-                  주말 오전 <CloseIcon size={13} />
+                  평일 저녁 <CloseIcon size={13} />
                 </span>
                 <span className="flex items-center gap-1 rounded-pill border border-line bg-surface px-3 py-1.5 text-[13px] font-semibold text-label">
                   도보 15분
@@ -221,7 +221,7 @@ export default function ExplorePage() {
                       </p>
                       <div className="mt-3.5 flex items-end justify-between border-t border-line-alt pt-3">
                         <p className={`text-[18px] font-extrabold ${o.tone === "mint" ? "text-mint" : "text-primary"}`}>
-                          {o.incomeLabel}
+                          {o.costLabel}
                         </p>
                         <p className="text-[13px] font-semibold text-muted">매칭 {o.matchScore}%</p>
                       </div>

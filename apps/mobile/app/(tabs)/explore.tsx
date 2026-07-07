@@ -6,7 +6,7 @@ import { ChevronDown, Search } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
 import { EXPLORE_LIST } from "@/data/opportunities";
 
-const FILTERS = ["전체", "부업", "지원금", "긱 · 딜", "클래스 · 재능"];
+const FILTERS = ["전체", "문화·공연", "운동·산책", "먹거리·마켓", "클래스", "부업"];
 
 /** B1 · 탐색 (전체 기회) */
 export default function ExploreScreen() {
@@ -27,7 +27,7 @@ export default function ExploreScreen() {
       {/* 검색 */}
       <View style={styles.search}>
         <Search size={20} color={C.muted} />
-        <TextInput style={styles.searchInput} placeholder="기회·키워드 검색" placeholderTextColor={C.muted} />
+        <TextInput style={styles.searchInput} placeholder="활동·키워드 검색" placeholderTextColor={C.muted} />
       </View>
 
       {/* 필터 */}
@@ -54,7 +54,7 @@ export default function ExploreScreen() {
             </View>
             <View style={{ alignItems: "flex-end" }}>
               <Text style={[styles.income, { color: o.tone === "mint" ? C.mint : C.primary }]}>
-                {o.incomeLabel}
+                {o.costLabel}
               </Text>
               <Text style={styles.match}>매칭 {o.matchScore}%</Text>
             </View>

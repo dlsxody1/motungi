@@ -6,19 +6,19 @@ import { DesktopShell, WebContainer } from "@/components/web-shell";
 
 const SAVED = [
   {
-    id: "cafe-barista",
-    categoryLabel: "동네 기반 부업",
-    title: "주말 오전 카페 바리스타 파트",
-    meta: "망원동 · 도보 8분",
-    income: "+48만/월",
+    id: "hangang-jazz",
+    categoryLabel: "동네 문화·공연",
+    title: "망원 한강 야간 재즈 소품 공연",
+    meta: "망원동 · 도보 15분",
+    cost: "무료",
     tone: "brand" as const,
   },
   {
-    id: "youth-rent",
-    categoryLabel: "내게 맞는 지원금",
-    title: "청년 월세 한시 특별지원",
-    meta: "마포구 · 만 19~34세",
-    income: "연 240만",
+    id: "gyeongui-walk",
+    categoryLabel: "동네 산책·운동",
+    title: "경의선숲길 저녁 산책 코스",
+    meta: "연남동 · 3km 걷기길",
+    cost: "무료",
     tone: "mint" as const,
   },
 ];
@@ -48,7 +48,7 @@ export default function SavedPage() {
 
               <div className="mt-4 flex items-center gap-3 rounded-xl bg-tint/60 p-4">
                 <div className="flex-1">
-                  <p className="text-[15px] font-bold text-ink">이번 주 동네 기회 다시 보기</p>
+                  <p className="text-[15px] font-bold text-ink">이번 주 동네 다시 보기</p>
                   <p className="mt-0.5 text-[13px] text-muted">상황이 바뀌었나요? 60초면 재진단해요.</p>
                 </div>
                 <Link
@@ -60,7 +60,7 @@ export default function SavedPage() {
               </div>
 
               <div className="mb-1 mt-6 flex items-center justify-between">
-                <h2 className="text-[17px] font-bold text-ink">저장한 기회</h2>
+                <h2 className="text-[17px] font-bold text-ink">저장한 활동</h2>
                 <span className="text-[13px] text-muted">{SAVED.length}개</span>
               </div>
 
@@ -76,7 +76,7 @@ export default function SavedPage() {
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1.5">
                       <p className={`text-[15px] font-extrabold ${s.tone === "mint" ? "text-mint" : "text-primary"}`}>
-                        {s.income}
+                        {s.cost}
                       </p>
                       <BookmarkIcon size={20} filled className="text-primary" />
                     </div>
@@ -113,7 +113,7 @@ export default function SavedPage() {
             {/* 재진단 배너 */}
             <div className="mt-6 flex items-center gap-4 rounded-[18px] bg-tint/60 p-6">
               <div className="flex-1">
-                <p className="text-[17px] font-bold text-ink">이번 주 동네 기회 다시 보기</p>
+                <p className="text-[17px] font-bold text-ink">이번 주 동네 다시 보기</p>
                 <p className="mt-1 text-[14px] text-muted">상황이 바뀌었나요? 60초면 재진단해요.</p>
               </div>
               <Link
@@ -124,9 +124,9 @@ export default function SavedPage() {
               </Link>
             </div>
 
-            {/* 저장한 기회 */}
+            {/* 저장한 활동 */}
             <div className="mb-3 mt-9 flex items-center justify-between">
-              <h2 className="text-[19px] font-bold text-ink">저장한 기회</h2>
+              <h2 className="text-[19px] font-bold text-ink">저장한 활동</h2>
               <span className="text-[14px] text-muted">{SAVED.length}개</span>
             </div>
 
@@ -157,7 +157,7 @@ export default function SavedPage() {
                       s.tone === "mint" ? "text-mint" : "text-primary"
                     }`}
                   >
-                    {s.income}
+                    {s.cost}
                   </p>
                 </Link>
               ))}

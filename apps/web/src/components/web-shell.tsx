@@ -134,8 +134,8 @@ export function SiteFooter() {
         <div className="max-w-[520px]">
           <WebLogo size={28} onDark />
           <p className="mt-4 text-[12px] leading-[1.7] text-white/65">
-            모퉁이는 기회를 큐레이션해 제휴 채널로 연결할 뿐, 근로계약·거래의 당사자가 아니에요.
-            표시된 수입·지원금은 예상치이며 실제와 다를 수 있어요.
+            모퉁이는 공공·제휴 정보를 큐레이션해 주최·출처 채널로 연결할 뿐, 예약·주최·거래의 당사자가 아니에요.
+            표시된 참가비·일정은 예상치이며 실제와 다를 수 있어요.
           </p>
         </div>
         <div className="flex gap-9">

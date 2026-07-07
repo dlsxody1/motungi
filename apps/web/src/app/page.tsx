@@ -26,12 +26,12 @@ export default function Home() {
 
               <div className="mt-12">
                 <h1 className="text-[34px] font-extrabold leading-[1.18] tracking-[-0.02em]">
-                  내 동네 모퉁이에,
+                  퇴근하고
                   <br />
-                  기회가 있다
+                  뭐하지?
                 </h1>
                 <p className="mt-4 max-w-[17rem] text-[15px] leading-relaxed text-white/90">
-                  내 동네에서 지금 잡을 수 있는 기회,
+                  퇴근 후·주말, 내 동네에서 할 만한 것
                   <br />딱 1~3개만 골라드려요.
                 </p>
               </div>
@@ -54,7 +54,7 @@ export default function Home() {
                   href="/location"
                   className="tap-safe flex h-[52px] w-full items-center justify-center rounded-xl bg-white text-[16px] font-bold text-primary-deep active:scale-[0.99]"
                 >
-                  내 동네 기회 보기
+                  내 동네에서 찾기
                 </Link>
                 <Link
                   href="/report"

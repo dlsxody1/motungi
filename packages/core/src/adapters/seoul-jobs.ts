@@ -2,7 +2,7 @@
  * 서울시 일자리플러스센터 채용정보 어댑터.
  * 소스: 서울 열린데이터광장 OA-13341 (개인 인증키 즉시 발급, JSON/XML, 공공누리 1유형).
  *
- * 워크넷 대체 소스 — side_job / gig_deal 카드의 본체를 제공한다.
+ * 워크넷 대체 소스 — side_job(퇴근후 파트/단기) 카드를 제공한다(보조 카테고리).
  *
  * ⚠️ 필드명 미확정: 서울 열린데이터광장 상세 페이지가 JS 렌더라 스크래핑 불가.
  *    인증키 발급 후 실제 응답 1건을 받아 아래 RawSeoulJob 필드명을 확정한다.
@@ -45,7 +45,7 @@ const PART_TIME_KEYWORDS = ["파트", "시간제", "단기", "아르바이트", 
 export function classifyEmployment(employmentType?: string): OpportunityCategory | null {
   if (!employmentType) return "side_job"; // 미상은 부업으로 폭넓게 잡되 후단 필터 가능
   const t = employmentType;
-  if (t.includes("일용") || t.includes("단기")) return "gig_deal";
+  if (t.includes("일용") || t.includes("단기")) return "side_job";
   if (PART_TIME_KEYWORDS.some((k) => t.includes(k))) return "side_job";
   // 정규직 등 풀타임은 모퉁이 컨셉(퇴근 후 짬)과 불일치 → 제외.
   return null;
@@ -81,7 +81,8 @@ export function normalizeSeoulJob(raw: RawSeoulJob): Opportunity | null {
     category,
     title: raw.title,
     summary: buildSummary(raw),
-    estimatedIncomeKrw: parseWageKrw(raw.wage),
+    // side_job은 costKrw가 지출이 아니라 벌이(income) 성격 — UI에서 카테고리로 분기 표기.
+    costKrw: parseWageKrw(raw.wage),
     location: raw.region || raw.address ? { dongName: raw.region } : undefined,
     ctaUrl: raw.detailUrl,
     deadline: raw.deadline,

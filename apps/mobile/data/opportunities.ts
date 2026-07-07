@@ -1,89 +1,94 @@
 /**
- * 목업용 기회 데이터 — @motungi/core 의 Opportunity 형태를 따르되,
- * 화면 표시에 필요한 파생 문자열(수익 라벨·매칭도 등)을 함께 담는다.
- * 실제 데이터는 이후 소스 어댑터(상권/청년정책/제휴)가 이 형태로 채운다.
+ * 목업용 활동 데이터 — @motungi/core 의 Opportunity 형태를 따르되,
+ * 화면 표시에 필요한 파생 문자열(비용 라벨·매칭도 등)을 함께 담는다.
+ * 실제 데이터는 이후 소스 어댑터(문화행사/두루누비/일자리)가 이 형태로 채운다.
  */
 import type { Opportunity, OpportunityCategory } from "@motungi/core";
 
 export type MockOpportunity = Opportunity & {
   /** 카테고리 한글 라벨 (태그용) */
   categoryLabel: string;
-  /** 수익 표시 문자열 (예: "+48만 원") */
-  incomeLabel: string;
-  /** 수익 단위 (예: "월", "건당", "연") */
-  incomeUnit: string;
+  /** 비용 표시 문자열 (예: "무료", "₩12,000"). side_job이면 벌이(예: "+48만 원") */
+  costLabel: string;
+  /** 비용 단위/맥락 (예: "1인", "회당", "월") */
+  costUnit: string;
   /** 매칭도 0~100 */
   matchScore: number;
   /** 상세 메타(칩) */
   meta: { label: string; value: string }[];
-  /** 시작 방법 스텝 */
+  /** 참여 방법 스텝 */
   steps?: string[];
-  incomeNote?: string;
+  costNote?: string;
   tone: "brand" | "mint";
 };
 
 export const ONE_PICK: MockOpportunity = {
-  id: "cafe-barista",
-  source: "commercial_area",
-  category: "side_job",
-  categoryLabel: "동네 기반 부업",
-  title: "주말 오전, 동네 카페 오픈 바리스타 파트",
+  id: "hangang-jazz",
+  source: "seoul_culture",
+  category: "culture",
+  categoryLabel: "동네 문화·공연",
+  title: "퇴근길 20분, 망원 한강 야간 재즈 소품 공연",
   summary:
-    "망원동은 카페 밀도 상위 5%. 방전형인 도윤님께 맞는 주말 오전 단타임 수요가 많아요.",
-  estimatedIncomeKrw: 480000,
-  incomeLabel: "+48만 원",
-  incomeUnit: "월",
-  incomeNote: "한 달이면 에어팟 프로 2개",
+    "망원 한강공원은 회사에서 15분. 방전형인 도윤님도 앉아서 즐기기 좋은 무료 야외 공연이에요.",
+  costKrw: 0,
+  costLabel: "무료",
+  costUnit: "1인",
+  costNote: "예약 없이 그냥 가면 돼요",
   matchScore: 94,
-  difficulty: 0.2,
+  difficulty: 0.1,
   location: { dongName: "망원동" },
+  timeWindow: { startHour: 19, endHour: 21 },
   meta: [
-    { label: "예상 시간", value: "주 8시간" },
-    { label: "난이도", value: "낮음" },
-    { label: "정산", value: "주급" },
+    { label: "소요 시간", value: "약 1시간" },
+    { label: "강도", value: "낮음" },
+    { label: "시간대", value: "저녁 7시" },
   ],
   steps: [
-    "제휴 채널에서 망원동 카페 단타임 공고를 확인해요.",
-    "간단 프로필로 지원해요. 이력서는 필요 없어요.",
-    "매장 확인 후 첫 주말 오전부터 시작해요.",
+    "퇴근길에 망원 한강공원 입구로 가요.",
+    "돗자리나 벤치에 앉아 공연을 즐겨요.",
+    "끝나고 근처 야시장에서 간단히 먹고 마무리해요.",
   ],
-  sourceLabel: "소상공인 상권정보 · 2026.06 갱신",
+  sourceLabel: "서울시 문화행사 · 2026.06 갱신",
   ctaUrl: "#",
   tone: "brand",
 };
 
 export const RELATED: MockOpportunity[] = [
   {
-    id: "youth-rent",
-    source: "youth_policy",
-    category: "subsidy",
-    categoryLabel: "내게 맞는 지원금",
-    title: "청년 월세 한시 특별지원",
-    summary: "만 19~34세 · 마포구 거주 요건 충족",
-    estimatedIncomeKrw: 2400000,
-    incomeLabel: "연 240만",
-    incomeUnit: "지원",
+    id: "gyeongui-walk",
+    source: "trail",
+    category: "active",
+    categoryLabel: "동네 산책·운동",
+    title: "경의선숲길 저녁 산책 코스",
+    summary: "연남~홍대 3km, 조명 켜진 걷기길로 하루를 비워요.",
+    costKrw: 0,
+    costLabel: "무료",
+    costUnit: "1인",
     matchScore: 88,
-    location: { dongName: "마포구" },
-    meta: [{ label: "대상", value: "만 19~34세" }],
+    difficulty: 0.2,
+    location: { dongName: "연남동" },
+    timeWindow: { startHour: 18, endHour: 22 },
+    meta: [{ label: "거리", value: "3km" }],
     tone: "mint",
-    sourceLabel: "온통청년 · 2026.06 갱신",
+    sourceLabel: "두루누비 · 2026.06 갱신",
   },
   {
-    id: "market-delivery",
-    source: "affiliate_feed",
-    category: "gig_deal",
-    categoryLabel: "동네 긱 · 딜",
-    title: "망원시장 배달 피커 단기 긱",
-    summary: "집에서 도보 7분 · 원하는 시간만",
-    estimatedIncomeKrw: 15000,
-    incomeLabel: "건당 1.2~1.8만",
-    incomeUnit: "건",
+    id: "night-market",
+    source: "commercial_area",
+    category: "food",
+    categoryLabel: "동네 먹거리",
+    title: "망원시장 저녁 먹거리 골목",
+    summary: "집에서 도보 7분, 퇴근 후 출출할 때 딱.",
+    costKrw: 12000,
+    costLabel: "₩12,000",
+    costUnit: "1인",
     matchScore: 81,
+    difficulty: 0.1,
     location: { dongName: "망원동" },
+    timeWindow: { startHour: 18, endHour: 21 },
     meta: [{ label: "거리", value: "도보 7분" }],
     tone: "brand",
-    sourceLabel: "제휴 피드",
+    sourceLabel: "소상공인 상권정보",
   },
 ];
 
@@ -94,40 +99,47 @@ export const EXPLORE_LIST: MockOpportunity[] = [
   RELATED[1]!,
   {
     id: "drawing-class",
-    source: "affiliate_feed",
-    category: "class_talent",
-    categoryLabel: "클래스 · 재능",
-    title: "동네 원데이 드로잉 클래스 강사",
-    summary: "연남동 공방 · 회당 2시간",
-    estimatedIncomeKrw: 80000,
-    incomeLabel: "회당 8만",
-    incomeUnit: "회",
+    source: "culture_info",
+    category: "class",
+    categoryLabel: "클래스·배움",
+    title: "연남동 원데이 드로잉 클래스",
+    summary: "연남동 공방 · 회당 2시간, 초보 환영",
+    costKrw: 35000,
+    costLabel: "₩35,000",
+    costUnit: "회당",
     matchScore: 76,
+    difficulty: 0.3,
     location: { dongName: "연남동" },
+    timeWindow: { startHour: 19, endHour: 21 },
     meta: [],
     tone: "brand",
   },
   {
-    id: "parking-share",
-    source: "affiliate_feed",
-    category: "space_used",
-    categoryLabel: "공간 · 중고",
-    title: "안 쓰는 주차공간 시간제 대여",
-    summary: "우리 빌라 · 평일 낮 유휴",
-    estimatedIncomeKrw: 90000,
-    incomeLabel: "월 9만",
-    incomeUnit: "월",
+    id: "cafe-part",
+    source: "seoul_jobs",
+    category: "side_job",
+    categoryLabel: "퇴근후 부업",
+    title: "주말 오전 동네 카페 파트",
+    summary: "토·일 4시간, 망원동 인근 · 원하는 시간만",
+    costKrw: 480000,
+    costLabel: "+48만 원",
+    costUnit: "월",
+    costNote: "용돈벌이로 딱",
     matchScore: 68,
+    difficulty: 0.3,
     location: { dongName: "망원동" },
-    meta: [],
+    timeWindow: { startHour: 9, endHour: 13 },
+    meta: [{ label: "예상 시간", value: "주 8시간" }],
     tone: "brand",
+    sourceLabel: "서울시 일자리플러스센터",
   },
 ];
 
 export const CATEGORY_LABELS: Record<OpportunityCategory, string> = {
+  culture: "문화·공연",
+  active: "운동·산책",
   side_job: "부업",
-  subsidy: "지원금",
-  gig_deal: "긱 · 딜",
-  class_talent: "클래스 · 재능",
-  space_used: "공간 · 중고",
+  class: "클래스",
+  food: "먹거리",
+  market: "마켓",
 };
