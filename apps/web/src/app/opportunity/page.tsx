@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import {
   BookmarkIcon,
   ChevronLeftIcon,
@@ -14,7 +18,8 @@ import {
 } from "@/components/icons";
 import { MobileScreen, SafeBottom, SafeTop, Tag } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
-import { ONE_PICK } from "@/data/opportunities";
+import { findOpportunity, ONE_PICK } from "@/data/opportunities";
+import { useAppStore } from "@/store/useAppStore";
 
 const WHY = [
   "방전형인 도윤님도 앉아서 즐기기 좋은 가벼운 저녁 공연이에요.",
@@ -22,9 +27,35 @@ const WHY = [
   "예약도 참가비도 없이 그냥 가면 돼요.",
 ];
 
-/** A6 · 기회 상세 — 반응형 */
+/** A6 · 기회 상세 — 반응형. useSearchParams는 Suspense 경계 필요. */
 export default function OpportunityPage() {
-  const o = ONE_PICK;
+  return (
+    <Suspense fallback={null}>
+      <OpportunityInner />
+    </Suspense>
+  );
+}
+
+function OpportunityInner() {
+  const router = useRouter();
+  const id = useSearchParams().get("id");
+  const o = findOpportunity(id) ?? ONE_PICK;
+
+  const savedIds = useAppStore((s) => s.savedIds);
+  const toggleSaved = useAppStore((s) => s.toggleSaved);
+  const saved = savedIds.includes(o.id);
+
+  const hasLink = !!o.ctaUrl && o.ctaUrl !== "#";
+
+  const onShare = () => {
+    const shareData = { title: o.title, text: `${o.title}\n모퉁이에서 발견한 우리 동네 활동` };
+    if (navigator.share) {
+      navigator.share(shareData).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareData.text).catch(() => {});
+    }
+  };
+
   return (
     <>
       {/* ── 모바일 ── */}
@@ -33,10 +64,16 @@ export default function OpportunityPage() {
           <div className="flex flex-1 flex-col bg-bg">
             <SafeTop />
             <div className="flex items-center justify-between px-5 py-1">
-              <Link href="/report" className="tap-safe -ml-2 flex w-11 items-center text-ink">
+              <button
+                onClick={() => router.back()}
+                className="tap-safe -ml-2 flex w-11 items-center text-ink"
+              >
                 <ChevronLeftIcon size={24} />
-              </Link>
-              <button className="tap-safe flex w-11 items-center justify-end text-ink">
+              </button>
+              <button
+                onClick={onShare}
+                className="tap-safe flex w-11 items-center justify-end text-ink"
+              >
                 <ShareIcon size={22} />
               </button>
             </div>
@@ -46,13 +83,11 @@ export default function OpportunityPage() {
                 <Tag>{o.categoryLabel}</Tag>
               </div>
               <h1 className="mt-3 text-[23px] font-extrabold leading-snug tracking-[-0.01em] text-ink">
-                퇴근길 20분, 망원 한강
-                <br />
-                야간 재즈 소품 공연
+                {o.title}
               </h1>
               <p className="mt-2 flex items-center gap-1 text-[14px] text-muted">
                 <LocationIcon size={16} className="text-primary" />
-                망원동 · 회사에서 도보 15분
+                {o.location?.dongName ?? "우리 동네"}
               </p>
 
               <div className="mt-4 rounded-xl bg-tint/60 p-4">
@@ -60,8 +95,12 @@ export default function OpportunityPage() {
                 <p className="text-[30px] font-extrabold leading-tight text-primary-deep">
                   {o.costLabel} <span className="text-[15px] font-bold text-muted">/ 1인</span>
                 </p>
-                <div className="mt-2 h-px bg-primary/15" />
-                <p className="mt-2 text-[13px] text-muted">저녁 7시 · 예약 없이 그냥 가면 돼요</p>
+                {o.costNote && (
+                  <>
+                    <div className="mt-2 h-px bg-primary/15" />
+                    <p className="mt-2 text-[13px] text-muted">{o.costNote}</p>
+                  </>
+                )}
               </div>
 
               <div className="mt-3 grid grid-cols-3 gap-2.5">
@@ -92,16 +131,29 @@ export default function OpportunityPage() {
             </div>
 
             <div className="flex shrink-0 items-center gap-3 px-5 pb-2 pt-2">
-              <button className="tap-safe grid size-[52px] shrink-0 place-items-center rounded-xl border border-line bg-surface text-label">
-                <BookmarkIcon size={22} />
-              </button>
-              <a
-                href={o.ctaUrl}
-                className="tap-safe flex h-[52px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary text-[16px] font-bold text-white"
+              <button
+                onClick={() => toggleSaved(o.id)}
+                className={`tap-safe grid size-[52px] shrink-0 place-items-center rounded-xl border bg-surface ${
+                  saved ? "border-primary bg-tint text-primary" : "border-line text-label"
+                }`}
               >
-                보러 가기
-                <ExternalLinkIcon size={18} />
-              </a>
+                <BookmarkIcon size={22} filled={saved} className={saved ? "text-primary" : ""} />
+              </button>
+              {hasLink ? (
+                <a
+                  href={o.ctaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="tap-safe flex h-[52px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary text-[16px] font-bold text-white"
+                >
+                  보러 가기
+                  <ExternalLinkIcon size={18} />
+                </a>
+              ) : (
+                <span className="tap-safe flex h-[52px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-faint text-[16px] font-bold text-white">
+                  링크 준비 중
+                </span>
+              )}
             </div>
             <SafeBottom />
           </div>
@@ -128,15 +180,15 @@ export default function OpportunityPage() {
             <div>
               <Tag>{o.categoryLabel}</Tag>
               <h1 className="mt-3 text-[34px] font-extrabold leading-[1.28] tracking-[-0.03em] text-ink">
-                퇴근길 20분, 망원 한강 야간 재즈 소품 공연
+                {o.title}
               </h1>
               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[14px]">
                 <span className="flex items-center gap-1 text-muted">
                   <LocationIcon size={16} className="text-primary" />
-                  망원동 · 회사에서 도보 15분
+                  {o.location?.dongName ?? "우리 동네"}
                 </span>
                 <span className="flex items-center gap-1 font-semibold text-primary">
-                  <FireIcon size={15} /> 도윤님과 매칭 94%
+                  <FireIcon size={15} /> 매칭 {o.matchScore}%
                 </span>
               </div>
 
@@ -195,7 +247,9 @@ export default function OpportunityPage() {
                   <p className="text-[34px] font-extrabold leading-tight">
                     {o.costLabel} <span className="text-[15px] font-bold text-white/90">/ 1인</span>
                   </p>
-                  <p className="mt-1 text-[12px] font-medium text-white/90">저녁 7시 · 예약 없이 그냥 가면 돼요</p>
+                  {o.costNote && (
+                    <p className="mt-1 text-[12px] font-medium text-white/90">{o.costNote}</p>
+                  )}
                 </div>
                 <div className="p-5">
                   <div className="grid grid-cols-3 divide-x divide-line-alt">
@@ -212,17 +266,34 @@ export default function OpportunityPage() {
                       </div>
                     ))}
                   </div>
-                  <a
-                    href={o.ctaUrl}
-                    className="mt-4 flex h-[52px] w-full items-center justify-center gap-1.5 rounded-xl bg-primary text-[16px] font-bold text-white transition-colors hover:bg-primary-deep"
-                  >
-                    보러 가기 <ExternalLinkIcon size={18} />
-                  </a>
+                  {hasLink ? (
+                    <a
+                      href={o.ctaUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-4 flex h-[52px] w-full items-center justify-center gap-1.5 rounded-xl bg-primary text-[16px] font-bold text-white transition-colors hover:bg-primary-deep"
+                    >
+                      보러 가기 <ExternalLinkIcon size={18} />
+                    </a>
+                  ) : (
+                    <span className="mt-4 flex h-[52px] w-full items-center justify-center gap-1.5 rounded-xl bg-faint text-[16px] font-bold text-white">
+                      링크 준비 중
+                    </span>
+                  )}
                   <div className="mt-2.5 flex gap-2.5">
-                    <button className="flex h-[46px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-line bg-surface text-[14px] font-semibold text-label hover:border-faint">
-                      <BookmarkIcon size={18} /> 저장
+                    <button
+                      onClick={() => toggleSaved(o.id)}
+                      className={`flex h-[46px] flex-1 items-center justify-center gap-1.5 rounded-xl border bg-surface text-[14px] font-semibold hover:border-faint ${
+                        saved ? "border-primary text-primary" : "border-line text-label"
+                      }`}
+                    >
+                      <BookmarkIcon size={18} filled={saved} className={saved ? "text-primary" : ""} />{" "}
+                      {saved ? "저장됨" : "저장"}
                     </button>
-                    <button className="flex h-[46px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-line bg-surface text-[14px] font-semibold text-label hover:border-faint">
+                    <button
+                      onClick={onShare}
+                      className="flex h-[46px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-line bg-surface text-[14px] font-semibold text-label hover:border-faint"
+                    >
                       <ShareIcon size={18} /> 공유
                     </button>
                   </div>

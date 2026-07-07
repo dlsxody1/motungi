@@ -1,17 +1,41 @@
+import type { OpportunityCategory } from "@motungi/core";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ALL_OPPORTUNITIES } from "@/data/opportunities";
+import { useAppStore } from "@/store/useAppStore";
 import { Chip, Txt } from "@/ui/components";
 import { ChevronDown, Search } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
-import { EXPLORE_LIST } from "@/data/opportunities";
 
-const FILTERS = ["전체", "문화·공연", "운동·산책", "먹거리·마켓", "클래스", "부업"];
+/** 필터 라벨 → 카테고리. "전체"는 null. */
+const FILTERS: { label: string; category: OpportunityCategory | null }[] = [
+  { label: "전체", category: null },
+  { label: "문화·공연", category: "culture" },
+  { label: "운동·산책", category: "active" },
+  { label: "먹거리·마켓", category: "food" },
+  { label: "클래스", category: "class" },
+  { label: "부업", category: "side_job" },
+];
 
 /** B1 · 탐색 (전체 기회) */
 export default function ExploreScreen() {
   const router = useRouter();
-  const [filter, setFilter] = useState("전체");
+  const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
+  const [filter, setFilter] = useState<string>("전체");
+  const [query, setQuery] = useState("");
+
+  const list = useMemo(() => {
+    const cat = FILTERS.find((f) => f.label === filter)?.category ?? null;
+    const q = query.trim();
+    return ALL_OPPORTUNITIES.filter((o) => {
+      if (cat && o.category !== cat) return false;
+      if (q && !`${o.title} ${o.summary}`.includes(q)) return false;
+      return true;
+    });
+  }, [filter, query]);
+
+  const openDetail = (id: string) => router.push({ pathname: "/opportunity", params: { id } });
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={styles.content}>
@@ -19,7 +43,7 @@ export default function ExploreScreen() {
       <View style={styles.header}>
         <Txt preset="h1" style={{ fontSize: 24 }}>탐색</Txt>
         <Pressable style={styles.dong} hitSlop={8}>
-          <Text style={styles.dongLabel}>망원동</Text>
+          <Text style={styles.dongLabel}>{dongName}</Text>
           <ChevronDown size={16} color={C.muted} />
         </Pressable>
       </View>
@@ -27,22 +51,31 @@ export default function ExploreScreen() {
       {/* 검색 */}
       <View style={styles.search}>
         <Search size={20} color={C.muted} />
-        <TextInput style={styles.searchInput} placeholder="활동·키워드 검색" placeholderTextColor={C.muted} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="활동·키워드 검색"
+          placeholderTextColor={C.muted}
+          value={query}
+          onChangeText={setQuery}
+        />
       </View>
 
       {/* 필터 */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }} contentContainerStyle={{ gap: 8, paddingRight: 20 }}>
         {FILTERS.map((f) => (
-          <Chip key={f} label={f} active={filter === f} onPress={() => setFilter(f)} />
+          <Chip key={f.label} label={f.label} active={filter === f.label} onPress={() => setFilter(f.label)} />
         ))}
       </ScrollView>
 
       {/* 목록 */}
       <View style={{ marginTop: 8 }}>
-        {EXPLORE_LIST.map((o, i) => (
+        {list.length === 0 && (
+          <Text style={styles.empty}>조건에 맞는 활동이 아직 없어요.</Text>
+        )}
+        {list.map((o, i) => (
           <Pressable
             key={o.id}
-            onPress={() => router.push("/opportunity")}
+            onPress={() => openDetail(o.id)}
             style={[styles.item, i > 0 && styles.itemBorder]}
           >
             <View style={{ flex: 1 }}>
@@ -99,4 +132,5 @@ const styles = StyleSheet.create({
   summary: { marginTop: 2, fontSize: 13, color: C.muted },
   income: { fontSize: 15, fontWeight: "800" },
   match: { fontSize: 12, color: C.muted },
+  empty: { paddingVertical: 40, textAlign: "center", fontSize: 14, color: C.muted },
 });

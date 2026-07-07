@@ -1,14 +1,26 @@
-import { useRouter } from "expo-router";
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Linking, Pressable, ScrollView, Share as RNShare, StyleSheet, Text, View } from "react-native";
+import { findOpportunity, ONE_PICK } from "@/data/opportunities";
+import { useAppStore } from "@/store/useAppStore";
 import { Screen, Tag } from "@/ui/components";
 import { Bookmark, ChevronLeft, ExternalLink, Location, Share } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
-import { ONE_PICK } from "@/data/opportunities";
 
 /** A6 · 기회 상세 */
 export default function OpportunityScreen() {
   const router = useRouter();
-  const o = ONE_PICK;
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const o = findOpportunity(id) ?? ONE_PICK;
+
+  const savedIds = useAppStore((s) => s.savedIds);
+  const toggleSaved = useAppStore((s) => s.toggleSaved);
+  const saved = savedIds.includes(o.id);
+
+  const hasLink = !!o.ctaUrl && o.ctaUrl !== "#";
+
+  const onShare = () => {
+    RNShare.share({ message: `${o.title}\n모퉁이에서 발견한 우리 동네 활동` }).catch(() => {});
+  };
 
   return (
     <Screen>
@@ -17,17 +29,17 @@ export default function OpportunityScreen() {
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.iconBtn}>
           <ChevronLeft size={24} />
         </Pressable>
-        <Pressable hitSlop={8} style={styles.iconBtn}>
+        <Pressable hitSlop={8} style={styles.iconBtn} onPress={onShare}>
           <Share size={22} />
         </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}>
         <Tag label={o.categoryLabel} />
-        <Text style={styles.title}>퇴근길 20분, 망원 한강{"\n"}야간 재즈 소품 공연</Text>
+        <Text style={styles.title}>{o.title}</Text>
         <View style={styles.locRow}>
           <Location size={16} color={C.primary} />
-          <Text style={styles.locText}>망원동 · 회사에서 도보 15분</Text>
+          <Text style={styles.locText}>{o.location?.dongName ?? "우리 동네"}</Text>
         </View>
 
         {/* 참가비 카드 */}
@@ -36,8 +48,12 @@ export default function OpportunityScreen() {
           <Text style={styles.incomeVal}>
             {o.costLabel} <Text style={styles.incomeUnit}>/ 1인</Text>
           </Text>
-          <View style={styles.incomeLine} />
-          <Text style={styles.incomeSub}>저녁 7시 · 예약 없이 그냥 가면 돼요</Text>
+          {!!o.costNote && (
+            <>
+              <View style={styles.incomeLine} />
+              <Text style={styles.incomeSub}>{o.costNote}</Text>
+            </>
+          )}
         </View>
 
         {/* 메타 3칸 */}
@@ -71,12 +87,20 @@ export default function OpportunityScreen() {
 
       {/* 하단 액션 */}
       <View style={styles.actions}>
-        <Pressable style={styles.bookmark}>
-          <Bookmark size={22} color={C.label} />
+        <Pressable
+          style={[styles.bookmark, saved && styles.bookmarkOn]}
+          onPress={() => toggleSaved(o.id)}
+          hitSlop={8}
+        >
+          <Bookmark size={22} filled={saved} color={saved ? C.primary : C.label} />
         </Pressable>
-        <Pressable style={styles.startBtn} onPress={() => o.ctaUrl && Linking.openURL(o.ctaUrl)}>
-          <Text style={styles.startLabel}>보러 가기</Text>
-          <ExternalLink size={18} color={C.white} />
+        <Pressable
+          style={[styles.startBtn, !hasLink && styles.startBtnDisabled]}
+          onPress={() => hasLink && Linking.openURL(o.ctaUrl!)}
+          disabled={!hasLink}
+        >
+          <Text style={styles.startLabel}>{hasLink ? "보러 가기" : "링크 준비 중"}</Text>
+          {hasLink && <ExternalLink size={18} color={C.white} />}
         </Pressable>
       </View>
     </Screen>
@@ -107,6 +131,8 @@ const styles = StyleSheet.create({
   disclaimer: { marginTop: 24, backgroundColor: C.surfaceAlt, borderRadius: R.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 12, lineHeight: 18, color: C.muted },
   actions: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8 },
   bookmark: { width: 52, height: 52, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
+  bookmarkOn: { borderColor: C.primary, backgroundColor: C.tint },
   startBtn: { flex: 1, height: 52, borderRadius: R.lg, backgroundColor: C.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
+  startBtnDisabled: { backgroundColor: C.faint },
   startLabel: { fontSize: 16, fontWeight: "700", color: C.white },
 });

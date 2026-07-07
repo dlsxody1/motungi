@@ -1,16 +1,35 @@
+"use client";
+
+import type { Energy } from "@motungi/core";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/bottom-nav";
 import { ChevronRightIcon, LocationIcon, UserIcon } from "@/components/icons";
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
+import { useAppStore } from "@/store/useAppStore";
 
-const MENU = [
-  { label: "내 동네 관리", desc: "망원동 외 1곳" },
-  { label: "알림 설정", desc: "새 기회 · 마감 임박" },
-  { label: "설정", desc: "계정 · 개인정보" },
-];
+const ENERGY_LABEL: Record<Energy, string> = {
+  drained: "방전형",
+  moderate: "보통",
+  active: "활동형",
+};
 
 /** D1 · 마이 (간단 버전) */
 export default function MyPage() {
+  const router = useRouter();
+  const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "동네 미설정";
+  const energy = useAppStore((s) => s.answers?.energy);
+  const savedCount = useAppStore((s) => s.savedIds.length);
+
+  const metaText = energy ? `${dongName} 기준 · ${ENERGY_LABEL[energy]}` : `${dongName} 기준`;
+
+  const soon = () => window.alert("준비 중이에요. 곧 만나요!");
+  const MENU = [
+    { label: "내 동네 관리", desc: dongName, onClick: () => router.push("/location") },
+    { label: "알림 설정", desc: "새 기회 · 마감 임박", onClick: soon },
+    { label: "설정", desc: `저장 ${savedCount}개 · 계정`, onClick: soon },
+  ];
+
   return (
     <MobileScreen>
       <div className="flex flex-1 flex-col bg-bg">
@@ -25,9 +44,9 @@ export default function MyPage() {
               <UserIcon size={26} />
             </span>
             <div className="flex-1">
-              <p className="text-[16px] font-bold text-ink">도윤님</p>
+              <p className="text-[16px] font-bold text-ink">게스트</p>
               <p className="mt-0.5 flex items-center gap-1 text-[13px] text-muted">
-                <LocationIcon size={14} className="text-primary" /> 망원동 기준 · 활동형
+                <LocationIcon size={14} className="text-primary" /> {metaText}
               </p>
             </div>
             <Link
@@ -43,6 +62,7 @@ export default function MyPage() {
             {MENU.map((m) => (
               <button
                 key={m.label}
+                onClick={m.onClick}
                 className="flex w-full items-center gap-3 p-4 text-left"
               >
                 <span className="flex-1">

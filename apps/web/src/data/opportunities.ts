@@ -3,7 +3,16 @@
  * 화면 표시에 필요한 파생 문자열(비용 라벨·매칭도 등)을 함께 담는다.
  * 실제 데이터는 이후 소스 어댑터(문화행사/두루누비/일자리)가 이 형태로 채운다.
  */
-import type { Opportunity, OpportunityCategory } from "@motungi/core";
+import type { GeoPoint, Opportunity, OpportunityCategory } from "@motungi/core";
+
+/** 동네 → 대표 좌표. distance 스코어링 및 위치 앵커에 사용(행정동 API 전까지 근사값). */
+export const NEIGHBORHOOD_POINTS: Record<string, GeoPoint> = {
+  망원동: { lat: 37.5556, lng: 126.9019 },
+  성수동: { lat: 37.5445, lng: 127.0559 },
+  연남동: { lat: 37.5638, lng: 126.9256 },
+  판교동: { lat: 37.3948, lng: 127.1112 },
+  합정동: { lat: 37.5495, lng: 126.9138 },
+};
 
 export type MockOpportunity = Opportunity & {
   /** 카테고리 한글 라벨 (태그용) */
@@ -143,3 +152,20 @@ export const CATEGORY_LABELS: Record<OpportunityCategory, string> = {
   food: "먹거리",
   market: "마켓",
 };
+
+/** dongName → 좌표를 location.point에 채운다(스코어링 distance 축용). */
+function withPoint<T extends MockOpportunity>(o: T): T {
+  const dong = o.location?.dongName;
+  const point = dong ? NEIGHBORHOOD_POINTS[dong] : undefined;
+  if (!point || o.location?.point) return o;
+  return { ...o, location: { ...o.location, point } };
+}
+
+/** 스코어링에 넣을 전체 후보(좌표 주입 완료). 화면은 EXPLORE_LIST 대신 이걸 쓴다. */
+export const ALL_OPPORTUNITIES: MockOpportunity[] = EXPLORE_LIST.map(withPoint);
+
+/** id로 단일 활동 조회. 없으면 undefined. */
+export function findOpportunity(id?: string | null): MockOpportunity | undefined {
+  if (!id) return undefined;
+  return ALL_OPPORTUNITIES.find((o) => o.id === id);
+}

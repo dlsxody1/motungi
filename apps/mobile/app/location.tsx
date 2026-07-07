@@ -1,6 +1,9 @@
+import * as ExpoLocation from "expo-location";
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useMemo, useState } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { NEIGHBORHOOD_POINTS } from "@/data/opportunities";
+import { useAppStore } from "@/store/useAppStore";
 import { Button, Chip, Screen, Txt } from "@/ui/components";
 import { CheckCircle, ChevronLeft, ChevronRight, Location, Search } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
@@ -10,7 +13,43 @@ const NEIGHBORHOODS = ["망원동", "성수동", "연남동", "판교동", "합�
 /** A2 · 위치 / 동네 설정 */
 export default function LocationScreen() {
   const router = useRouter();
+  const setAnchor = useAppStore((s) => s.setAnchor);
   const [selected, setSelected] = useState("망원동");
+  const [query, setQuery] = useState("");
+  const [locating, setLocating] = useState(false);
+
+  const filtered = useMemo(
+    () => NEIGHBORHOODS.filter((n) => n.includes(query.trim())),
+    [query],
+  );
+
+  const start = () => {
+    // 선택 동네를 집 앵커로 저장(좌표 주입). 리포트/스코어링의 distance 기준점.
+    setAnchor("home", { dongName: selected, point: NEIGHBORHOOD_POINTS[selected] });
+    router.push("/diagnosis");
+  };
+
+  const useCurrentLocation = async () => {
+    setLocating(true);
+    try {
+      const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("위치 권한 필요", "권한을 허용하거나 아래에서 동네를 직접 골라주세요.");
+        return;
+      }
+      const pos = await ExpoLocation.getCurrentPositionAsync({});
+      // 행정동 변환(Kakao)은 Phase 2. 우선 좌표만 앵커에 저장.
+      setAnchor("home", {
+        dongName: selected,
+        point: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+      });
+      router.push("/diagnosis");
+    } catch {
+      Alert.alert("위치를 가져오지 못했어요", "동네를 직접 선택해 주세요.");
+    } finally {
+      setLocating(false);
+    }
+  };
 
   return (
     <Screen>
@@ -27,12 +66,12 @@ export default function LocationScreen() {
         </Txt>
 
         {/* 현재 위치로 찾기 */}
-        <Pressable style={styles.locCard}>
+        <Pressable style={styles.locCard} onPress={useCurrentLocation} disabled={locating}>
           <View style={styles.locIcon}>
             <Location size={22} color={C.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Txt preset="headline">현재 위치로 찾기</Txt>
+            <Txt preset="headline">{locating ? "위치 확인 중…" : "현재 위치로 찾기"}</Txt>
             <Txt preset="label" color={C.muted} style={{ marginTop: 2, fontWeight: "400" }}>
               위치 권한 → 행정동 자동 설정
             </Txt>
@@ -54,22 +93,30 @@ export default function LocationScreen() {
             style={styles.searchInput}
             placeholder="동네 이름 검색 (예: 망원동)"
             placeholderTextColor={C.muted}
+            value={query}
+            onChangeText={setQuery}
           />
         </View>
 
         {/* 칩 */}
         <Txt preset="label" style={{ marginTop: 20, marginBottom: 10 }}>최근 · 인기 동네</Txt>
-        <View style={styles.chips}>
-          {NEIGHBORHOODS.map((n) => (
-            <Chip
-              key={n}
-              label={n}
-              active={selected === n}
-              onPress={() => setSelected(n)}
-              leading={selected === n ? <Location size={14} color={C.primary} /> : undefined}
-            />
-          ))}
-        </View>
+        {filtered.length > 0 ? (
+          <View style={styles.chips}>
+            {filtered.map((n) => (
+              <Chip
+                key={n}
+                label={n}
+                active={selected === n}
+                onPress={() => setSelected(n)}
+                leading={selected === n ? <Location size={14} color={C.primary} /> : undefined}
+              />
+            ))}
+          </View>
+        ) : (
+          <Txt preset="bodySm" color={C.muted}>
+            검색 결과가 없어요. 곧 더 많은 동네를 추가할게요.
+          </Txt>
+        )}
 
         {/* 확인 배너 */}
         <View style={styles.banner}>
@@ -81,7 +128,7 @@ export default function LocationScreen() {
       </ScrollView>
 
       <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 8 }}>
-        <Button label={`${selected}으로 시작하기`} onPress={() => router.push("/diagnosis")} />
+        <Button label={`${selected}으로 시작하기`} onPress={start} />
       </View>
     </Screen>
   );

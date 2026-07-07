@@ -1,13 +1,24 @@
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ALL_OPPORTUNITIES } from "@/data/opportunities";
+import { useAppStore } from "@/store/useAppStore";
 import { Tag, Txt } from "@/ui/components";
 import { Location, Refresh } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
-import { ONE_PICK, RELATED } from "@/data/opportunities";
 
 /** A5 · 동네 리포트 (원픽 히어로) */
 export default function ReportScreen() {
   const router = useRouter();
+  const results = useAppStore((s) => s.results);
+  const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
+
+  // 진단 전 직접 진입 시 fallback(원본 상위 3개).
+  const list = results.length > 0 ? results : ALL_OPPORTUNITIES.slice(0, 3);
+  const onePick = list[0]!;
+  const related = list.slice(1);
+
+  const openDetail = (id: string) => router.push({ pathname: "/opportunity", params: { id } });
+
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={styles.content}>
       {/* 헤더 */}
@@ -15,10 +26,10 @@ export default function ReportScreen() {
         <View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             <Location size={18} color={C.primary} />
-            <Text style={styles.hTitle}>망원동 기준</Text>
+            <Text style={styles.hTitle}>{dongName} 기준</Text>
           </View>
           <Txt preset="label" color={C.muted} style={{ marginTop: 2, fontWeight: "400" }}>
-            퇴근하고 즐길 거 3개 골랐어요
+            퇴근하고 즐길 거 {list.length}개 골랐어요
           </Txt>
         </View>
         <Pressable style={styles.redo} hitSlop={8} onPress={() => router.push("/diagnosis")}>
@@ -32,24 +43,23 @@ export default function ReportScreen() {
         오늘의 원픽
       </Txt>
 
-      <Pressable style={styles.hero} onPress={() => router.push("/opportunity")}>
+      <Pressable style={styles.hero} onPress={() => openDetail(onePick.id)}>
         <View style={styles.heroBody}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Tag label={ONE_PICK.categoryLabel} />
-            <Text style={styles.match}>매칭 {ONE_PICK.matchScore}%</Text>
+            <Tag label={onePick.categoryLabel} />
+            <Text style={styles.match}>매칭 {onePick.matchScore}%</Text>
           </View>
-          <Text style={styles.heroTitle}>퇴근길 20분, 망원 한강{"\n"}야간 재즈 소품 공연</Text>
-          <Text style={styles.heroSummary}>
-            망원 한강공원은 회사에서 <Text style={{ color: C.primaryDeep, fontWeight: "700" }}>15분</Text>.
-            방전형인 도윤님도 앉아서 즐기기 좋은 무료 야외 공연이에요.
-          </Text>
+          <Text style={styles.heroTitle}>{onePick.title}</Text>
+          <Text style={styles.heroSummary}>{onePick.summary}</Text>
 
           <View style={styles.incomeBox}>
             <View>
               <Text style={styles.incomeCap}>참가비</Text>
-              <Text style={styles.incomeVal}>{ONE_PICK.costLabel}</Text>
+              <Text style={styles.incomeVal}>{onePick.costLabel}</Text>
             </View>
-            <Text style={styles.incomeNote}>저녁 7시{"\n"}예약 없이 그냥</Text>
+            {!!onePick.costNote && (
+              <Text style={styles.incomeNote}>{onePick.costNote}</Text>
+            )}
           </View>
         </View>
         <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
@@ -60,12 +70,14 @@ export default function ReportScreen() {
       </Pressable>
 
       {/* 함께 보면 좋아요 */}
-      <Txt preset="headline" style={{ marginTop: 24, marginBottom: 4 }}>함께 보면 좋아요</Txt>
+      {related.length > 0 && (
+        <Txt preset="headline" style={{ marginTop: 24, marginBottom: 4 }}>함께 보면 좋아요</Txt>
+      )}
       <View>
-        {RELATED.map((o, i) => (
+        {related.map((o, i) => (
           <Pressable
             key={o.id}
-            onPress={() => router.push("/opportunity")}
+            onPress={() => openDetail(o.id)}
             style={[styles.relItem, i > 0 && styles.relBorder]}
           >
             <View style={{ flex: 1 }}>

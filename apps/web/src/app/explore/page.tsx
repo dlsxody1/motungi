@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
+import type { OpportunityCategory } from "@motungi/core";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { BottomNav } from "@/components/bottom-nav";
 import {
   BookmarkIcon,
@@ -13,23 +14,48 @@ import {
 } from "@/components/icons";
 import { Chip, MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
-import { EXPLORE_LIST } from "@/data/opportunities";
+import { ALL_OPPORTUNITIES } from "@/data/opportunities";
+import { useAppStore } from "@/store/useAppStore";
 
-const FILTERS = ["전체", "문화·공연", "운동·산책", "먹거리·마켓", "클래스", "부업"];
-
-const CATEGORIES = [
-  { label: "전체", count: 42 },
-  { label: "문화·공연", count: 16 },
-  { label: "운동·산책", count: 11 },
-  { label: "먹거리·마켓", count: 8 },
-  { label: "클래스·배움", count: 4 },
-  { label: "퇴근후 부업", count: 3 },
+/** 필터 라벨 → 카테고리. "전체"는 null. */
+const FILTERS: { label: string; category: OpportunityCategory | null }[] = [
+  { label: "전체", category: null },
+  { label: "문화·공연", category: "culture" },
+  { label: "운동·산책", category: "active" },
+  { label: "먹거리·마켓", category: "food" },
+  { label: "클래스", category: "class" },
+  { label: "부업", category: "side_job" },
 ];
 
 /** B1 · 탐색 (전체 기회) — 반응형 */
 export default function ExplorePage() {
+  const router = useRouter();
+  const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
   const [filter, setFilter] = useState("전체");
-  const [category, setCategory] = useState("전체");
+  const [query, setQuery] = useState("");
+
+  const list = useMemo(() => {
+    const cat = FILTERS.find((f) => f.label === filter)?.category ?? null;
+    const q = query.trim();
+    return ALL_OPPORTUNITIES.filter((o) => {
+      if (cat && o.category !== cat) return false;
+      if (q && !`${o.title} ${o.summary}`.includes(q)) return false;
+      return true;
+    });
+  }, [filter, query]);
+
+  const CATEGORIES = useMemo(
+    () =>
+      FILTERS.map((f) => ({
+        label: f.label,
+        count: f.category
+          ? ALL_OPPORTUNITIES.filter((o) => o.category === f.category).length
+          : ALL_OPPORTUNITIES.length,
+      })),
+    [],
+  );
+
+  const openDetail = (id: string) => router.push(`/opportunity?id=${id}`);
 
   return (
     <>
@@ -42,13 +68,15 @@ export default function ExplorePage() {
               <div className="flex items-center justify-between pt-1">
                 <h1 className="text-[24px] font-extrabold text-ink">탐색</h1>
                 <button className="flex h-9 items-center gap-1 rounded-pill border border-line bg-surface px-3 text-[13px] font-semibold text-label">
-                  망원동 <ChevronDownIcon size={16} className="text-faint" />
+                  {dongName} <ChevronDownIcon size={16} className="text-faint" />
                 </button>
               </div>
 
               <div className="mt-4 flex h-[50px] items-center gap-2 rounded-xl bg-surface px-4 shadow-card">
                 <SearchIcon size={20} className="text-faint" />
                 <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
                   className="flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-muted"
                   placeholder="활동·키워드 검색"
                 />
@@ -56,15 +84,27 @@ export default function ExplorePage() {
 
               <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
                 {FILTERS.map((f) => (
-                  <Chip key={f} active={filter === f} onClick={() => setFilter(f)} className="shrink-0">
-                    {f}
+                  <Chip
+                    key={f.label}
+                    active={filter === f.label}
+                    onClick={() => setFilter(f.label)}
+                    className="shrink-0"
+                  >
+                    {f.label}
                   </Chip>
                 ))}
               </div>
 
+              {list.length === 0 && (
+                <p className="py-10 text-center text-[14px] text-muted">조건에 맞는 활동이 아직 없어요.</p>
+              )}
               <div className="mt-2 divide-y divide-line-alt">
-                {EXPLORE_LIST.map((o) => (
-                  <Link key={o.id} href="/opportunity" className="flex items-start gap-3 py-4">
+                {list.map((o) => (
+                  <button
+                    key={o.id}
+                    onClick={() => openDetail(o.id)}
+                    className="flex w-full items-start gap-3 py-4 text-left"
+                  >
                     <div className="flex-1">
                       <p className={`text-[12px] font-bold ${o.tone === "mint" ? "text-mint" : "text-primary"}`}>
                         {o.categoryLabel}
@@ -78,7 +118,7 @@ export default function ExplorePage() {
                       </p>
                       <p className="text-[12px] text-muted">매칭 {o.matchScore}%</p>
                     </div>
-                  </Link>
+                  </button>
                 ))}
               </div>
             </div>
@@ -94,15 +134,17 @@ export default function ExplorePage() {
           {/* 헤더 */}
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-ink">망원동에서 할 만한 것</h1>
+              <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-ink">{dongName}에서 할 만한 것</h1>
               <p className="mt-1.5 text-[15px] text-muted">
-                퇴근 후·주말 활동 42건 · 도윤님 진단 기준 정렬
+                퇴근 후·주말 활동 {ALL_OPPORTUNITIES.length}건 · 진단 기준 정렬
               </p>
             </div>
             <div className="flex items-center gap-2.5">
               <div className="flex h-11 w-70 items-center gap-2 rounded-[11px] border border-line bg-surface px-3.5">
                 <SearchIcon size={18} className="text-faint" />
                 <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
                   className="flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-muted"
                   placeholder="활동 검색"
                 />
@@ -120,11 +162,11 @@ export default function ExplorePage() {
               <p className="text-[14px] font-bold text-ink">카테고리</p>
               <div className="mt-3 space-y-0.5">
                 {CATEGORIES.map((c) => {
-                  const on = category === c.label;
+                  const on = filter === c.label;
                   return (
                     <button
                       key={c.label}
-                      onClick={() => setCategory(c.label)}
+                      onClick={() => setFilter(c.label)}
                       className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-[14px] ${
                         on ? "bg-tint font-bold text-primary-deep" : "font-medium text-label hover:bg-bg"
                       }`}
@@ -185,14 +227,17 @@ export default function ExplorePage() {
                 </span>
               </div>
 
+              {list.length === 0 && (
+                <p className="py-12 text-center text-[14px] text-muted">조건에 맞는 활동이 아직 없어요.</p>
+              )}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {EXPLORE_LIST.map((o, i) => {
+                {list.map((o, i) => {
                   const pick = i === 0;
                   return (
-                    <Link
+                    <button
                       key={o.id}
-                      href="/opportunity"
-                      className={`wcard-hover flex flex-col rounded-[18px] bg-surface p-5 shadow-web ${
+                      onClick={() => openDetail(o.id)}
+                      className={`wcard-hover flex flex-col rounded-[18px] bg-surface p-5 text-left shadow-web ${
                         pick ? "border-[1.5px] border-primary/35" : ""
                       }`}
                     >
@@ -225,7 +270,7 @@ export default function ExplorePage() {
                         </p>
                         <p className="text-[13px] font-semibold text-muted">매칭 {o.matchScore}%</p>
                       </div>
-                    </Link>
+                    </button>
                   );
                 })}
               </div>

@@ -1,11 +1,13 @@
 "use client";
 
+import type { Energy, Interest, TimeSlot } from "@motungi/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CheckCircleIcon, CheckIcon, ChevronLeftIcon, CloseIcon, ShieldIcon, TimerIcon } from "@/components/icons";
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { WebLogo } from "@/components/web-shell";
+import { useAppStore } from "@/store/useAppStore";
 
 /** 3문항 정의 — @motungi/core 의 DIAGNOSIS_STEPS(interests·timeSlot·energy) 순서와 맞춤. */
 type Option = { value: string; title: string; desc: string; soon?: boolean };
@@ -60,6 +62,7 @@ const QUESTIONS: Question[] = [
 
 export default function DiagnosisPage() {
   const router = useRouter();
+  const saveAnswers = useAppStore((s) => s.setAnswers);
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
 
@@ -68,8 +71,18 @@ export default function DiagnosisPage() {
   const selected = answers[step];
 
   const goNext = () => {
-    if (step < total - 1) setStep(step + 1);
-    else router.push("/loading");
+    if (step < total - 1) {
+      setStep(step + 1);
+      return;
+    }
+    // 마지막 질문 완료 → 진단 답변을 core 형태로 매핑해 저장 후 스코어링(로딩)으로.
+    const final = { ...answers, [step]: answers[step]! };
+    saveAnswers({
+      interests: [final[0] as Interest],
+      timeSlot: (final[1] as TimeSlot) ?? "flexible",
+      energy: (final[2] as Energy) ?? "moderate",
+    });
+    router.push("/loading");
   };
   const pick = (value: string, soon?: boolean) => {
     if (soon) return;

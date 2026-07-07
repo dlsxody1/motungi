@@ -1,0 +1,56 @@
+/**
+ * 앱 전역 상태 (Next.js 웹).
+ * 화면 간 공유가 필요한: 위치 앵커 · 진단 답변 · 스코어링 결과 · 저장 목록.
+ * localStorage로 영속화. 로그인 전에는 이 로컬 상태가 진실.
+ */
+import type { DiagnosisAnswers, Location, UserAnchors } from "@motungi/core";
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+import type { MockOpportunity } from "@/data/opportunities";
+
+type AnchorSlot = "home" | "work";
+
+interface AppState {
+  anchors: UserAnchors;
+  answers: DiagnosisAnswers | null;
+  /** 스코어링 결과(원픽 + 함께보면좋아요). 로딩 화면에서 채워진다. */
+  results: MockOpportunity[];
+  savedIds: string[];
+
+  setAnchor: (slot: AnchorSlot, location: Location) => void;
+  setAnswers: (answers: DiagnosisAnswers) => void;
+  setResults: (results: MockOpportunity[]) => void;
+  toggleSaved: (id: string) => void;
+}
+
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      anchors: {},
+      answers: null,
+      results: [],
+      savedIds: [],
+
+      setAnchor: (slot, location) =>
+        set((s) => ({ anchors: { ...s.anchors, [slot]: location } })),
+      setAnswers: (answers) => set({ answers }),
+      setResults: (results) => set({ results }),
+      toggleSaved: (id) =>
+        set((s) => ({
+          savedIds: s.savedIds.includes(id)
+            ? s.savedIds.filter((x) => x !== id)
+            : [...s.savedIds, id],
+        })),
+    }),
+    {
+      name: "motungi-app",
+      storage: createJSONStorage(() => localStorage),
+      // 결과는 파생 데이터라 영속화하지 않음(진단 시 재계산).
+      partialize: (s) => ({
+        anchors: s.anchors,
+        answers: s.answers,
+        savedIds: s.savedIds,
+      }),
+    },
+  ),
+);

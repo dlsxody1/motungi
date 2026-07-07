@@ -1,40 +1,30 @@
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { findOpportunity } from "@/data/opportunities";
+import { useAppStore } from "@/store/useAppStore";
 import { Txt } from "@/ui/components";
 import { Bookmark, Location, User } from "@/ui/icons";
 import { C, R } from "@/ui/theme";
 
-const SAVED = [
-  {
-    id: "hangang-jazz",
-    categoryLabel: "동네 문화·공연",
-    title: "망원 한강 야간 재즈 소품 공연",
-    meta: "망원동 · 도보 15분",
-    cost: "무료",
-    tone: "brand" as const,
-  },
-  {
-    id: "gyeongui-walk",
-    categoryLabel: "동네 산책·운동",
-    title: "경의선숲길 저녁 산책 코스",
-    meta: "연남동 · 3km 걷기길",
-    cost: "무료",
-    tone: "mint" as const,
-  },
-];
-
 /** A7 · 보관함 / 홈 */
 export default function SavedScreen() {
   const router = useRouter();
+  const savedIds = useAppStore((s) => s.savedIds);
+  const toggleSaved = useAppStore((s) => s.toggleSaved);
+  const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
+
+  const items = savedIds.map(findOpportunity).filter((o): o is NonNullable<typeof o> => !!o);
+  const openDetail = (id: string) => router.push({ pathname: "/opportunity", params: { id } });
+
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={styles.content}>
       {/* 헤더 */}
       <View style={styles.header}>
         <View>
-          <Txt preset="h1" style={{ fontSize: 22 }}>도윤님, 안녕하세요</Txt>
+          <Txt preset="h1" style={{ fontSize: 22 }}>보관함</Txt>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
             <Location size={15} color={C.primary} />
-            <Text style={styles.sub}>망원동 기준</Text>
+            <Text style={styles.sub}>{dongName} 기준</Text>
           </View>
         </View>
         <View style={styles.avatar}>
@@ -56,32 +46,45 @@ export default function SavedScreen() {
       {/* 저장한 활동 */}
       <View style={styles.savedHead}>
         <Txt preset="headline">저장한 활동</Txt>
-        <Text style={styles.count}>{SAVED.length}개</Text>
+        <Text style={styles.count}>{items.length}개</Text>
       </View>
 
-      <View>
-        {SAVED.map((s, i) => (
-          <Pressable
-            key={s.id}
-            onPress={() => router.push("/opportunity")}
-            style={[styles.item, i > 0 && styles.itemBorder]}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.cat, { color: s.tone === "mint" ? C.mint : C.primary }]}>
-                {s.categoryLabel}
-              </Text>
-              <Text style={styles.title}>{s.title}</Text>
-              <Text style={styles.meta}>{s.meta}</Text>
-            </View>
-            <View style={{ alignItems: "flex-end", gap: 6 }}>
-              <Text style={[styles.income, { color: s.tone === "mint" ? C.mint : C.primary }]}>
-                {s.cost}
-              </Text>
-              <Bookmark size={20} filled color={C.primary} />
-            </View>
+      {items.length === 0 ? (
+        <View style={styles.empty}>
+          <Bookmark size={28} color={C.faint} />
+          <Text style={styles.emptyTitle}>아직 저장한 활동이 없어요</Text>
+          <Text style={styles.emptySub}>마음에 드는 활동의 북마크를 눌러 담아두세요.</Text>
+          <Pressable style={styles.emptyCta} onPress={() => router.push("/explore")}>
+            <Text style={styles.emptyCtaLabel}>둘러보기</Text>
           </Pressable>
-        ))}
-      </View>
+        </View>
+      ) : (
+        <View>
+          {items.map((s, i) => (
+            <Pressable
+              key={s.id}
+              onPress={() => openDetail(s.id)}
+              style={[styles.item, i > 0 && styles.itemBorder]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.cat, { color: s.tone === "mint" ? C.mint : C.primary }]}>
+                  {s.categoryLabel}
+                </Text>
+                <Text style={styles.title}>{s.title}</Text>
+                <Text style={styles.meta}>{s.location?.dongName ?? ""}</Text>
+              </View>
+              <View style={{ alignItems: "flex-end", gap: 6 }}>
+                <Text style={[styles.income, { color: s.tone === "mint" ? C.mint : C.primary }]}>
+                  {s.costLabel}
+                </Text>
+                <Pressable onPress={() => toggleSaved(s.id)} hitSlop={10}>
+                  <Bookmark size={20} filled color={C.primary} />
+                </Pressable>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -112,4 +115,9 @@ const styles = StyleSheet.create({
   title: { marginTop: 4, fontSize: 16, fontWeight: "700", color: C.ink },
   meta: { marginTop: 2, fontSize: 13, color: C.muted },
   income: { fontSize: 15, fontWeight: "800" },
+  empty: { alignItems: "center", paddingVertical: 48, gap: 8 },
+  emptyTitle: { marginTop: 4, fontSize: 16, fontWeight: "700", color: C.ink },
+  emptySub: { fontSize: 13, color: C.muted, textAlign: "center" },
+  emptyCta: { marginTop: 12, height: 44, borderRadius: R.lg, backgroundColor: C.primary, paddingHorizontal: 24, alignItems: "center", justifyContent: "center" },
+  emptyCtaLabel: { fontSize: 14, fontWeight: "700", color: C.white },
 });

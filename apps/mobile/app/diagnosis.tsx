@@ -1,6 +1,8 @@
+import type { Energy, Interest, TimeSlot } from "@motungi/core";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useAppStore } from "@/store/useAppStore";
 import { Screen, Txt } from "@/ui/components";
 import { CheckCircle, ChevronLeft } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
@@ -47,6 +49,7 @@ const QUESTIONS: Question[] = [
 
 export default function DiagnosisScreen() {
   const router = useRouter();
+  const saveAnswers = useAppStore((s) => s.setAnswers);
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
 
@@ -55,8 +58,18 @@ export default function DiagnosisScreen() {
   const selected = answers[step];
 
   const goNext = () => {
-    if (step < total - 1) setStep(step + 1);
-    else router.push("/loading");
+    if (step < total - 1) {
+      setStep(step + 1);
+      return;
+    }
+    // 마지막 질문 완료 → 진단 답변을 core 형태로 매핑해 저장 후 스코어링(로딩)으로.
+    const final = { ...answers, [step]: answers[step]! };
+    saveAnswers({
+      interests: [final[0] as Interest],
+      timeSlot: (final[1] as TimeSlot) ?? "flexible",
+      energy: (final[2] as Energy) ?? "moderate",
+    });
+    router.push("/loading");
   };
   const goBack = () => {
     if (step === 0) router.back();
