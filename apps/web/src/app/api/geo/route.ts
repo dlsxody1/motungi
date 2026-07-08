@@ -1,6 +1,6 @@
 /**
  * 위치 프록시 — 좌표 → 행정동 역지오코딩 (네이버 클라우드 Maps Reverse Geocoding).
- * NAVER_MAP_API_KEY_ID / NAVER_MAP_API_KEY는 서버에만 두고 클라이언트에 노출하지 않는다.
+ * NAVER_MAP_CLIENT_ID / NAVER_MAP_Client_SECRET은 서버에만 두고 클라이언트에 노출하지 않는다.
  * 모바일/웹 클라이언트는 좌표만 넘기고 이 엔드포인트를 경유해 행정동을 받는다.
  *
  * GET /api/geo?lat=37.5556&lng=126.9019
@@ -41,8 +41,8 @@ export async function GET(request: Request) {
     );
   }
 
-  const keyId = clean(process.env.NAVER_MAP_API_KEY_ID);
-  const key = clean(process.env.NAVER_MAP_API_KEY);
+  const keyId = clean(process.env.NAVER_MAP_CLIENT_ID);
+  const key = clean(process.env.NAVER_MAP_Client_SECRET);
   if (!keyId || !key) {
     return NextResponse.json(
       { error: "not_configured", message: "위치 서비스가 설정되지 않았습니다." },

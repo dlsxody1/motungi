@@ -1,22 +1,24 @@
 "use client";
 
-import type { Energy } from "@motungi/core";
+import { displayNameOf, ENERGY_LABEL } from "@motungi/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BottomNav } from "@/components/bottom-nav";
 import { ChevronRightIcon, LocationIcon, UserIcon } from "@/components/icons";
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
+import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { signInWithKakao, signOut } from "@/lib/auth";
 import { useAppStore } from "@/store/useAppStore";
 
-const ENERGY_LABEL: Record<Energy, string> = {
-  drained: "방전형",
-  moderate: "보통",
-  active: "활동형",
-};
+interface MenuItem {
+  label: string;
+  desc: string;
+  onClick: () => void;
+  soon?: boolean;
+}
 
-/** D1 · 마이 (간단 버전) */
+/** D1 · 마이 — 반응형 */
 export default function MyPage() {
   const router = useRouter();
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "동네 미설정";
@@ -26,7 +28,7 @@ export default function MyPage() {
   const [busy, setBusy] = useState(false);
 
   const metaText = energy ? `${dongName} 기준 · ${ENERGY_LABEL[energy]}` : `${dongName} 기준`;
-  const displayName = user?.displayName ?? (user ? "회원" : "게스트");
+  const displayName = displayNameOf(user);
 
   const login = async () => {
     setBusy(true);
@@ -40,74 +42,124 @@ export default function MyPage() {
   };
 
   const soon = () => window.alert("준비 중이에요. 곧 만나요!");
-  const MENU = [
+  const MENU: MenuItem[] = [
     { label: "내 동네 관리", desc: dongName, onClick: () => router.push("/location") },
-    { label: "알림 설정", desc: "새 기회 · 마감 임박", onClick: soon },
+    { label: "알림 설정", desc: "새 기회 · 마감 임박", onClick: soon, soon: true },
     ...(user
       ? [{ label: "로그아웃", desc: `저장 ${savedCount}개 · 계정 연결됨`, onClick: logout }]
-      : [{ label: "설정", desc: `저장 ${savedCount}개 · 로그인 안 됨`, onClick: soon }]),
+      : [{ label: "설정", desc: `저장 ${savedCount}개 · 로그인 안 됨`, onClick: soon, soon: true }]),
   ];
 
-  return (
-    <MobileScreen>
-      <div className="flex flex-1 flex-col bg-bg">
-        <SafeTop />
+  const KakaoButton = (
+    <button
+      type="button"
+      onClick={login}
+      disabled={busy}
+      className="flex h-[50px] w-full items-center justify-center rounded-lg bg-[#FEE500] text-[15px] font-bold text-[#191600] disabled:opacity-60"
+    >
+      {busy ? "연결 중…" : "카카오로 로그인하고 저장 동기화"}
+    </button>
+  );
 
-        <div className="flex flex-1 flex-col overflow-y-auto px-5 pb-4">
-          <h1 className="pt-1 text-[24px] font-extrabold text-ink">마이</h1>
-
-          {/* 프로필 카드 */}
-          <div className="mt-4 flex items-center gap-3 rounded-xl bg-surface p-4 shadow-card">
-            <span className="grid size-12 place-items-center rounded-full bg-tint text-primary">
-              <UserIcon size={26} />
+  const MenuList = (
+    <div className="divide-y divide-line-alt rounded-xl bg-surface shadow-card">
+      {MENU.map((m) => (
+        <button
+          key={m.label}
+          onClick={m.onClick}
+          className="flex w-full items-center gap-3 p-4 text-left"
+        >
+          <span className="flex-1">
+            <span className="block text-[15px] font-semibold text-ink">{m.label}</span>
+            <span className="block text-[13px] text-muted">{m.desc}</span>
+          </span>
+          {m.soon && (
+            <span className="rounded-pill bg-bg px-2.5 py-1 text-[11px] font-semibold text-muted">
+              준비 중
             </span>
-            <div className="flex-1">
-              <p className="text-[16px] font-bold text-ink">{displayName}</p>
-              <p className="mt-0.5 flex items-center gap-1 text-[13px] text-muted">
-                <LocationIcon size={14} className="text-primary" /> {metaText}
-              </p>
+          )}
+          <ChevronRightIcon size={20} className="text-faint" />
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <>
+      {/* ── 모바일 ── */}
+      <div className="md:hidden">
+        <MobileScreen>
+          <div className="flex flex-1 flex-col bg-bg">
+            <SafeTop />
+
+            <div className="flex flex-1 flex-col overflow-y-auto px-5 pb-4">
+              <h1 className="pt-1 text-[24px] font-extrabold text-ink">마이</h1>
+
+              {/* 프로필 카드 */}
+              <div className="mt-4 flex items-center gap-3 rounded-xl bg-surface p-4 shadow-card">
+                <span className="grid size-12 place-items-center rounded-full bg-tint text-primary">
+                  <UserIcon size={26} />
+                </span>
+                <div className="flex-1">
+                  <p className="text-[16px] font-bold text-ink">{displayName}</p>
+                  <p className="mt-0.5 flex items-center gap-1 text-[13px] text-muted">
+                    <LocationIcon size={14} className="text-primary" /> {metaText}
+                  </p>
+                </div>
+                <Link
+                  href="/diagnosis"
+                  className="rounded-pill bg-primary px-3.5 py-2 text-[13px] font-bold text-white"
+                >
+                  재진단
+                </Link>
+              </div>
+
+              {!user && <div className="mt-3">{KakaoButton}</div>}
+              <div className="mt-4">{MenuList}</div>
             </div>
+
+            <BottomNav active="my" />
+            <SafeBottom />
+          </div>
+        </MobileScreen>
+      </div>
+
+      {/* ── 데스크탑 ── */}
+      <DesktopShell active="explore">
+        <WebContainer className="py-12">
+          <div className="mx-auto max-w-[640px]">
+            <h1 className="text-[32px] font-extrabold tracking-[-0.02em] text-ink">마이</h1>
+
+            <div className="mt-6 flex items-center gap-4 rounded-[18px] bg-surface p-6 shadow-web">
+              <span className="grid size-16 place-items-center rounded-full bg-tint text-primary">
+                <UserIcon size={34} />
+              </span>
+              <div className="flex-1">
+                <p className="text-[20px] font-bold text-ink">{displayName}</p>
+                <p className="mt-1 flex items-center gap-1 text-[14px] text-muted">
+                  <LocationIcon size={15} className="text-primary" /> {metaText}
+                </p>
+              </div>
+              <Link
+                href="/diagnosis"
+                className="rounded-pill bg-primary px-4 py-2.5 text-[14px] font-bold text-white hover:bg-primary-deep"
+              >
+                재진단
+              </Link>
+            </div>
+
+            {!user && <div className="mt-4">{KakaoButton}</div>}
+            <div className="mt-5">{MenuList}</div>
             <Link
-              href="/diagnosis"
-              className="rounded-pill bg-primary px-3.5 py-2 text-[13px] font-bold text-white"
+              href="/saved"
+              className="mt-4 flex items-center justify-between rounded-[18px] bg-surface p-5 shadow-web hover:shadow-web-lift"
             >
-              재진단
+              <span className="text-[15px] font-semibold text-ink">보관함 {savedCount}개 보기</span>
+              <ChevronRightIcon size={20} className="text-faint" />
             </Link>
           </div>
-
-          {/* 카카오 로그인 (비로그인 시) */}
-          {!user && (
-            <button
-              type="button"
-              onClick={login}
-              disabled={busy}
-              className="mt-3 flex h-[50px] w-full items-center justify-center rounded-lg bg-[#FEE500] text-[15px] font-bold text-[#191600] disabled:opacity-60"
-            >
-              {busy ? "연결 중…" : "카카오로 로그인하고 저장 동기화"}
-            </button>
-          )}
-
-          {/* 메뉴 */}
-          <div className="mt-4 divide-y divide-line-alt rounded-xl bg-surface shadow-card">
-            {MENU.map((m) => (
-              <button
-                key={m.label}
-                onClick={m.onClick}
-                className="flex w-full items-center gap-3 p-4 text-left"
-              >
-                <span className="flex-1">
-                  <span className="block text-[15px] font-semibold text-ink">{m.label}</span>
-                  <span className="block text-[13px] text-muted">{m.desc}</span>
-                </span>
-                <ChevronRightIcon size={20} className="text-faint" />
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <BottomNav active="my" />
-        <SafeBottom />
-      </div>
-    </MobileScreen>
+        </WebContainer>
+      </DesktopShell>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import type { Energy } from "@motungi/core";
+import { ENERGY_LABEL, displayNameOf } from "@motungi/core";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -7,12 +7,6 @@ import { useAppStore } from "@/store/useAppStore";
 import { Txt } from "@/ui/components";
 import { ChevronRight, Location, User } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
-
-const ENERGY_LABEL: Record<Energy, string> = {
-  drained: "방전형",
-  moderate: "보통",
-  active: "활동형",
-};
 
 /** D1 · 마이 (간단 버전) */
 export default function MyScreen() {
@@ -24,7 +18,7 @@ export default function MyScreen() {
   const [busy, setBusy] = useState(false);
 
   const metaText = energy ? `${dongName} 기준 · ${ENERGY_LABEL[energy]}` : `${dongName} 기준`;
-  const displayName = user?.displayName ?? (user ? "회원" : "게스트");
+  const displayName = displayNameOf(user);
 
   const login = async () => {
     setBusy(true);
@@ -40,11 +34,11 @@ export default function MyScreen() {
 
   const soon = () => Alert.alert("준비 중이에요", "곧 만나요!");
   const MENU = [
-    { label: "내 동네 관리", desc: dongName, onPress: () => router.push("/location") },
-    { label: "알림 설정", desc: "새 기회 · 마감 임박", onPress: soon },
+    { label: "내 동네 관리", desc: dongName, onPress: () => router.push("/location"), soon: false },
+    { label: "알림 설정", desc: "새 기회 · 마감 임박", onPress: soon, soon: true },
     ...(user
-      ? [{ label: "로그아웃", desc: `저장 ${savedCount}개 · 계정 연결됨`, onPress: logout }]
-      : [{ label: "설정", desc: `저장 ${savedCount}개 · 로그인 안 됨`, onPress: soon }]),
+      ? [{ label: "로그아웃", desc: `저장 ${savedCount}개 · 계정 연결됨`, onPress: logout, soon: false }]
+      : [{ label: "설정", desc: `저장 ${savedCount}개 · 로그인 안 됨`, onPress: soon, soon: true }]),
   ];
 
   return (
@@ -89,6 +83,11 @@ export default function MyScreen() {
               <Text style={styles.menuLabel}>{m.label}</Text>
               <Text style={styles.menuDesc}>{m.desc}</Text>
             </View>
+            {m.soon && (
+              <View style={styles.soonBadge}>
+                <Text style={styles.soonText}>준비 중</Text>
+              </View>
+            )}
             <ChevronRight size={20} color={C.faint} />
           </Pressable>
         ))}
@@ -112,4 +111,6 @@ const styles = StyleSheet.create({
   menuBorder: { borderTopWidth: 1, borderTopColor: C.lineAlt },
   menuLabel: { fontSize: 15, fontWeight: "600", color: C.ink },
   menuDesc: { marginTop: 2, fontSize: 13, color: C.muted },
+  soonBadge: { backgroundColor: C.surfaceAlt, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  soonText: { fontSize: 11, fontWeight: "600", color: C.muted },
 });

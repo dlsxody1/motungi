@@ -13,6 +13,7 @@ import {
 import { Button, Chip, MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { NEIGHBORHOOD_POINTS } from "@/data/opportunities";
+import { reverseGeocode } from "@/lib/geo";
 import { useAppStore } from "@/store/useAppStore";
 
 const NEIGHBORHOODS = ["망원동", "성수동", "연남동", "판교동", "합정동"];
@@ -43,11 +44,15 @@ export default function LocationPage() {
     }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        // 행정동 변환(Kakao)은 Phase 2. 우선 좌표만 앵커에 저장.
+      async (pos) => {
+        const point = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        // 좌표 → 행정동 역지오코딩. 실패(구독 미비 등)면 선택 칩을 폴백.
+        const geo = await reverseGeocode(point.lat, point.lng);
+        if (geo) setSelected(geo.dongName);
         setAnchor("home", {
-          dongName: selected,
-          point: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+          dongName: geo?.dongName ?? selected,
+          admCode: geo?.admCode ?? undefined,
+          point,
         });
         setLocating(false);
         router.push("/diagnosis");

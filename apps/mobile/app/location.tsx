@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { NEIGHBORHOOD_POINTS } from "@/data/opportunities";
+import { reverseGeocode } from "@/lib/geo";
 import { useAppStore } from "@/store/useAppStore";
 import { Button, Chip, Screen, Txt } from "@/ui/components";
 import { CheckCircle, ChevronLeft, ChevronRight, Location, Search } from "@/ui/icons";
@@ -38,10 +39,14 @@ export default function LocationScreen() {
         return;
       }
       const pos = await ExpoLocation.getCurrentPositionAsync({});
-      // 행정동 변환(Kakao)은 Phase 2. 우선 좌표만 앵커에 저장.
+      const point = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      // 좌표 → 행정동 역지오코딩. 실패(오리진 미설정·구독 미비)면 선택 칩을 폴백.
+      const geo = await reverseGeocode(point.lat, point.lng);
+      if (geo) setSelected(geo.dongName);
       setAnchor("home", {
-        dongName: selected,
-        point: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+        dongName: geo?.dongName ?? selected,
+        admCode: geo?.admCode ?? undefined,
+        point,
       });
       router.push("/diagnosis");
     } catch {

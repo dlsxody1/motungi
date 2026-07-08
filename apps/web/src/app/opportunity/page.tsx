@@ -18,14 +18,9 @@ import {
 } from "@/components/icons";
 import { MobileScreen, SafeBottom, SafeTop, Tag } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
+import { CATEGORY_LABEL, displayNameOf, whyReasons } from "@motungi/core";
 import { findOpportunity, ONE_PICK } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
-
-const WHY = [
-  "방전형인 도윤님도 앉아서 즐기기 좋은 가벼운 저녁 공연이에요.",
-  "회사에서 도보 15분 · 퇴근길에 잠깐 들르기 딱 좋아요.",
-  "예약도 참가비도 없이 그냥 가면 돼요.",
-];
 
 /** A6 · 기회 상세 — 반응형. useSearchParams는 Suspense 경계 필요. */
 export default function OpportunityPage() {
@@ -44,8 +39,12 @@ function OpportunityInner() {
 
   const savedIds = useAppStore((s) => s.savedIds);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
+  const answers = useAppStore((s) => s.answers);
+  const user = useAppStore((s) => s.user);
   const saved = savedIds.includes(o.id);
 
+  const displayName = displayNameOf(user);
+  const why = whyReasons(o, answers);
   const hasLink = !!o.ctaUrl && o.ctaUrl !== "#";
 
   const onShare = () => {
@@ -170,9 +169,9 @@ function OpportunityInner() {
               탐색
             </Link>
             <ChevronRightIcon size={14} className="text-[#c9bcab]" />
-            <span>동네 문화·공연</span>
+            <span>{CATEGORY_LABEL[o.category]}</span>
             <ChevronRightIcon size={14} className="text-[#c9bcab]" />
-            <span className="text-label">망원 한강 야간 재즈 공연</span>
+            <span className="text-label line-clamp-1">{o.title}</span>
           </nav>
 
           {/* 2단 */}
@@ -197,10 +196,10 @@ function OpportunityInner() {
               <div className="mt-6 rounded-[18px] bg-surface p-6 shadow-web">
                 <p className="flex items-center gap-2 text-[17px] font-bold text-ink">
                   <InsightsIcon size={20} className="text-primary" />
-                  왜 도윤님께 맞을까요?
+                  왜 {displayName}님께 맞을까요?
                 </p>
                 <ul className="mt-4 space-y-3">
-                  {WHY.map((w) => (
+                  {why.map((w) => (
                     <li key={w} className="flex items-start gap-2.5 text-[14px] leading-relaxed text-label">
                       <CheckCircleIcon size={18} className="mt-0.5 shrink-0 text-primary" />
                       {w}
@@ -304,9 +303,9 @@ function OpportunityInner() {
                 </div>
               </div>
 
-              {/* 크로스셀 */}
+              {/* 크로스셀 — 탐색으로 */}
               <Link
-                href="/opportunity"
+                href="/explore"
                 className="flex items-center gap-3 rounded-2xl bg-mint-tint p-4.5"
               >
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface text-mint">
@@ -314,7 +313,7 @@ function OpportunityInner() {
                 </span>
                 <div className="flex-1">
                   <p className="text-[13px] font-semibold text-mint">이어서 하기 좋아요</p>
-                  <p className="text-[14px] font-bold text-ink">경의선숲길 저녁 산책 · 무료</p>
+                  <p className="text-[14px] font-bold text-ink">우리 동네 다른 활동 더 보기</p>
                 </div>
                 <ChevronRightIcon size={20} className="text-mint" />
               </Link>

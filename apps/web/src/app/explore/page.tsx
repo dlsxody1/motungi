@@ -1,6 +1,7 @@
 "use client";
 
 import type { OpportunityCategory } from "@motungi/core";
+import { TIMESLOT_LABEL } from "@motungi/core";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { BottomNav } from "@/components/bottom-nav";
@@ -32,9 +33,11 @@ export default function ExplorePage() {
   const router = useRouter();
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
   const catalog = useAppStore((s) => s.catalog);
+  const timeSlot = useAppStore((s) => s.answers?.timeSlot);
   const source = catalog.length > 0 ? catalog : ALL_OPPORTUNITIES;
   const [filter, setFilter] = useState("전체");
   const [query, setQuery] = useState("");
+  const [easyOnly, setEasyOnly] = useState(false);
 
   const list = useMemo(() => {
     const cat = FILTERS.find((f) => f.label === filter)?.category ?? null;
@@ -42,9 +45,16 @@ export default function ExplorePage() {
     return source.filter((o) => {
       if (cat && o.category !== cat) return false;
       if (q && !`${o.title} ${o.summary}`.includes(q)) return false;
+      if (easyOnly && !(o.difficulty != null && o.difficulty <= 0.33)) return false;
       return true;
     });
-  }, [filter, query, source]);
+  }, [filter, query, source, easyOnly]);
+
+  // 활성 필터 칩(실제 상태 파생). 선택 없으면 미표시.
+  const activeChips: { key: string; label: string; clear: () => void }[] = [];
+  if (filter !== "전체") activeChips.push({ key: "cat", label: filter, clear: () => setFilter("전체") });
+  if (easyOnly) activeChips.push({ key: "easy", label: "낮은 난이도", clear: () => setEasyOnly(false) });
+  if (timeSlot) activeChips.push({ key: "time", label: TIMESLOT_LABEL[timeSlot], clear: () => {} });
 
   const CATEGORIES = useMemo(
     () =>
@@ -69,7 +79,10 @@ export default function ExplorePage() {
             <div className="flex flex-1 flex-col overflow-y-auto px-5 pb-4">
               <div className="flex items-center justify-between pt-1">
                 <h1 className="text-[24px] font-extrabold text-ink">탐색</h1>
-                <button className="flex h-9 items-center gap-1 rounded-pill border border-line bg-surface px-3 text-[13px] font-semibold text-label">
+                <button
+                  onClick={() => router.push("/location")}
+                  className="flex h-9 items-center gap-1 rounded-pill border border-line bg-surface px-3 text-[13px] font-semibold text-label"
+                >
                   {dongName} <ChevronDownIcon size={16} className="text-faint" />
                 </button>
               </div>
@@ -151,9 +164,9 @@ export default function ExplorePage() {
                   placeholder="활동 검색"
                 />
               </div>
-              <button className="flex h-11 items-center gap-1.5 rounded-[11px] border border-line bg-surface px-4 text-[14px] font-semibold text-label hover:border-faint">
-                매칭순 <ChevronDownIcon size={16} className="text-faint" />
-              </button>
+              <span className="flex h-11 items-center gap-1.5 rounded-[11px] border border-line bg-surface px-4 text-[14px] font-semibold text-muted">
+                매칭순 정렬
+              </span>
             </div>
           </div>
 
@@ -182,52 +195,50 @@ export default function ExplorePage() {
 
               <div className="my-4 h-px bg-line-alt" />
 
-              <p className="text-[14px] font-bold text-ink">집에서 거리</p>
-              <div className="mt-3.5">
-                <div className="relative h-1.5 rounded-full bg-track">
-                  <div className="absolute left-0 top-0 h-full w-[62%] rounded-full bg-primary" />
-                  <span className="absolute left-[62%] top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-primary bg-surface" />
-                </div>
-                <p className="mt-2.5 text-[13px] font-semibold text-label">도보 15분 이내</p>
-              </div>
-
-              <div className="my-4 h-px bg-line-alt" />
-
               <p className="text-[14px] font-bold text-ink">난이도</p>
-              <div className="mt-3 space-y-2.5">
-                {[
-                  { l: "낮음 (방전형 추천)", on: true },
-                  { l: "보통", on: false },
-                  { l: "높음", on: false },
-                ].map((d) => (
-                  <label key={d.l} className="flex cursor-pointer items-center gap-2.5 text-[14px] text-label">
-                    <span
-                      className={`grid size-5 place-items-center rounded-[6px] ${
-                        d.on ? "bg-primary text-white" : "border-[1.5px] border-line"
-                      }`}
-                    >
-                      {d.on && <CheckIcon size={13} />}
-                    </span>
-                    {d.l}
-                  </label>
-                ))}
-              </div>
+              <label className="mt-3 flex cursor-pointer items-center gap-2.5 text-[14px] text-label">
+                <input
+                  type="checkbox"
+                  checked={easyOnly}
+                  onChange={(e) => setEasyOnly(e.target.checked)}
+                  className="sr-only"
+                />
+                <span
+                  className={`grid size-5 place-items-center rounded-[6px] ${
+                    easyOnly ? "bg-primary text-white" : "border-[1.5px] border-line"
+                  }`}
+                >
+                  {easyOnly && <CheckIcon size={13} />}
+                </span>
+                낮음만 보기 (방전형 추천)
+              </label>
             </aside>
 
             {/* 그리드 */}
             <div>
-              {/* 활성 필터 칩 */}
-              <div className="mb-4 flex flex-wrap gap-2">
-                <span className="flex items-center gap-1 rounded-pill bg-primary px-3 py-1.5 text-[13px] font-semibold text-white">
-                  낮은 난이도 <CloseIcon size={13} />
-                </span>
-                <span className="flex items-center gap-1 rounded-pill bg-primary px-3 py-1.5 text-[13px] font-semibold text-white">
-                  평일 저녁 <CloseIcon size={13} />
-                </span>
-                <span className="flex items-center gap-1 rounded-pill border border-line bg-surface px-3 py-1.5 text-[13px] font-semibold text-label">
-                  도보 15분
-                </span>
-              </div>
+              {/* 활성 필터 칩 (실제 상태 파생) */}
+              {activeChips.length > 0 && (
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {activeChips.map((c) =>
+                    c.key === "time" ? (
+                      <span
+                        key={c.key}
+                        className="flex items-center gap-1 rounded-pill border border-line bg-surface px-3 py-1.5 text-[13px] font-semibold text-label"
+                      >
+                        {c.label}
+                      </span>
+                    ) : (
+                      <button
+                        key={c.key}
+                        onClick={c.clear}
+                        className="flex items-center gap-1 rounded-pill bg-primary px-3 py-1.5 text-[13px] font-semibold text-white"
+                      >
+                        {c.label} <CloseIcon size={13} />
+                      </button>
+                    ),
+                  )}
+                </div>
+              )}
 
               {list.length === 0 && (
                 <p className="py-12 text-center text-[14px] text-muted">조건에 맞는 활동이 아직 없어요.</p>

@@ -1,9 +1,10 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Linking, Pressable, ScrollView, Share as RNShare, StyleSheet, Text, View } from "react-native";
+import { displayNameOf, whyReasons } from "@motungi/core";
 import { findOpportunity, ONE_PICK } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 import { Screen, Tag } from "@/ui/components";
-import { Bookmark, ChevronLeft, ExternalLink, Location, Share } from "@/ui/icons";
+import { Bookmark, CheckCircle, ChevronLeft, ExternalLink, Location, Share } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
 
 /** A6 · 기회 상세 */
@@ -15,8 +16,12 @@ export default function OpportunityScreen() {
 
   const savedIds = useAppStore((s) => s.savedIds);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
+  const answers = useAppStore((s) => s.answers);
+  const user = useAppStore((s) => s.user);
   const saved = savedIds.includes(o.id);
 
+  const displayName = displayNameOf(user);
+  const why = whyReasons(o, answers);
   const hasLink = !!o.ctaUrl && o.ctaUrl !== "#";
 
   const onShare = () => {
@@ -55,6 +60,19 @@ export default function OpportunityScreen() {
               <Text style={styles.incomeSub}>{o.costNote}</Text>
             </>
           )}
+        </View>
+
+        {/* 왜 맞을까요 */}
+        <View style={styles.whyCard}>
+          <Text style={styles.whyTitle}>왜 {displayName}님께 맞을까요?</Text>
+          <View style={{ gap: 10 }}>
+            {why.map((w) => (
+              <View key={w} style={styles.whyRow}>
+                <CheckCircle size={18} color={C.primary} />
+                <Text style={styles.whyText}>{w}</Text>
+              </View>
+            ))}
+          </View>
         </View>
 
         {/* 메타 3칸 */}
@@ -120,6 +138,10 @@ const styles = StyleSheet.create({
   incomeUnit: { fontSize: 15, fontWeight: "700", color: C.muted },
   incomeLine: { marginTop: 8, height: 1, backgroundColor: "rgba(226,80,103,0.15)" },
   incomeSub: { marginTop: 8, fontSize: 13, color: C.muted },
+  whyCard: { marginTop: 16, backgroundColor: C.surface, borderRadius: R.lg, padding: 16, ...cardShadow },
+  whyTitle: { fontSize: 15, fontWeight: "700", color: C.ink, marginBottom: 12 },
+  whyRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  whyText: { flex: 1, fontSize: 13, lineHeight: 20, color: C.label },
   metaRow: { marginTop: 12, flexDirection: "row", gap: 10 },
   metaCard: { flex: 1, backgroundColor: C.surface, borderRadius: R.lg, paddingVertical: 12, alignItems: "center", ...cardShadow },
   metaLabel: { fontSize: 11, color: C.muted },

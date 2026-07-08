@@ -13,6 +13,7 @@ import {
 } from "@/components/icons";
 import { MobileScreen, SafeBottom, SafeTop, Tag } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
+import { diagnosisSummaryChips, displayNameOf } from "@motungi/core";
 import { ALL_OPPORTUNITIES } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -20,6 +21,10 @@ import { useAppStore } from "@/store/useAppStore";
 export default function ReportPage() {
   const router = useRouter();
   const results = useAppStore((s) => s.results);
+  const answers = useAppStore((s) => s.answers);
+  const user = useAppStore((s) => s.user);
+  const savedIds = useAppStore((s) => s.savedIds);
+  const toggleSaved = useAppStore((s) => s.toggleSaved);
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
 
   // 진단 전 직접 진입 시 fallback(원본 상위 3개).
@@ -27,7 +32,16 @@ export default function ReportPage() {
   const onePick = list[0]!;
   const related = list.slice(1);
 
+  const displayName = displayNameOf(user);
+  const summaryChips = diagnosisSummaryChips(answers, onePick);
+  const onePickSaved = savedIds.includes(onePick.id);
+
   const openDetail = (id: string) => router.push(`/opportunity?id=${id}`);
+  const onShare = () => {
+    const data = { title: onePick.title, text: `${onePick.title}\n모퉁이에서 발견한 우리 동네 활동` };
+    if (navigator.share) navigator.share(data).catch(() => {});
+    else if (navigator.clipboard) navigator.clipboard.writeText(data.text).catch(() => {});
+  };
 
   return (
     <>
@@ -146,11 +160,14 @@ export default function ReportPage() {
                 {dongName} 저녁 리포트
               </h1>
               <p className="mt-1.5 text-[15px] text-muted">
-                퇴근하고 즐길 거 {list.length}개를 찾았어요 · 2026.07.01 갱신
+                퇴근하고 즐길 거 {list.length}개를 찾았어요 · 최근 갱신
               </p>
             </div>
             <div className="flex items-center gap-2.5">
-              <button className="flex items-center gap-1.5 rounded-[11px] border border-line bg-surface px-4 py-2.5 text-[14px] font-semibold text-label hover:border-faint">
+              <button
+                onClick={onShare}
+                className="flex items-center gap-1.5 rounded-[11px] border border-line bg-surface px-4 py-2.5 text-[14px] font-semibold text-label hover:border-faint"
+              >
                 <ShareIcon size={16} /> 공유
               </button>
               <Link
@@ -208,8 +225,12 @@ export default function ReportPage() {
                       )}
                     </div>
                     <div className="mt-3 flex gap-2.5">
-                      <button className="grid h-12 w-13 shrink-0 place-items-center rounded-xl border border-line bg-surface text-label hover:border-faint">
-                        <BookmarkIcon size={20} />
+                      <button
+                        onClick={() => toggleSaved(onePick.id)}
+                        aria-pressed={onePickSaved}
+                        className="grid h-12 w-13 shrink-0 place-items-center rounded-xl border border-line bg-surface text-label hover:border-faint"
+                      >
+                        <BookmarkIcon size={20} filled={onePickSaved} className={onePickSaved ? "text-primary" : ""} />
                       </button>
                       <button
                         onClick={() => openDetail(onePick.id)}
@@ -266,38 +287,41 @@ export default function ReportPage() {
                 }}
               >
                 <p className="text-[11px] font-bold tracking-[0.08em] text-white/80">DONGNE REPORT</p>
-                <p className="mt-1 text-[18px] font-extrabold">{dongName}은 이런 동네예요</p>
+                <p className="mt-1 text-[18px] font-extrabold">{dongName} 저녁 골라봤어요</p>
                 <div className="mt-4 space-y-2">
-                  {[
-                    { l: "문화·공연 밀도", v: "상위 5%" },
-                    { l: "청년(2030) 인구", v: "38%" },
-                    { l: "도보 10분 내 활동", v: "24곳+" },
-                  ].map((s) => (
-                    <div
-                      key={s.l}
-                      className="flex items-center justify-between rounded-xl bg-white/15 px-3.5 py-2.5"
-                    >
-                      <span className="text-[13px] text-white/85">{s.l}</span>
-                      <span className="text-[14px] font-bold">{s.v}</span>
-                    </div>
-                  ))}
+                  <div className="flex items-center justify-between rounded-xl bg-white/15 px-3.5 py-2.5">
+                    <span className="text-[13px] text-white/85">추천 활동</span>
+                    <span className="text-[14px] font-bold">{list.length}개</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl bg-white/15 px-3.5 py-2.5">
+                    <span className="text-[13px] text-white/85">저장한 활동</span>
+                    <span className="text-[14px] font-bold">{savedIds.length}개</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl bg-white/15 px-3.5 py-2.5">
+                    <span className="text-[13px] text-white/85">동네 통계</span>
+                    <span className="text-[13px] font-semibold text-white/80">곧 제공</span>
+                  </div>
                 </div>
               </div>
 
               <div className="rounded-[20px] bg-surface p-5 shadow-web">
                 <div className="flex items-center justify-between">
-                  <p className="text-[15px] font-bold text-ink">도윤님 진단 요약</p>
+                  <p className="text-[15px] font-bold text-ink">{displayName}님 진단 요약</p>
                   <Link href="/diagnosis" className="text-[13px] font-semibold text-primary">
-                    수정
+                    {summaryChips.length > 0 ? "수정" : "진단하기"}
                   </Link>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {["문화·공연", "평일 저녁", "방전형", "무료 위주"].map((t) => (
-                    <span key={t} className="rounded-pill bg-bg px-3 py-1.5 text-[12px] font-semibold text-label">
-                      {t}
-                    </span>
-                  ))}
-                </div>
+                {summaryChips.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {summaryChips.map((t) => (
+                      <span key={t} className="rounded-pill bg-bg px-3 py-1.5 text-[12px] font-semibold text-label">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-[13px] text-muted">60초 진단하면 취향에 맞춰 추천해드려요.</p>
+                )}
               </div>
 
               <div className="flex items-center justify-between rounded-[20px] border-[1.5px] border-dashed border-line bg-info-bg px-5 py-4">
