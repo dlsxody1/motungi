@@ -4,7 +4,12 @@
   "globalEnv": [
     "NEXT_PUBLIC_SUPABASE_URL",
     "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-    "SUPABASE_SECRET_KEY"
+    "SUPABASE_SECRET_KEY",
+    "NAVER_MAP_API_KEY_ID",
+    "NAVER_MAP_API_KEY",
+    "KAKAO_REST_API_KEY",
+    "DATA_GO_KR_SERVICE_KEY",
+    "SEOUL_OPENAPI_KEY"
   ],
   "tasks": {
     "build": {
