@@ -16,11 +16,14 @@ interface AppState {
   answers: DiagnosisAnswers | null;
   /** 스코어링 결과(원픽 + 함께보면좋아요). 로딩 화면에서 채워진다. */
   results: MockOpportunity[];
+  /** 전체 활동 카탈로그(서버 실데이터). 탐색/상세/보관함이 참조. 세션 캐시. */
+  catalog: MockOpportunity[];
   savedIds: string[];
 
   setAnchor: (slot: AnchorSlot, location: Location) => void;
   setAnswers: (answers: DiagnosisAnswers) => void;
   setResults: (results: MockOpportunity[]) => void;
+  setCatalog: (catalog: MockOpportunity[]) => void;
   toggleSaved: (id: string) => void;
   isSaved: (id: string) => boolean;
 }
@@ -31,12 +34,14 @@ export const useAppStore = create<AppState>()(
       anchors: {},
       answers: null,
       results: [],
+      catalog: [],
       savedIds: [],
 
       setAnchor: (slot, location) =>
         set((s) => ({ anchors: { ...s.anchors, [slot]: location } })),
       setAnswers: (answers) => set({ answers }),
       setResults: (results) => set({ results }),
+      setCatalog: (catalog) => set({ catalog }),
       toggleSaved: (id) =>
         set((s) => ({
           savedIds: s.savedIds.includes(id)

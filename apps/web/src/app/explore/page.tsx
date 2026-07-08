@@ -31,28 +31,30 @@ const FILTERS: { label: string; category: OpportunityCategory | null }[] = [
 export default function ExplorePage() {
   const router = useRouter();
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
+  const catalog = useAppStore((s) => s.catalog);
+  const source = catalog.length > 0 ? catalog : ALL_OPPORTUNITIES;
   const [filter, setFilter] = useState("전체");
   const [query, setQuery] = useState("");
 
   const list = useMemo(() => {
     const cat = FILTERS.find((f) => f.label === filter)?.category ?? null;
     const q = query.trim();
-    return ALL_OPPORTUNITIES.filter((o) => {
+    return source.filter((o) => {
       if (cat && o.category !== cat) return false;
       if (q && !`${o.title} ${o.summary}`.includes(q)) return false;
       return true;
     });
-  }, [filter, query]);
+  }, [filter, query, source]);
 
   const CATEGORIES = useMemo(
     () =>
       FILTERS.map((f) => ({
         label: f.label,
         count: f.category
-          ? ALL_OPPORTUNITIES.filter((o) => o.category === f.category).length
-          : ALL_OPPORTUNITIES.length,
+          ? source.filter((o) => o.category === f.category).length
+          : source.length,
       })),
-    [],
+    [source],
   );
 
   const openDetail = (id: string) => router.push(`/opportunity?id=${id}`);
@@ -136,7 +138,7 @@ export default function ExplorePage() {
             <div>
               <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-ink">{dongName}에서 할 만한 것</h1>
               <p className="mt-1.5 text-[15px] text-muted">
-                퇴근 후·주말 활동 {ALL_OPPORTUNITIES.length}건 · 진단 기준 정렬
+                퇴근 후·주말 활동 {source.length}건 · 진단 기준 정렬
               </p>
             </div>
             <div className="flex items-center gap-2.5">

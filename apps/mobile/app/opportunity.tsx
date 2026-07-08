@@ -10,7 +10,8 @@ import { C, R, cardShadow } from "@/ui/theme";
 export default function OpportunityScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const o = findOpportunity(id) ?? ONE_PICK;
+  const catalog = useAppStore((s) => s.catalog);
+  const o = catalog.find((x) => x.id === id) ?? findOpportunity(id) ?? catalog[0] ?? ONE_PICK;
 
   const savedIds = useAppStore((s) => s.savedIds);
   const toggleSaved = useAppStore((s) => s.toggleSaved);

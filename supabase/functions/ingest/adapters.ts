@@ -134,7 +134,7 @@ export function mapCultureInfo(raw: Record<string, string>): OppRow | null {
     summary: [raw.sigungu, raw.place, raw.realmName].filter(Boolean).join(" · ") || title,
     cost_krw: null,
     difficulty: null,
-    dong_name: raw.sigungu || null,
+    dong_name: [raw.area, raw.sigungu].filter(Boolean).join(" ") || null,
     lat: la && lo ? la : null,
     lng: la && lo ? lo : null,
     cta_url: null,

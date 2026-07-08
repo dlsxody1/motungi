@@ -27,7 +27,7 @@ describe("normalizeCultureInfo", () => {
     expect(o.category).toBe("culture");
     expect(o.title).toBe(RAW.title);
     expect(o.id).toBe("culture-info:386189");
-    expect(o.location?.dongName).toBe("청주시");
+    expect(o.location?.dongName).toBe("충북 청주시");
     expect(o.location?.point).toEqual({ lat: 36.6357, lng: 127.429 });
     expect(o.deadline).toBe("2026-07-31");
     expect(o.sourceLabel).toContain("문화정보");

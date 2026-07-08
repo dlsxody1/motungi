@@ -43,6 +43,8 @@ export function normalizeCultureInfo(raw: RawCultureInfo): Opportunity | null {
   const title = raw.title?.trim();
   if (!seq || !title) return null;
 
+  // area(시도)+sigungu(구) 결합 — 수도권 필터가 시도 접두어로 판정 가능하도록.
+  const dongName = [raw.area, raw.sigungu].filter(Boolean).join(" ") || undefined;
   return {
     id: `culture-info:${seq}`,
     source: "culture_info",
@@ -50,7 +52,7 @@ export function normalizeCultureInfo(raw: RawCultureInfo): Opportunity | null {
     title,
     summary: [raw.sigungu, raw.place, raw.realmName].filter(Boolean).join(" · ") || title,
     // 요금 정보 없음 — 미상(무료로 단정하지 않음).
-    location: { dongName: raw.sigungu, point: parsePoint(raw.gpsY, raw.gpsX) },
+    location: { dongName, point: parsePoint(raw.gpsY, raw.gpsX) },
     deadline: toIsoDate(raw.endDate),
     sourceLabel: "한눈에보는문화정보",
   };

@@ -14,10 +14,11 @@ export default function SavedPage() {
   const router = useRouter();
   const savedIds = useAppStore((s) => s.savedIds);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
+  const catalog = useAppStore((s) => s.catalog);
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
 
   const items = savedIds
-    .map(findOpportunity)
+    .map((id) => catalog.find((o) => o.id === id) ?? findOpportunity(id))
     .filter((o): o is NonNullable<typeof o> => !!o);
   const openDetail = (id: string) => router.push(`/opportunity?id=${id}`);
 

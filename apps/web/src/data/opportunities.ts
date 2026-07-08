@@ -3,7 +3,16 @@
  * 화면 표시에 필요한 파생 문자열(비용 라벨·매칭도 등)을 함께 담는다.
  * 실제 데이터는 이후 소스 어댑터(문화행사/두루누비/일자리)가 이 형태로 채운다.
  */
-import type { GeoPoint, Opportunity, OpportunityCategory } from "@motungi/core";
+import type { GeoPoint, Opportunity, OpportunityCategory, OpportunityRow } from "@motungi/core";
+import {
+  buildMeta,
+  categoryTone,
+  CATEGORY_LABEL,
+  costLabel,
+  costUnit,
+  rowToOpportunity,
+} from "@motungi/core";
+import { supabase } from "@/lib/supabase";
 
 /** 동네 → 대표 좌표. distance 스코어링 및 위치 앵커에 사용(행정동 API 전까지 근사값). */
 export const NEIGHBORHOOD_POINTS: Record<string, GeoPoint> = {
@@ -168,4 +177,36 @@ export const ALL_OPPORTUNITIES: MockOpportunity[] = EXPLORE_LIST.map(withPoint);
 export function findOpportunity(id?: string | null): MockOpportunity | undefined {
   if (!id) return undefined;
   return ALL_OPPORTUNITIES.find((o) => o.id === id);
+}
+
+// ── Supabase 실데이터 연동 ─────────────────────────────────
+
+/** DB row → 화면용 MockOpportunity (core 파생 헬퍼 사용). */
+function rowToMock(row: OpportunityRow): MockOpportunity {
+  const opp = rowToOpportunity(row);
+  return {
+    ...opp,
+    categoryLabel: CATEGORY_LABEL[opp.category],
+    costLabel: costLabel(opp.costKrw, opp.category),
+    costUnit: costUnit(opp.category),
+    matchScore: 0, // 스코어링에서 재계산됨
+    meta: buildMeta(opp),
+    tone: categoryTone(opp.category),
+  };
+}
+
+/**
+ * Supabase에서 활동 후보를 읽어온다. 실패/미설정 시 mock으로 폴백.
+ * 스코어링(pickTop)에 그대로 넣을 수 있는 형태.
+ */
+export async function fetchOpportunities(): Promise<MockOpportunity[]> {
+  if (!supabase) return ALL_OPPORTUNITIES;
+  const { data, error } = await supabase
+    .from("opportunities")
+    .select(
+      "id,source,category,external_id,title,summary,cost_krw,difficulty,dong_name,lat,lng,cta_url,deadline,source_label,time_start_hour,time_end_hour",
+    )
+    .limit(200);
+  if (error || !data || data.length === 0) return ALL_OPPORTUNITIES;
+  return (data as OpportunityRow[]).map(rowToMock);
 }

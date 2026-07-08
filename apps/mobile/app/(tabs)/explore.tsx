@@ -25,15 +25,18 @@ export default function ExploreScreen() {
   const [filter, setFilter] = useState<string>("전체");
   const [query, setQuery] = useState("");
 
+  const catalog = useAppStore((s) => s.catalog);
+  const source = catalog.length > 0 ? catalog : ALL_OPPORTUNITIES;
+
   const list = useMemo(() => {
     const cat = FILTERS.find((f) => f.label === filter)?.category ?? null;
     const q = query.trim();
-    return ALL_OPPORTUNITIES.filter((o) => {
+    return source.filter((o) => {
       if (cat && o.category !== cat) return false;
       if (q && !`${o.title} ${o.summary}`.includes(q)) return false;
       return true;
     });
-  }, [filter, query]);
+  }, [filter, query, source]);
 
   const openDetail = (id: string) => router.push({ pathname: "/opportunity", params: { id } });
 

@@ -4,7 +4,7 @@ import { pickTop } from "@motungi/core";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
-import { ALL_OPPORTUNITIES } from "@/data/opportunities";
+import { fetchOpportunities } from "@/data/opportunities";
 import type { MockOpportunity } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -14,22 +14,34 @@ export default function LoadingPage() {
   const answers = useAppStore((s) => s.answers);
   const anchors = useAppStore((s) => s.anchors);
   const setResults = useAppStore((s) => s.setResults);
+  const setCatalog = useAppStore((s) => s.setCatalog);
   const dongName = anchors.home?.dongName ?? "우리 동네";
 
   useEffect(() => {
-    // 진단 답변 기준으로 후보를 스코어링해 상위 3개를 리포트용 결과로 저장.
-    // 답변이 없으면(온보딩 스킵 등) 원본 순서를 그대로 사용.
-    const ranked = answers
-      ? pickTop(ALL_OPPORTUNITIES, answers, anchors, 3).map((r) => {
-          const opp = r.opportunity as MockOpportunity;
-          return { ...opp, matchScore: Math.round(r.score * 100) };
-        })
-      : ALL_OPPORTUNITIES.slice(0, 3);
-    setResults(ranked);
+    let cancelled = false;
+    // Supabase 실데이터(폴백 mock)를 받아 진단 답변으로 스코어링 → 상위 3개 저장.
+    void (async () => {
+      const candidates = await fetchOpportunities();
+      if (cancelled) return;
+      setCatalog(candidates); // 탐색/상세/보관함이 참조할 전체 카탈로그
+      const ranked = answers
+        ? pickTop(candidates, answers, anchors, 3).map((r) => {
+            const opp = r.opportunity as MockOpportunity;
+            return { ...opp, matchScore: Math.round(r.score * 100) };
+          })
+        : candidates.slice(0, 3);
+      setResults(ranked);
+    })();
 
-    const t = window.setTimeout(() => router.push("/report"), 2400);
-    return () => window.clearTimeout(t);
-  }, [router, answers, anchors, setResults]);
+    // 최소 로딩 시간 유지(스코어링이 더 빨라도 2.4초 후 이동).
+    const t = window.setTimeout(() => {
+      if (!cancelled) router.push("/report");
+    }, 2400);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [router, answers, anchors, setResults, setCatalog]);
 
   const Body = (
     <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">

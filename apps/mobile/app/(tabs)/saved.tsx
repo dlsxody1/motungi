@@ -13,7 +13,10 @@ export default function SavedScreen() {
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
 
-  const items = savedIds.map(findOpportunity).filter((o): o is NonNullable<typeof o> => !!o);
+  const catalog = useAppStore((s) => s.catalog);
+  const items = savedIds
+    .map((id) => catalog.find((o) => o.id === id) ?? findOpportunity(id))
+    .filter((o): o is NonNullable<typeof o> => !!o);
   const openDetail = (id: string) => router.push({ pathname: "/opportunity", params: { id } });
 
   return (
