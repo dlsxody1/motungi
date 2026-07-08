@@ -8,7 +8,17 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 export const supabase =
-  url && publishableKey ? createClient(url, publishableKey) : null;
+  url && publishableKey
+    ? createClient(url, publishableKey, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          // 콜백 URL의 세션/PKCE 코드를 자동 감지해 교환.
+          detectSessionInUrl: true,
+          flowType: "pkce",
+        },
+      })
+    : null;
 
 export function assertSupabase() {
   if (!supabase) {

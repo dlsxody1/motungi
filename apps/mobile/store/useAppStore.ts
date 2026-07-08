@@ -8,8 +8,15 @@ import type { DiagnosisAnswers, Location, UserAnchors } from "@motungi/core";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { MockOpportunity } from "@/data/opportunities";
+import { supabase } from "@/lib/supabase";
 
 type AnchorSlot = "home" | "work";
+
+/** 최소 사용자 정보(카카오 로그인). null이면 게스트. */
+export interface AuthUser {
+  id: string;
+  displayName?: string;
+}
 
 interface AppState {
   anchors: UserAnchors;
@@ -19,11 +26,15 @@ interface AppState {
   /** 전체 활동 카탈로그(서버 실데이터). 탐색/상세/보관함이 참조. 세션 캐시. */
   catalog: MockOpportunity[];
   savedIds: string[];
+  /** 로그인 사용자. null = 게스트. */
+  user: AuthUser | null;
 
   setAnchor: (slot: AnchorSlot, location: Location) => void;
   setAnswers: (answers: DiagnosisAnswers) => void;
   setResults: (results: MockOpportunity[]) => void;
   setCatalog: (catalog: MockOpportunity[]) => void;
+  setUser: (user: AuthUser | null) => void;
+  setSavedIds: (ids: string[]) => void;
   toggleSaved: (id: string) => void;
   isSaved: (id: string) => boolean;
 }
@@ -36,18 +47,39 @@ export const useAppStore = create<AppState>()(
       results: [],
       catalog: [],
       savedIds: [],
+      user: null,
 
       setAnchor: (slot, location) =>
         set((s) => ({ anchors: { ...s.anchors, [slot]: location } })),
       setAnswers: (answers) => set({ answers }),
       setResults: (results) => set({ results }),
       setCatalog: (catalog) => set({ catalog }),
-      toggleSaved: (id) =>
-        set((s) => ({
-          savedIds: s.savedIds.includes(id)
+      setUser: (user) => set({ user }),
+      setSavedIds: (savedIds) => set({ savedIds }),
+      toggleSaved: (id) => {
+        const s = get();
+        const nextSaved = s.savedIds.includes(id);
+        set({
+          savedIds: nextSaved
             ? s.savedIds.filter((x) => x !== id)
             : [...s.savedIds, id],
-        })),
+        });
+        // 로그인 상태면 서버에도 반영(비로그인은 로컬만).
+        const userId = s.user?.id;
+        if (userId && supabase) {
+          if (nextSaved) {
+            void supabase
+              .from("saved_opportunities")
+              .delete()
+              .eq("user_id", userId)
+              .eq("opportunity_id", id);
+          } else {
+            void supabase
+              .from("saved_opportunities")
+              .upsert({ user_id: userId, opportunity_id: id }, { onConflict: "user_id,opportunity_id" });
+          }
+        }
+      },
       isSaved: (id) => get().savedIds.includes(id),
     }),
     {
