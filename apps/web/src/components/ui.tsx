@@ -136,7 +136,7 @@ export function Chip({
   );
 }
 
-/** 카테고리 태그 (예: "동네 기반 부업") */
+/** 카테고리 태그 (예: "동네 문화·공연") */
 export function Tag({
   children,
   tone = "brand",

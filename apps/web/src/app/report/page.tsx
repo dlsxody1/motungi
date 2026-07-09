@@ -14,24 +14,32 @@ import {
 import { MobileScreen, SafeBottom, SafeTop, Tag } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { diagnosisSummaryChips, displayNameOf } from "@motungi/core";
-import { ALL_OPPORTUNITIES } from "@/data/opportunities";
+import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
 
 /** A5 · 동네 리포트 (원픽 히어로) — 반응형 */
 export default function ReportPage() {
+  useEnsureCatalog();
   const router = useRouter();
   const results = useAppStore((s) => s.results);
+  const catalog = useAppStore((s) => s.catalog);
+  const catalogStatus = useAppStore((s) => s.catalogStatus);
   const answers = useAppStore((s) => s.answers);
   const user = useAppStore((s) => s.user);
   const savedIds = useAppStore((s) => s.savedIds);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
 
-  // 진단 전 직접 진입 시 fallback(원본 상위 3개).
-  const list = results.length > 0 ? results : ALL_OPPORTUNITIES.slice(0, 3);
-  const onePick = list[0]!;
-  const related = list.slice(1);
+  // 스코어링 결과 우선, 없으면 카탈로그 상위 3개(진단 전 직접 진입).
+  const list = results.length > 0 ? results : catalog.slice(0, 3);
+  const onePick = list[0];
 
+  // 데이터가 없으면(로드 실패/빈결과/아직 안 불러옴) 원픽을 그릴 수 없다 → 상태 화면.
+  if (!onePick) {
+    return <ReportEmpty status={catalogStatus} onRetry={() => router.push("/loading")} onExplore={() => router.push("/explore")} />;
+  }
+
+  const related = list.slice(1);
   const displayName = displayNameOf(user);
   const summaryChips = diagnosisSummaryChips(answers, onePick);
   const onePickSaved = savedIds.includes(onePick.id);
@@ -87,7 +95,7 @@ export default function ReportPage() {
                   <p className="mt-2.5 text-[14px] leading-relaxed text-label">{onePick.summary}</p>
                   <div className="mt-4 flex items-end justify-between rounded-xl bg-tint px-4 py-3">
                     <div>
-                      <p className="text-[12px] font-semibold text-primary-deep">참가비</p>
+                      <p className="text-[12px] font-semibold text-primary-deep">{onePick.costHeading}</p>
                       <p className="text-[26px] font-extrabold leading-none text-primary-deep">
                         {onePick.costLabel}
                       </p>
@@ -150,7 +158,7 @@ export default function ReportPage() {
       </div>
 
       {/* ── 데스크탑 ── */}
-      <DesktopShell active="report">
+      <DesktopShell active="report" dongName={dongName} userName={user?.displayName}>
         <WebContainer className="py-9">
           {/* 헤더 */}
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -218,7 +226,7 @@ export default function ReportPage() {
                           "linear-gradient(150deg, var(--color-primary), var(--color-primary-deep))",
                       }}
                     >
-                      <p className="text-[12px] font-semibold text-white/80">참가비</p>
+                      <p className="text-[12px] font-semibold text-white/80">{onePick.costHeading}</p>
                       <p className="text-[30px] font-extrabold leading-tight">{onePick.costLabel}</p>
                       {onePick.costNote && (
                         <p className="mt-1 text-[12px] text-white/85">{onePick.costNote}</p>
@@ -336,6 +344,59 @@ export default function ReportPage() {
             </aside>
           </div>
         </WebContainer>
+      </DesktopShell>
+    </>
+  );
+}
+
+/** 카탈로그가 비었을 때(로드 실패·빈결과·미진단)의 리포트 상태 화면. */
+function ReportEmpty({
+  status,
+  onRetry,
+  onExplore,
+}: {
+  status: string;
+  onRetry: () => void;
+  onExplore: () => void;
+}) {
+  const isError = status === "error" || status === "unconfigured";
+  const title = isError ? "활동을 불러오지 못했어요" : "아직 추천할 활동이 없어요";
+  const desc = isError
+    ? "잠시 후 다시 시도하거나, 60초 진단으로 원픽을 받아보세요."
+    : "60초 진단을 하면 우리 동네 원픽을 골라드려요.";
+
+  const Body = (
+    <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+      <p className="text-[18px] font-extrabold text-ink md:text-[22px]">{title}</p>
+      <p className="mt-2 max-w-[320px] text-[14px] leading-relaxed text-muted md:text-[15px]">{desc}</p>
+      <div className="mt-6 flex flex-col items-stretch gap-2.5">
+        <button
+          onClick={onRetry}
+          className="h-11 rounded-xl bg-primary px-6 text-[14px] font-bold text-white transition-colors hover:bg-primary-deep"
+        >
+          {isError ? "다시 시도" : "60초 진단하기"}
+        </button>
+        <button onClick={onExplore} className="h-11 rounded-xl px-6 text-[14px] font-semibold text-label">
+          탐색 둘러보기
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      <div className="md:hidden">
+        <MobileScreen>
+          <div className="flex flex-1 flex-col bg-bg">
+            <SafeTop />
+            {Body}
+            <SafeBottom />
+            <BottomNav active="home" />
+          </div>
+        </MobileScreen>
+      </div>
+      <DesktopShell active="report">
+        <div className="flex min-h-[60vh] flex-col">{Body}</div>
       </DesktopShell>
     </>
   );

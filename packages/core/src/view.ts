@@ -66,11 +66,12 @@ export function categoryTone(category: OpportunityCategory): "brand" | "mint" {
 }
 
 /**
- * 비용 표시 문자열.
- * - side_job: 벌이(income) 성격 → "+N만 원"
+ * 비용/보상 표시 문자열.
+ * - side_job: 참가비가 아니라 벌이(income) 성격 → "+N만 원"
  * - 0원: "무료"
  * - 그 외: "₩12,000"
  * - 미상(null): "가격 문의"
+ * ⚠️ side_job은 '내는 돈'이 아니라 '받는 돈'이라 표시 헤딩(costHeading)이 달라야 한다.
  */
 export function costLabel(costKrw: number | null | undefined, category: OpportunityCategory): string {
   if (costKrw == null) return "가격 문의";
@@ -85,6 +86,16 @@ export function costLabel(costKrw: number | null | undefined, category: Opportun
 /** side_job은 월 단위, 그 외는 1인 기준. */
 export function costUnit(category: OpportunityCategory): string {
   return category === "side_job" ? "월" : "1인";
+}
+
+/**
+ * 비용 값 앞에 붙는 라벨(헤딩).
+ * - side_job: 사용자가 '내는 돈'이 아니라 '받는 돈' → "예상 수입"
+ * - 그 외: 참여에 드는 비용 → "참가비"
+ * (side_job 카드에 "참가비 +48만 원"이 뜨던 의미 충돌을 해소.)
+ */
+export function costHeading(category: OpportunityCategory): string {
+  return category === "side_job" ? "예상 수입" : "참가비";
 }
 
 /** 상세 메타 칩(시간대·난이도). 있는 것만. */

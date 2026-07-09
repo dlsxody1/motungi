@@ -1,7 +1,7 @@
 import * as ExpoLocation from "expo-location";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { NEIGHBORHOOD_POINTS } from "@/data/opportunities";
 import { reverseGeocode } from "@/lib/geo";
 import { useAppStore } from "@/store/useAppStore";
@@ -11,6 +11,15 @@ import { C, R, cardShadow } from "@/ui/theme";
 
 const NEIGHBORHOODS = ["망원동", "성수동", "연남동", "판교동", "합정동"];
 
+/** 동 → 시·구 표기 (배너용). 망원·연남·합정=마포, 성수=성동, 판교=성남 분당. */
+const DONG_REGION: Record<string, string> = {
+  망원동: "서울 마포구",
+  연남동: "서울 마포구",
+  합정동: "서울 마포구",
+  성수동: "서울 성동구",
+  판교동: "경기 성남시 분당구",
+};
+
 /** A2 · 위치 / 동네 설정 */
 export default function LocationScreen() {
   const router = useRouter();
@@ -18,6 +27,7 @@ export default function LocationScreen() {
   const [selected, setSelected] = useState("망원동");
   const [query, setQuery] = useState("");
   const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
   const filtered = useMemo(
     () => NEIGHBORHOODS.filter((n) => n.includes(query.trim())),
@@ -32,10 +42,11 @@ export default function LocationScreen() {
 
   const useCurrentLocation = async () => {
     setLocating(true);
+    setGeoError(null);
     try {
       const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("위치 권한 필요", "권한을 허용하거나 아래에서 동네를 직접 골라주세요.");
+        setGeoError("위치 권한이 없어요. 아래에서 동네를 직접 골라주세요.");
         return;
       }
       const pos = await ExpoLocation.getCurrentPositionAsync({});
@@ -50,7 +61,7 @@ export default function LocationScreen() {
       });
       router.push("/diagnosis");
     } catch {
-      Alert.alert("위치를 가져오지 못했어요", "동네를 직접 선택해 주세요.");
+      setGeoError("위치를 가져오지 못했어요. 아래에서 동네를 직접 골라주세요.");
     } finally {
       setLocating(false);
     }
@@ -83,6 +94,12 @@ export default function LocationScreen() {
           </View>
           <ChevronRight size={20} color={C.faint} />
         </Pressable>
+
+        {!!geoError && (
+          <Txt preset="bodySm" color={C.primaryDeep} style={{ marginTop: 10 }}>
+            {geoError}
+          </Txt>
+        )}
 
         {/* 구분선 */}
         <View style={styles.divider}>
@@ -127,7 +144,8 @@ export default function LocationScreen() {
         <View style={styles.banner}>
           <CheckCircle size={18} color={C.primary} />
           <Text style={{ fontSize: 14, color: C.primaryDeep }}>
-            서울 마포구 <Text style={{ fontWeight: "700" }}>{selected}</Text> 선택됨
+            {DONG_REGION[selected] ? `${DONG_REGION[selected]} ` : ""}
+            <Text style={{ fontWeight: "700" }}>{selected}</Text> 선택됨
           </Text>
         </View>
       </ScrollView>

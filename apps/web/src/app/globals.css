@@ -34,7 +34,7 @@
   --color-track: #eae0d2; /* 진행바·슬라이더 트랙 */
   --color-info-bg: #f4ece0; /* 안내 박스 배경 */
   --color-tile: #f1ede6; /* 중립 아이콘 타일 */
-  --color-purple-tint: #eeeaf6; /* 긱·딜 퍼플 틴트 */
+  --color-purple-tint: #eeeaf6; /* 클래스·배움 퍼플 틴트 */
   --color-arrow: #d8cdbd; /* 스텝 화살표 회색 */
   --color-ink-dark: #2e2a24; /* 다크 푸터/잉크 */
 
@@ -94,6 +94,32 @@
   .wcard-hover:hover {
     transform: translateY(-3px);
     box-shadow: var(--shadow-web-lift);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+ * 스크롤 인뷰 리빌 — 랜딩 섹션이 뷰포트에 들어올 때 부드럽게 등장.
+ * 근거(motion motivated): 콘텐츠를 순서대로 드러내 "이렇게 골라준다"는
+ * 흐름을 시각적으로 안내한다. CSS scroll-driven animation만 사용(JS 없음).
+ * 미지원 브라우저·reduced-motion에서는 그냥 보이는 게 기본값(콘텐츠 안 가림).
+ * ──────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: reveal-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 26%;
+    }
+  }
+}
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 

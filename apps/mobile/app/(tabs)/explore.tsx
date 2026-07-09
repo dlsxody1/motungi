@@ -2,31 +2,34 @@ import type { OpportunityCategory } from "@motungi/core";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { ALL_OPPORTUNITIES } from "@/data/opportunities";
+import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
 import { Chip, Txt } from "@/ui/components";
 import { ChevronDown, Search } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
 
-/** 필터 라벨 → 카테고리. "전체"는 null. */
+/** 필터 라벨 → 카테고리. "전체"는 null. 데이터 있는 카테고리만 동적으로 노출된다. */
 const FILTERS: { label: string; category: OpportunityCategory | null }[] = [
   { label: "전체", category: null },
   { label: "문화·공연", category: "culture" },
   { label: "운동·산책", category: "active" },
   { label: "먹거리·마켓", category: "food" },
   { label: "클래스", category: "class" },
+  { label: "마켓", category: "market" },
   { label: "부업", category: "side_job" },
 ];
 
 /** B1 · 탐색 (전체 기회) */
 export default function ExploreScreen() {
+  useEnsureCatalog();
   const router = useRouter();
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
   const [filter, setFilter] = useState<string>("전체");
   const [query, setQuery] = useState("");
 
   const catalog = useAppStore((s) => s.catalog);
-  const source = catalog.length > 0 ? catalog : ALL_OPPORTUNITIES;
+  const catalogStatus = useAppStore((s) => s.catalogStatus);
+  const source = catalog; // 서버 실데이터만 사용(목업 폴백 없음).
 
   const list = useMemo(() => {
     const cat = FILTERS.find((f) => f.label === filter)?.category ?? null;
@@ -38,6 +41,12 @@ export default function ExploreScreen() {
     });
   }, [filter, query, source]);
 
+  // 데이터 있는 카테고리만 필터 칩으로 노출("전체"는 항상).
+  const visibleFilters = useMemo(
+    () => FILTERS.filter((f) => !f.category || source.some((o) => o.category === f.category)),
+    [source],
+  );
+
   const openDetail = (id: string) => router.push({ pathname: "/opportunity", params: { id } });
 
   return (
@@ -45,7 +54,13 @@ export default function ExploreScreen() {
       {/* 헤더 */}
       <View style={styles.header}>
         <Txt preset="h1" style={{ fontSize: 24 }}>탐색</Txt>
-        <Pressable style={styles.dong} hitSlop={8}>
+        <Pressable
+          style={styles.dong}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="동네 변경"
+          onPress={() => router.push("/location")}
+        >
           <Text style={styles.dongLabel}>{dongName}</Text>
           <ChevronDown size={16} color={C.muted} />
         </Pressable>
@@ -65,7 +80,7 @@ export default function ExploreScreen() {
 
       {/* 필터 */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }} contentContainerStyle={{ gap: 8, paddingRight: 20 }}>
-        {FILTERS.map((f) => (
+        {visibleFilters.map((f) => (
           <Chip key={f.label} label={f.label} active={filter === f.label} onPress={() => setFilter(f.label)} />
         ))}
       </ScrollView>
@@ -73,7 +88,13 @@ export default function ExploreScreen() {
       {/* 목록 */}
       <View style={{ marginTop: 8 }}>
         {list.length === 0 && (
-          <Text style={styles.empty}>조건에 맞는 활동이 아직 없어요.</Text>
+          <Text style={styles.empty}>
+            {source.length === 0
+              ? catalogStatus === "error" || catalogStatus === "unconfigured"
+                ? "활동을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
+                : "아직 등록된 활동이 없어요. 곧 채워질 거예요."
+              : "조건에 맞는 활동이 아직 없어요."}
+          </Text>
         )}
         {list.map((o, i) => (
           <Pressable

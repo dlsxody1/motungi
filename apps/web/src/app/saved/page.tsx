@@ -6,19 +6,22 @@ import { BottomNav } from "@/components/bottom-nav";
 import { BookmarkIcon, LocationIcon, SavingsIcon, UserIcon } from "@/components/icons";
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
-import { findOpportunity } from "@/data/opportunities";
+import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
 
 /** A7 · 보관함 / 홈 — 반응형 */
 export default function SavedPage() {
+  useEnsureCatalog();
   const router = useRouter();
   const savedIds = useAppStore((s) => s.savedIds);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const catalog = useAppStore((s) => s.catalog);
+  const user = useAppStore((s) => s.user);
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
 
+  // 저장 id를 서버 카탈로그에서 해소. 카탈로그에 없는(상위 200건 밖) 항목은 조용히 빠진다.
   const items = savedIds
-    .map((id) => catalog.find((o) => o.id === id) ?? findOpportunity(id))
+    .map((id) => catalog.find((o) => o.id === id))
     .filter((o): o is NonNullable<typeof o> => !!o);
   const openDetail = (id: string) => router.push(`/opportunity?id=${id}`);
 
@@ -121,7 +124,7 @@ export default function SavedPage() {
       </div>
 
       {/* ── 데스크탑 ── */}
-      <DesktopShell active="explore">
+      <DesktopShell active="saved" dongName={dongName} userName={user?.displayName}>
         <WebContainer className="py-9">
           <div className="mx-auto max-w-[860px]">
             {/* 인사 헤더 */}

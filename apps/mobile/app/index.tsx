@@ -46,8 +46,8 @@ export default function OnboardingScreen() {
             <Pressable style={styles.cta} onPress={() => router.push("/location")}>
               <Text style={styles.ctaLabel}>내 동네에서 찾기</Text>
             </Pressable>
-            <Pressable style={styles.ghost} onPress={() => router.push("/report")}>
-              <Text style={styles.ghostLabel}>로그인 없이 바로 시작</Text>
+            <Pressable style={styles.ghost} onPress={() => router.push("/location")}>
+              <Text style={styles.ghostLabel}>로그인 없이 시작하기</Text>
             </Pressable>
           </View>
         </View>

@@ -71,7 +71,7 @@ export interface Opportunity {
   title: string;
   /** 근거/요약 한 줄 */
   summary: string;
-  /** 참가/이용 비용(원). 0 = 무료. side_job이면 반대로 벌이(income) 성격. */
+  /** 참가/이용 비용(원). 0 = 무료. side_job이면 반대로 벌이(income) 성격 — 표시 시 costHeading으로 "예상 수입" 구분. */
   costKrw?: number;
   /** 시작 난이도 0(쉬움)~1(어려움) */
   difficulty?: number;

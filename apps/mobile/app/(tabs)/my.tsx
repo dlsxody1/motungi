@@ -16,29 +16,33 @@ export default function MyScreen() {
   const savedCount = useAppStore((s) => s.savedIds.length);
   const user = useAppStore((s) => s.user);
   const [busy, setBusy] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const metaText = energy ? `${dongName} 기준 · ${ENERGY_LABEL[energy]}` : `${dongName} 기준`;
   const displayName = displayNameOf(user);
 
   const login = async () => {
     setBusy(true);
+    setLoginError(null);
     const { error } = await signInWithKakao();
     setBusy(false);
-    if (error) Alert.alert("로그인", error);
+    if (error) setLoginError("로그인에 실패했어요. 잠시 후 다시 시도해 주세요.");
   };
+  // 로그아웃은 되돌릴 수 있지만 결과를 명시하는 확인 다이얼로그 유지(파괴적 아님).
   const logout = () =>
-    Alert.alert("로그아웃", "로그아웃할까요?", [
+    Alert.alert("로그아웃", "이 기기에서 계정 연결이 풀려요. 진행할까요?", [
       { text: "취소", style: "cancel" },
       { text: "로그아웃", style: "destructive", onPress: () => void signOut() },
     ]);
 
-  const soon = () => Alert.alert("준비 중이에요", "곧 만나요!");
+  // soon 항목은 탭 불가(alert 금지) — "출시 예정" 배지로만 안내.
+  const noop = () => {};
   const MENU = [
     { label: "내 동네 관리", desc: dongName, onPress: () => router.push("/location"), soon: false },
-    { label: "알림 설정", desc: "새 기회 · 마감 임박", onPress: soon, soon: true },
+    { label: "알림 설정", desc: "새 활동 · 마감 임박 알림", onPress: noop, soon: true },
     ...(user
       ? [{ label: "로그아웃", desc: `저장 ${savedCount}개 · 계정 연결됨`, onPress: logout, soon: false }]
-      : [{ label: "설정", desc: `저장 ${savedCount}개 · 로그인 안 됨`, onPress: soon, soon: true }]),
+      : [{ label: "설정", desc: `저장 ${savedCount}개 · 로그인 안 됨`, onPress: noop, soon: true }]),
   ];
 
   return (
@@ -74,21 +78,31 @@ export default function MyScreen() {
           </Text>
         </Pressable>
       )}
+      {!user && !!loginError && (
+        <Text style={styles.loginError}>{loginError}</Text>
+      )}
 
       {/* 메뉴 */}
       <View style={styles.menu}>
         {MENU.map((m, i) => (
-          <Pressable key={m.label} onPress={m.onPress} style={[styles.menuItem, i > 0 && styles.menuBorder]}>
+          <Pressable
+            key={m.label}
+            onPress={m.onPress}
+            disabled={m.soon}
+            accessibilityState={{ disabled: m.soon }}
+            style={[styles.menuItem, i > 0 && styles.menuBorder]}
+          >
             <View style={{ flex: 1 }}>
-              <Text style={styles.menuLabel}>{m.label}</Text>
+              <Text style={[styles.menuLabel, m.soon && { color: C.muted }]}>{m.label}</Text>
               <Text style={styles.menuDesc}>{m.desc}</Text>
             </View>
-            {m.soon && (
+            {m.soon ? (
               <View style={styles.soonBadge}>
-                <Text style={styles.soonText}>준비 중</Text>
+                <Text style={styles.soonText}>출시 예정</Text>
               </View>
+            ) : (
+              <ChevronRight size={20} color={C.faint} />
             )}
-            <ChevronRight size={20} color={C.faint} />
           </Pressable>
         ))}
       </View>
@@ -106,6 +120,7 @@ const styles = StyleSheet.create({
   redoLabel: { fontSize: 13, fontWeight: "700", color: C.white },
   kakao: { marginTop: 12, height: 50, borderRadius: R.lg, backgroundColor: "#FEE500", alignItems: "center", justifyContent: "center" },
   kakaoLabel: { fontSize: 15, fontWeight: "700", color: "#191600" },
+  loginError: { marginTop: 8, fontSize: 13, fontWeight: "500", color: C.primaryDeep },
   menu: { marginTop: 16, backgroundColor: C.surface, borderRadius: R.xl, ...cardShadow },
   menuItem: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16 },
   menuBorder: { borderTopWidth: 1, borderTopColor: C.lineAlt },

@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { findOpportunity } from "@/data/opportunities";
+import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
 import { Txt } from "@/ui/components";
 import { Bookmark, Location, User } from "@/ui/icons";
@@ -8,14 +8,16 @@ import { C, R } from "@/ui/theme";
 
 /** A7 · 보관함 / 홈 */
 export default function SavedScreen() {
+  useEnsureCatalog();
   const router = useRouter();
   const savedIds = useAppStore((s) => s.savedIds);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
 
   const catalog = useAppStore((s) => s.catalog);
+  // 저장 id를 서버 카탈로그에서 해소. 카탈로그에 없는(상위 200건 밖) 항목은 조용히 빠진다.
   const items = savedIds
-    .map((id) => catalog.find((o) => o.id === id) ?? findOpportunity(id))
+    .map((id) => catalog.find((o) => o.id === id))
     .filter((o): o is NonNullable<typeof o> => !!o);
   const openDetail = (id: string) => router.push({ pathname: "/opportunity", params: { id } });
 

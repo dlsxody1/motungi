@@ -15,26 +15,30 @@ import {
 } from "@/components/icons";
 import { Chip, MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
-import { ALL_OPPORTUNITIES } from "@/data/opportunities";
+import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
 
-/** 필터 라벨 → 카테고리. "전체"는 null. */
+/** 필터 라벨 → 카테고리. "전체"는 null. 데이터 있는 카테고리만 동적으로 노출된다. */
 const FILTERS: { label: string; category: OpportunityCategory | null }[] = [
   { label: "전체", category: null },
   { label: "문화·공연", category: "culture" },
   { label: "운동·산책", category: "active" },
   { label: "먹거리·마켓", category: "food" },
   { label: "클래스", category: "class" },
+  { label: "마켓", category: "market" },
   { label: "부업", category: "side_job" },
 ];
 
 /** B1 · 탐색 (전체 기회) — 반응형 */
 export default function ExplorePage() {
+  useEnsureCatalog();
   const router = useRouter();
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
+  const user = useAppStore((s) => s.user);
   const catalog = useAppStore((s) => s.catalog);
+  const catalogStatus = useAppStore((s) => s.catalogStatus);
   const timeSlot = useAppStore((s) => s.answers?.timeSlot);
-  const source = catalog.length > 0 ? catalog : ALL_OPPORTUNITIES;
+  const source = catalog; // 서버 실데이터만 사용(목업 폴백 없음).
   const [filter, setFilter] = useState("전체");
   const [query, setQuery] = useState("");
   const [easyOnly, setEasyOnly] = useState(false);
@@ -56,6 +60,7 @@ export default function ExplorePage() {
   if (easyOnly) activeChips.push({ key: "easy", label: "낮은 난이도", clear: () => setEasyOnly(false) });
   if (timeSlot) activeChips.push({ key: "time", label: TIMESLOT_LABEL[timeSlot], clear: () => {} });
 
+  // 데이터 있는 카테고리만 노출("전체"는 항상). count===0 카테고리는 숨김.
   const CATEGORIES = useMemo(
     () =>
       FILTERS.map((f) => ({
@@ -63,7 +68,7 @@ export default function ExplorePage() {
         count: f.category
           ? source.filter((o) => o.category === f.category).length
           : source.length,
-      })),
+      })).filter((c) => c.label === "전체" || c.count > 0),
     [source],
   );
 
@@ -98,20 +103,26 @@ export default function ExplorePage() {
               </div>
 
               <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-                {FILTERS.map((f) => (
+                {CATEGORIES.map((c) => (
                   <Chip
-                    key={f.label}
-                    active={filter === f.label}
-                    onClick={() => setFilter(f.label)}
+                    key={c.label}
+                    active={filter === c.label}
+                    onClick={() => setFilter(c.label)}
                     className="shrink-0"
                   >
-                    {f.label}
+                    {c.label}
                   </Chip>
                 ))}
               </div>
 
               {list.length === 0 && (
-                <p className="py-10 text-center text-[14px] text-muted">조건에 맞는 활동이 아직 없어요.</p>
+                <p className="py-10 text-center text-[14px] text-muted">
+                  {source.length === 0
+                    ? catalogStatus === "error" || catalogStatus === "unconfigured"
+                      ? "활동을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
+                      : "아직 등록된 활동이 없어요. 곧 채워질 거예요."
+                    : "조건에 맞는 활동이 아직 없어요."}
+                </p>
               )}
               <div className="mt-2 divide-y divide-line-alt">
                 {list.map((o) => (
@@ -144,7 +155,7 @@ export default function ExplorePage() {
       </div>
 
       {/* ── 데스크탑 ── */}
-      <DesktopShell active="explore">
+      <DesktopShell active="explore" dongName={dongName} userName={user?.displayName}>
         <WebContainer className="py-8">
           {/* 헤더 */}
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -241,7 +252,13 @@ export default function ExplorePage() {
               )}
 
               {list.length === 0 && (
-                <p className="py-12 text-center text-[14px] text-muted">조건에 맞는 활동이 아직 없어요.</p>
+                <p className="py-12 text-center text-[14px] text-muted">
+                  {source.length === 0
+                    ? catalogStatus === "error" || catalogStatus === "unconfigured"
+                      ? "활동을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
+                      : "아직 등록된 활동이 없어요. 곧 채워질 거예요."
+                    : "조건에 맞는 활동이 아직 없어요."}
+                </p>
               )}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {list.map((o, i) => {

@@ -1,23 +1,47 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Linking, Pressable, ScrollView, Share as RNShare, StyleSheet, Text, View } from "react-native";
 import { displayNameOf, whyReasons } from "@motungi/core";
-import { findOpportunity, ONE_PICK } from "@/data/opportunities";
+import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
-import { Screen, Tag } from "@/ui/components";
+import { Button, Screen, Tag } from "@/ui/components";
 import { Bookmark, CheckCircle, ChevronLeft, ExternalLink, Location, Share } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
 
 /** A6 · 기회 상세 */
 export default function OpportunityScreen() {
+  useEnsureCatalog();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const catalog = useAppStore((s) => s.catalog);
-  const o = catalog.find((x) => x.id === id) ?? findOpportunity(id) ?? catalog[0] ?? ONE_PICK;
+  // 요청 id 우선, 없으면 카탈로그 첫 항목. 카탈로그 자체가 비면 not-found.
+  const o = catalog.find((x) => x.id === id) ?? catalog[0];
 
   const savedIds = useAppStore((s) => s.savedIds);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const answers = useAppStore((s) => s.answers);
   const user = useAppStore((s) => s.user);
+
+  if (!o) {
+    return (
+      <Screen>
+        <View style={styles.topbar}>
+          <Pressable onPress={() => router.back()} hitSlop={8} style={styles.iconBtn}>
+            <ChevronLeft size={24} />
+          </Pressable>
+        </View>
+        <View style={styles.notFound}>
+          <Text style={styles.nfTitle}>활동을 찾을 수 없어요</Text>
+          <Text style={styles.nfDesc}>
+            이 활동이 사라졌거나 아직 불러오지 못했어요. 탐색에서 다른 활동을 둘러보세요.
+          </Text>
+          <View style={{ marginTop: 20, alignSelf: "stretch", paddingHorizontal: 32 }}>
+            <Button label="탐색 둘러보기" onPress={() => router.replace("/explore")} />
+          </View>
+        </View>
+      </Screen>
+    );
+  }
+
   const saved = savedIds.includes(o.id);
 
   const displayName = displayNameOf(user);
@@ -48,11 +72,11 @@ export default function OpportunityScreen() {
           <Text style={styles.locText}>{o.location?.dongName ?? "우리 동네"}</Text>
         </View>
 
-        {/* 참가비 카드 */}
+        {/* 비용/수입 카드 */}
         <View style={styles.incomeCard}>
-          <Text style={styles.incomeCap}>참가비</Text>
+          <Text style={styles.incomeCap}>{o.costHeading}</Text>
           <Text style={styles.incomeVal}>
-            {o.costLabel} <Text style={styles.incomeUnit}>/ 1인</Text>
+            {o.costLabel} <Text style={styles.incomeUnit}>/ {o.costUnit}</Text>
           </Text>
           {!!o.costNote && (
             <>
@@ -85,18 +109,22 @@ export default function OpportunityScreen() {
           ))}
         </View>
 
-        {/* 즐기는 방법 */}
-        <Text style={styles.sectionTitle}>즐기는 방법</Text>
-        <View style={{ gap: 16 }}>
-          {o.steps?.map((s, i) => (
-            <View key={i} style={styles.step}>
-              <View style={styles.stepNum}>
-                <Text style={styles.stepNumText}>{i + 1}</Text>
-              </View>
-              <Text style={styles.stepText}>{s}</Text>
+        {/* 즐기는 방법 (스텝이 있을 때만) */}
+        {!!o.steps && o.steps.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>즐기는 방법</Text>
+            <View style={{ gap: 16 }}>
+              {o.steps.map((s, i) => (
+                <View key={i} style={styles.step}>
+                  <View style={styles.stepNum}>
+                    <Text style={styles.stepNumText}>{i + 1}</Text>
+                  </View>
+                  <Text style={styles.stepText}>{s}</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+          </>
+        )}
 
         <Text style={styles.disclaimer}>
           보러 가기를 누르면 주최·출처 채널로 이동해요. 모퉁이는 공공·제휴 정보를 모아 소개할 뿐,
@@ -129,6 +157,9 @@ export default function OpportunityScreen() {
 const styles = StyleSheet.create({
   topbar: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 4 },
   iconBtn: { width: 44, height: 44, justifyContent: "center" },
+  notFound: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
+  nfTitle: { fontSize: 20, fontWeight: "800", color: C.ink, textAlign: "center" },
+  nfDesc: { marginTop: 8, fontSize: 14, lineHeight: 21, color: C.muted, textAlign: "center", maxWidth: 320 },
   title: { marginTop: 12, fontSize: 23, lineHeight: 30, fontWeight: "800", color: C.ink },
   locRow: { marginTop: 8, flexDirection: "row", alignItems: "center", gap: 4 },
   locText: { fontSize: 14, color: C.muted },

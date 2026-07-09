@@ -26,39 +26,48 @@ export default function MyPage() {
   const savedCount = useAppStore((s) => s.savedIds.length);
   const user = useAppStore((s) => s.user);
   const [busy, setBusy] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const metaText = energy ? `${dongName} 기준 · ${ENERGY_LABEL[energy]}` : `${dongName} 기준`;
   const displayName = displayNameOf(user);
 
   const login = async () => {
     setBusy(true);
+    setLoginError(null);
     const { error } = await signInWithKakao();
     // 성공 시 카카오로 리다이렉트되므로 이 아래는 실패 시에만 도달.
     setBusy(false);
-    if (error) window.alert(`로그인: ${error}`);
+    if (error) setLoginError("로그인에 실패했어요. 잠시 후 다시 시도해 주세요.");
   };
   const logout = () => {
-    if (window.confirm("로그아웃할까요?")) void signOut();
+    if (window.confirm("로그아웃하면 이 기기에서 계정 연결이 풀려요. 진행할까요?")) void signOut();
   };
 
-  const soon = () => window.alert("준비 중이에요. 곧 만나요!");
+  // soon 항목은 탭해도 아무 일도 일어나지 않게 하고(alert 금지), "출시 예정" 배지로만 안내.
   const MENU: MenuItem[] = [
     { label: "내 동네 관리", desc: dongName, onClick: () => router.push("/location") },
-    { label: "알림 설정", desc: "새 기회 · 마감 임박", onClick: soon, soon: true },
+    { label: "알림 설정", desc: "새 활동 · 마감 임박 알림", onClick: () => {}, soon: true },
     ...(user
       ? [{ label: "로그아웃", desc: `저장 ${savedCount}개 · 계정 연결됨`, onClick: logout }]
-      : [{ label: "설정", desc: `저장 ${savedCount}개 · 로그인 안 됨`, onClick: soon, soon: true }]),
+      : [{ label: "설정", desc: `저장 ${savedCount}개 · 로그인 안 됨`, onClick: () => {}, soon: true }]),
   ];
 
   const KakaoButton = (
-    <button
-      type="button"
-      onClick={login}
-      disabled={busy}
-      className="flex h-[50px] w-full items-center justify-center rounded-lg bg-[#FEE500] text-[15px] font-bold text-[#191600] disabled:opacity-60"
-    >
-      {busy ? "연결 중…" : "카카오로 로그인하고 저장 동기화"}
-    </button>
+    <div>
+      <button
+        type="button"
+        onClick={login}
+        disabled={busy}
+        className="flex h-[50px] w-full items-center justify-center rounded-lg bg-[#FEE500] text-[15px] font-bold text-[#191600] disabled:opacity-60"
+      >
+        {busy ? "연결 중…" : "카카오로 로그인하고 저장 동기화"}
+      </button>
+      {loginError && (
+        <p role="alert" className="mt-2 text-[13px] font-medium text-primary-deep">
+          {loginError}
+        </p>
+      )}
+    </div>
   );
 
   const MenuList = (
@@ -67,18 +76,23 @@ export default function MyPage() {
         <button
           key={m.label}
           onClick={m.onClick}
-          className="flex w-full items-center gap-3 p-4 text-left"
+          disabled={m.soon}
+          aria-disabled={m.soon}
+          className="flex w-full items-center gap-3 p-4 text-left disabled:cursor-default"
         >
           <span className="flex-1">
-            <span className="block text-[15px] font-semibold text-ink">{m.label}</span>
+            <span className={`block text-[15px] font-semibold ${m.soon ? "text-muted" : "text-ink"}`}>
+              {m.label}
+            </span>
             <span className="block text-[13px] text-muted">{m.desc}</span>
           </span>
-          {m.soon && (
+          {m.soon ? (
             <span className="rounded-pill bg-bg px-2.5 py-1 text-[11px] font-semibold text-muted">
-              준비 중
+              출시 예정
             </span>
+          ) : (
+            <ChevronRightIcon size={20} className="text-faint" />
           )}
-          <ChevronRightIcon size={20} className="text-faint" />
         </button>
       ))}
     </div>
@@ -125,7 +139,7 @@ export default function MyPage() {
       </div>
 
       {/* ── 데스크탑 ── */}
-      <DesktopShell active="explore">
+      <DesktopShell active="my" dongName={dongName} userName={user?.displayName}>
         <WebContainer className="py-12">
           <div className="mx-auto max-w-[640px]">
             <h1 className="text-[32px] font-extrabold tracking-[-0.02em] text-ink">마이</h1>

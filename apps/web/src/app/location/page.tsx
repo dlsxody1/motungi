@@ -18,6 +18,15 @@ import { useAppStore } from "@/store/useAppStore";
 
 const NEIGHBORHOODS = ["망원동", "성수동", "연남동", "판교동", "합정동"];
 
+/** 동 → 시·구 표기(배너용). 망원·연남·합정=마포, 성수=성동, 판교=성남 분당. */
+const DONG_REGION: Record<string, string> = {
+  망원동: "서울 마포구",
+  연남동: "서울 마포구",
+  합정동: "서울 마포구",
+  성수동: "서울 성동구",
+  판교동: "경기 성남시 분당구",
+};
+
 /** A2 · 위치 / 동네 설정 — 반응형 */
 export default function LocationPage() {
   const router = useRouter();
@@ -25,6 +34,8 @@ export default function LocationPage() {
   const [selected, setSelected] = useState("망원동");
   const [query, setQuery] = useState("");
   const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const GEO_FAIL = "위치를 가져오지 못했어요. 아래에서 동네를 직접 골라주세요.";
 
   const filtered = useMemo(
     () => NEIGHBORHOODS.filter((n) => n.includes(query.trim())),
@@ -38,8 +49,9 @@ export default function LocationPage() {
   };
 
   const useCurrentLocation = () => {
+    setGeoError(null);
     if (!navigator.geolocation) {
-      window.alert("위치를 가져오지 못했어요. 동네를 직접 선택해 주세요.");
+      setGeoError(GEO_FAIL);
       return;
     }
     setLocating(true);
@@ -59,7 +71,7 @@ export default function LocationPage() {
       },
       () => {
         setLocating(false);
-        window.alert("위치를 가져오지 못했어요. 동네를 직접 선택해 주세요.");
+        setGeoError(GEO_FAIL);
       },
     );
   };
@@ -100,6 +112,12 @@ export default function LocationPage() {
                 <ChevronRightIcon size={20} className="text-faint" />
               </button>
 
+              {geoError && (
+                <p role="alert" className="mt-3 text-[13px] font-medium text-primary-deep">
+                  {geoError}
+                </p>
+              )}
+
               <div className="my-5 flex items-center gap-3">
                 <span className="h-px flex-1 bg-line" />
                 <span className="text-[12px] text-muted">또는 직접 선택</span>
@@ -133,7 +151,7 @@ export default function LocationPage() {
               <div className="mt-5 flex items-center gap-2 rounded-lg bg-tint/60 px-3.5 py-3 text-[14px] text-primary-deep">
                 <CheckCircleIcon size={18} className="text-primary" />
                 <span>
-                  서울 마포구 <b>{selected}</b> 선택됨
+                  {DONG_REGION[selected] ? `${DONG_REGION[selected]} ` : ""}<b>{selected}</b> 선택됨
                 </span>
               </div>
             </div>
@@ -180,6 +198,12 @@ export default function LocationPage() {
               <ChevronRightIcon size={22} className="text-faint" />
             </button>
 
+            {geoError && (
+              <p role="alert" className="mt-3 text-[14px] font-medium text-primary-deep">
+                {geoError}
+              </p>
+            )}
+
             <div className="my-6 flex items-center gap-3">
               <span className="h-px flex-1 bg-line" />
               <span className="text-[13px] text-muted">또는 직접 선택</span>
@@ -213,7 +237,7 @@ export default function LocationPage() {
             <div className="mt-6 flex items-center gap-2 rounded-xl bg-tint/60 px-4 py-3.5 text-[15px] text-primary-deep">
               <CheckCircleIcon size={20} className="text-primary" />
               <span>
-                서울 마포구 <b>{selected}</b> 선택됨
+                {DONG_REGION[selected] ? `${DONG_REGION[selected]} ` : ""}<b>{selected}</b> 선택됨
               </span>
             </div>
 

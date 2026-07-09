@@ -55,22 +55,30 @@ export function WebLogo({
  *  - variant "marketing": 검색 · 로그인 · 시작하기 CTA (랜딩)
  *  - variant "app":        동네 pill · 북마크 · 아바타 (앱 내부)
  * ──────────────────────────────────────────────────────────── */
-type NavKey = "home" | "explore" | "report" | "policy";
+type NavKey = "home" | "explore" | "report" | "saved" | "my";
 
 const NAV_ITEMS: { key: NavKey; label: string; href: string }[] = [
   { key: "home", label: "홈", href: "/" },
   { key: "explore", label: "탐색", href: "/explore" },
   { key: "report", label: "동네 리포트", href: "/report" },
-  { key: "policy", label: "청년정책", href: "/explore" },
+  { key: "saved", label: "보관함", href: "/saved" },
 ];
 
 export function TopNav({
   active,
   variant = "app",
+  dongName,
+  userName,
 }: {
   active?: NavKey;
   variant?: "marketing" | "app";
+  /** 앱 variant 동네 pill 표기. 없으면 "동네 설정". */
+  dongName?: string;
+  /** 앱 variant 아바타 표기 이름(첫 글자만 렌더). 없으면 게스트. */
+  userName?: string;
 }) {
+  const dongLabel = dongName ?? "동네 설정";
+  const avatarChar = userName ? userName.slice(0, 1) : "게";
   return (
     <header className="sticky top-0 z-50 hidden h-[72px] items-center justify-between border-b border-line-alt bg-surface px-10 md:flex">
       <div className="flex items-center gap-9">
@@ -107,17 +115,25 @@ export function TopNav({
         </div>
       ) : (
         <div className="flex items-center gap-[18px]">
-          <button className="flex items-center gap-1.5 rounded-pill border border-primary/28 bg-tint px-3.5 py-2 text-[13px] font-semibold text-primary-deep">
+          <Link
+            href="/location"
+            className="flex items-center gap-1.5 rounded-pill border border-primary/28 bg-tint px-3.5 py-2 text-[13px] font-semibold text-primary-deep"
+            aria-label="동네 변경"
+          >
             <LocationIcon size={16} />
-            망원동
+            {dongLabel}
             <ChevronDownIcon size={16} />
-          </button>
+          </Link>
           <Link href="/saved" className="grid size-8 place-items-center text-nav-link" aria-label="보관함">
             <BookmarkIcon size={22} />
           </Link>
-          <span className="grid size-9 place-items-center rounded-full bg-tint text-[13px] font-bold text-primary-deep">
-            도윤
-          </span>
+          <Link
+            href="/my"
+            className="grid size-9 place-items-center rounded-full bg-tint text-[13px] font-bold text-primary-deep"
+            aria-label="마이"
+          >
+            {avatarChar}
+          </Link>
         </div>
       )}
     </header>
@@ -168,15 +184,19 @@ export function DesktopShell({
   active,
   variant = "app",
   footer = true,
+  dongName,
+  userName,
 }: {
   children: ReactNode;
   active?: NavKey;
   variant?: "marketing" | "app";
   footer?: boolean;
+  dongName?: string;
+  userName?: string;
 }) {
   return (
     <div className="hidden min-h-dvh flex-col bg-bg md:flex">
-      <TopNav active={active} variant={variant} />
+      <TopNav active={active} variant={variant} dongName={dongName} userName={userName} />
       <main className="flex-1">{children}</main>
       {footer && <SiteFooter />}
     </div>

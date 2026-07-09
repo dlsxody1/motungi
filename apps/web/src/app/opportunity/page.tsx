@@ -19,7 +19,7 @@ import {
 import { MobileScreen, SafeBottom, SafeTop, Tag } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { CATEGORY_LABEL, displayNameOf, whyReasons } from "@motungi/core";
-import { findOpportunity, ONE_PICK } from "@/data/opportunities";
+import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
 
 /** A6 · 기회 상세 — 반응형. useSearchParams는 Suspense 경계 필요. */
@@ -32,15 +32,40 @@ export default function OpportunityPage() {
 }
 
 function OpportunityInner() {
+  useEnsureCatalog();
   const router = useRouter();
   const id = useSearchParams().get("id");
   const catalog = useAppStore((s) => s.catalog);
-  const o = catalog.find((x) => x.id === id) ?? findOpportunity(id) ?? catalog[0] ?? ONE_PICK;
+  // 요청 id 우선, 없으면 카탈로그 첫 항목. 카탈로그 자체가 비면 not-found.
+  const o = catalog.find((x) => x.id === id) ?? catalog[0];
 
   const savedIds = useAppStore((s) => s.savedIds);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const answers = useAppStore((s) => s.answers);
   const user = useAppStore((s) => s.user);
+  const homeDong = useAppStore((s) => s.anchors.home?.dongName);
+
+  if (!o) {
+    return (
+      <>
+        <div className="md:hidden">
+          <MobileScreen>
+            <div className="flex flex-1 flex-col bg-bg">
+              <SafeTop />
+              <OpportunityNotFound onExplore={() => router.push("/explore")} />
+              <SafeBottom />
+            </div>
+          </MobileScreen>
+        </div>
+        <DesktopShell active="report">
+          <div className="flex min-h-[60vh] flex-col">
+            <OpportunityNotFound onExplore={() => router.push("/explore")} />
+          </div>
+        </DesktopShell>
+      </>
+    );
+  }
+
   const saved = savedIds.includes(o.id);
 
   const displayName = displayNameOf(user);
@@ -91,9 +116,9 @@ function OpportunityInner() {
               </p>
 
               <div className="mt-4 rounded-xl bg-tint/60 p-4">
-                <p className="text-[12px] font-semibold text-primary-deep">참가비</p>
+                <p className="text-[12px] font-semibold text-primary-deep">{o.costHeading}</p>
                 <p className="text-[30px] font-extrabold leading-tight text-primary-deep">
-                  {o.costLabel} <span className="text-[15px] font-bold text-muted">/ 1인</span>
+                  {o.costLabel} <span className="text-[15px] font-bold text-muted">/ {o.costUnit}</span>
                 </p>
                 {o.costNote && (
                   <>
@@ -112,17 +137,21 @@ function OpportunityInner() {
                 ))}
               </div>
 
-              <h2 className="mb-3 mt-6 text-[17px] font-bold text-ink">즐기는 방법</h2>
-              <ol className="space-y-4">
-                {o.steps?.map((s, i) => (
-                  <li key={i} className="flex gap-3">
-                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-bold text-white">
-                      {i + 1}
-                    </span>
-                    <span className="text-[14px] leading-relaxed text-label">{s}</span>
-                  </li>
-                ))}
-              </ol>
+              {o.steps && o.steps.length > 0 && (
+                <>
+                  <h2 className="mb-3 mt-6 text-[17px] font-bold text-ink">즐기는 방법</h2>
+                  <ol className="space-y-4">
+                    {o.steps.map((s, i) => (
+                      <li key={i} className="flex gap-3">
+                        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-bold text-white">
+                          {i + 1}
+                        </span>
+                        <span className="text-[14px] leading-relaxed text-label">{s}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </>
+              )}
 
               <p className="mt-6 rounded-lg bg-surface-alt px-3.5 py-3 text-[12px] leading-relaxed text-muted">
                 자세히 보기를 누르면 주최·출처 채널로 이동해요. 모퉁이는 공공·제휴 정보를
@@ -161,7 +190,7 @@ function OpportunityInner() {
       </div>
 
       {/* ── 데스크탑 ── */}
-      <DesktopShell active="explore">
+      <DesktopShell active="report" dongName={homeDong} userName={user?.displayName}>
         <WebContainer className="pb-13 pt-7">
           {/* 브레드크럼 */}
           <nav className="flex items-center gap-1.5 text-[13px] font-medium text-muted">
@@ -208,21 +237,25 @@ function OpportunityInner() {
                 </ul>
               </div>
 
-              {/* 즐기는 방법 타임라인 */}
-              <h2 className="mb-4 mt-8 text-[19px] font-bold text-ink">즐기는 방법</h2>
-              <ol className="space-y-0">
-                {o.steps?.map((s, i, arr) => (
-                  <li key={i} className="flex gap-4">
-                    <div className="flex flex-col items-center">
-                      <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-primary text-[13px] font-bold text-white">
-                        {i + 1}
-                      </span>
-                      {i < arr.length - 1 && <span className="w-0.5 flex-1 bg-line" />}
-                    </div>
-                    <span className="pb-6 pt-1 text-[15px] leading-relaxed text-label">{s}</span>
-                  </li>
-                ))}
-              </ol>
+              {/* 즐기는 방법 타임라인 (스텝이 있을 때만) */}
+              {o.steps && o.steps.length > 0 && (
+                <>
+                  <h2 className="mb-4 mt-8 text-[19px] font-bold text-ink">즐기는 방법</h2>
+                  <ol className="space-y-0">
+                    {o.steps.map((s, i, arr) => (
+                      <li key={i} className="flex gap-4">
+                        <div className="flex flex-col items-center">
+                          <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-primary text-[13px] font-bold text-white">
+                            {i + 1}
+                          </span>
+                          {i < arr.length - 1 && <span className="w-0.5 flex-1 bg-line" />}
+                        </div>
+                        <span className="pb-6 pt-1 text-[15px] leading-relaxed text-label">{s}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </>
+              )}
 
               <div className="flex items-start gap-2.5 rounded-xl bg-info-bg px-4.5 py-4">
                 <InfoIcon size={18} className="mt-0.5 shrink-0 text-muted" />
@@ -243,9 +276,9 @@ function OpportunityInner() {
                       "linear-gradient(150deg, var(--color-primary), var(--color-primary-deep))",
                   }}
                 >
-                  <p className="text-[12px] font-semibold text-white">참가비</p>
+                  <p className="text-[12px] font-semibold text-white">{o.costHeading}</p>
                   <p className="text-[34px] font-extrabold leading-tight">
-                    {o.costLabel} <span className="text-[15px] font-bold text-white/90">/ 1인</span>
+                    {o.costLabel} <span className="text-[15px] font-bold text-white/90">/ {o.costUnit}</span>
                   </p>
                   {o.costNote && (
                     <p className="mt-1 text-[12px] font-medium text-white/90">{o.costNote}</p>
@@ -322,5 +355,23 @@ function OpportunityInner() {
         </WebContainer>
       </DesktopShell>
     </>
+  );
+}
+
+/** 활동을 찾을 수 없을 때(카탈로그 비었거나 id 불일치)의 상태 화면. */
+function OpportunityNotFound({ onExplore }: { onExplore: () => void }) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+      <p className="text-[18px] font-extrabold text-ink md:text-[22px]">활동을 찾을 수 없어요</p>
+      <p className="mt-2 max-w-[320px] text-[14px] leading-relaxed text-muted md:text-[15px]">
+        이 활동이 사라졌거나 아직 불러오지 못했어요. 탐색에서 다른 활동을 둘러보세요.
+      </p>
+      <button
+        onClick={onExplore}
+        className="mt-6 h-11 rounded-xl bg-primary px-6 text-[14px] font-bold text-white transition-colors hover:bg-primary-deep"
+      >
+        탐색 둘러보기
+      </button>
+    </div>
   );
 }

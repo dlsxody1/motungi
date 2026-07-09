@@ -1,20 +1,20 @@
 /**
- * 목업용 활동 데이터 — @motungi/core 의 Opportunity 형태를 따르되,
- * 화면 표시에 필요한 파생 문자열(비용 라벨·매칭도 등)을 함께 담는다.
- * 실제 데이터는 이후 소스 어댑터(문화행사/두루누비/일자리)가 이 형태로 채운다.
+ * 활동 데이터 레이어 — Supabase 실데이터를 화면용 형태(MockOpportunity)로 변환한다.
+ * (목업 배열은 제거됨: 화면은 서버 데이터에만 바인딩하고, 실패/빈결과는 상태로 노출한다.)
  */
-import type { GeoPoint, Opportunity, OpportunityCategory, OpportunityRow } from "@motungi/core";
+import type { GeoPoint, Opportunity, OpportunityRow } from "@motungi/core";
 import {
   buildMeta,
   categoryTone,
   CATEGORY_LABEL,
+  costHeading,
   costLabel,
   costUnit,
   rowToOpportunity,
 } from "@motungi/core";
 import { supabase } from "@/lib/supabase";
 
-/** 동네 → 대표 좌표. distance 스코어링 및 위치 앵커에 사용(행정동 API 전까지 근사값). */
+/** 동네 → 대표 좌표. 위치 앵커(집) 좌표 주입에 사용(행정동 API 전까지 근사값). */
 export const NEIGHBORHOOD_POINTS: Record<string, GeoPoint> = {
   망원동: { lat: 37.5556, lng: 126.9019 },
   성수동: { lat: 37.5445, lng: 127.0559 },
@@ -23,161 +23,28 @@ export const NEIGHBORHOOD_POINTS: Record<string, GeoPoint> = {
   합정동: { lat: 37.5495, lng: 126.9138 },
 };
 
+/**
+ * 화면 표시용 활동 카드 — core Opportunity + 파생 표시 필드.
+ * (이름은 히스토리상 MockOpportunity지만, 이제 rowToMock으로 실데이터에서 생성된다.)
+ */
 export type MockOpportunity = Opportunity & {
   /** 카테고리 한글 라벨 (태그용) */
   categoryLabel: string;
-  /** 비용 표시 문자열 (예: "무료", "₩12,000"). side_job이면 벌이(예: "+48만 원") */
+  /** 비용 표시 문자열 (예: "무료", "₩12,000"). side_job이면 수입(예: "+48만 원") */
   costLabel: string;
   /** 비용 단위/맥락 (예: "1인", "회당", "월") */
   costUnit: string;
+  /** 비용 값 앞 라벨. 일반 "참가비", side_job "예상 수입" */
+  costHeading: string;
   /** 매칭도 0~100 */
   matchScore: number;
   /** 상세 메타(칩) */
   meta: { label: string; value: string }[];
-  /** 참여 방법 스텝 */
+  /** 참여 방법 스텝 (실데이터엔 없을 수 있음 → 상세에서 없으면 섹션 숨김) */
   steps?: string[];
   costNote?: string;
   tone: "brand" | "mint";
 };
-
-export const ONE_PICK: MockOpportunity = {
-  id: "hangang-jazz",
-  source: "seoul_culture",
-  category: "culture",
-  categoryLabel: "동네 문화·공연",
-  title: "퇴근길 20분, 망원 한강 야간 재즈 소품 공연",
-  summary:
-    "망원 한강공원은 회사에서 15분. 방전형인 도윤님도 앉아서 즐기기 좋은 무료 야외 공연이에요.",
-  costKrw: 0,
-  costLabel: "무료",
-  costUnit: "1인",
-  costNote: "예약 없이 그냥 가면 돼요",
-  matchScore: 94,
-  difficulty: 0.1,
-  location: { dongName: "망원동" },
-  timeWindow: { startHour: 19, endHour: 21 },
-  meta: [
-    { label: "소요 시간", value: "약 1시간" },
-    { label: "강도", value: "낮음" },
-    { label: "시간대", value: "저녁 7시" },
-  ],
-  steps: [
-    "퇴근길에 망원 한강공원 입구로 가요.",
-    "돗자리나 벤치에 앉아 공연을 즐겨요.",
-    "끝나고 근처 야시장에서 간단히 먹고 마무리해요.",
-  ],
-  sourceLabel: "서울시 문화행사 · 2026.06 갱신",
-  ctaUrl: "#",
-  tone: "brand",
-};
-
-export const RELATED: MockOpportunity[] = [
-  {
-    id: "gyeongui-walk",
-    source: "trail",
-    category: "active",
-    categoryLabel: "동네 산책·운동",
-    title: "경의선숲길 저녁 산책 코스",
-    summary: "연남~홍대 3km, 조명 켜진 걷기길로 하루를 비워요.",
-    costKrw: 0,
-    costLabel: "무료",
-    costUnit: "1인",
-    matchScore: 88,
-    difficulty: 0.2,
-    location: { dongName: "연남동" },
-    timeWindow: { startHour: 18, endHour: 22 },
-    meta: [{ label: "거리", value: "3km" }],
-    tone: "mint",
-    sourceLabel: "두루누비 · 2026.06 갱신",
-  },
-  {
-    id: "night-market",
-    source: "commercial_area",
-    category: "food",
-    categoryLabel: "동네 먹거리",
-    title: "망원시장 저녁 먹거리 골목",
-    summary: "집에서 도보 7분, 퇴근 후 출출할 때 딱.",
-    costKrw: 12000,
-    costLabel: "₩12,000",
-    costUnit: "1인",
-    matchScore: 81,
-    difficulty: 0.1,
-    location: { dongName: "망원동" },
-    timeWindow: { startHour: 18, endHour: 21 },
-    meta: [{ label: "거리", value: "도보 7분" }],
-    tone: "brand",
-    sourceLabel: "소상공인 상권정보",
-  },
-];
-
-/** B1 탐색 목록용 확장 데이터 */
-export const EXPLORE_LIST: MockOpportunity[] = [
-  ONE_PICK,
-  RELATED[0]!,
-  RELATED[1]!,
-  {
-    id: "drawing-class",
-    source: "culture_info",
-    category: "class",
-    categoryLabel: "클래스·배움",
-    title: "연남동 원데이 드로잉 클래스",
-    summary: "연남동 공방 · 회당 2시간, 초보 환영",
-    costKrw: 35000,
-    costLabel: "₩35,000",
-    costUnit: "회당",
-    matchScore: 76,
-    difficulty: 0.3,
-    location: { dongName: "연남동" },
-    timeWindow: { startHour: 19, endHour: 21 },
-    meta: [],
-    tone: "brand",
-  },
-  {
-    id: "cafe-part",
-    source: "seoul_jobs",
-    category: "side_job",
-    categoryLabel: "퇴근후 부업",
-    title: "주말 오전 동네 카페 파트",
-    summary: "토·일 4시간, 망원동 인근 · 원하는 시간만",
-    costKrw: 480000,
-    costLabel: "+48만 원",
-    costUnit: "월",
-    costNote: "용돈벌이로 딱",
-    matchScore: 68,
-    difficulty: 0.3,
-    location: { dongName: "망원동" },
-    timeWindow: { startHour: 9, endHour: 13 },
-    meta: [{ label: "예상 시간", value: "주 8시간" }],
-    tone: "brand",
-    sourceLabel: "서울시 일자리플러스센터",
-  },
-];
-
-export const CATEGORY_LABELS: Record<OpportunityCategory, string> = {
-  culture: "문화·공연",
-  active: "운동·산책",
-  side_job: "부업",
-  class: "클래스",
-  food: "먹거리",
-  market: "마켓",
-};
-
-/** dongName → 좌표를 location.point에 채운다(스코어링 distance 축용). */
-function withPoint<T extends MockOpportunity>(o: T): T {
-  const dong = o.location?.dongName;
-  const point = dong ? NEIGHBORHOOD_POINTS[dong] : undefined;
-  if (!point || o.location?.point) return o;
-  return { ...o, location: { ...o.location, point } };
-}
-
-/** 스코어링에 넣을 전체 후보(좌표 주입 완료). 화면은 EXPLORE_LIST 대신 이걸 쓴다. */
-export const ALL_OPPORTUNITIES: MockOpportunity[] = EXPLORE_LIST.map(withPoint);
-
-/** id로 단일 활동 조회. 없으면 undefined. */
-export function findOpportunity(id?: string): MockOpportunity | undefined {
-  if (!id) return undefined;
-  return ALL_OPPORTUNITIES.find((o) => o.id === id);
-}
 
 // ── Supabase 실데이터 연동 ─────────────────────────────────
 
@@ -189,6 +56,7 @@ function rowToMock(row: OpportunityRow): MockOpportunity {
     categoryLabel: CATEGORY_LABEL[opp.category],
     costLabel: costLabel(opp.costKrw, opp.category),
     costUnit: costUnit(opp.category),
+    costHeading: costHeading(opp.category),
     matchScore: 0, // 스코어링에서 재계산됨
     meta: buildMeta(opp),
     tone: categoryTone(opp.category),
@@ -196,17 +64,32 @@ function rowToMock(row: OpportunityRow): MockOpportunity {
 }
 
 /**
- * Supabase에서 활동 후보를 읽어온다. 실패/미설정 시 mock으로 폴백.
- * 스코어링(pickTop)에 그대로 넣을 수 있는 형태.
+ * 카탈로그 로드 상태.
+ * - ok: 데이터 1건 이상 정상 로드
+ * - empty: 조회는 성공했지만 0건
+ * - error: 조회 실패(네트워크/서버)
+ * - unconfigured: Supabase 환경변수 미설정
  */
-export async function fetchOpportunities(): Promise<MockOpportunity[]> {
-  if (!supabase) return ALL_OPPORTUNITIES;
+export type CatalogStatus = "ok" | "empty" | "error" | "unconfigured";
+
+export interface CatalogResult {
+  data: MockOpportunity[];
+  status: CatalogStatus;
+}
+
+/**
+ * Supabase에서 활동 후보를 읽어온다. 목업 폴백 없음 — 실패/빈결과는 상태로 반환한다.
+ * data는 스코어링(pickTop)에 그대로 넣을 수 있는 형태.
+ */
+export async function fetchOpportunities(): Promise<CatalogResult> {
+  if (!supabase) return { data: [], status: "unconfigured" };
   const { data, error } = await supabase
     .from("opportunities")
     .select(
       "id,source,category,external_id,title,summary,cost_krw,difficulty,dong_name,lat,lng,cta_url,deadline,source_label,time_start_hour,time_end_hour",
     )
     .limit(200);
-  if (error || !data || data.length === 0) return ALL_OPPORTUNITIES;
-  return (data as OpportunityRow[]).map(rowToMock);
+  if (error) return { data: [], status: "error" };
+  if (!data || data.length === 0) return { data: [], status: "empty" };
+  return { data: (data as OpportunityRow[]).map(rowToMock), status: "ok" };
 }

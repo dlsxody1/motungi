@@ -1,23 +1,50 @@
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { ALL_OPPORTUNITIES } from "@/data/opportunities";
+import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
-import { Tag, Txt } from "@/ui/components";
+import { Button, Tag, Txt } from "@/ui/components";
 import { Location, Refresh } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
 
 /** A5 · 동네 리포트 (원픽 히어로) */
 export default function ReportScreen() {
+  useEnsureCatalog();
   const router = useRouter();
   const results = useAppStore((s) => s.results);
+  const catalog = useAppStore((s) => s.catalog);
+  const catalogStatus = useAppStore((s) => s.catalogStatus);
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
 
-  // 진단 전 직접 진입 시 fallback(원본 상위 3개).
-  const list = results.length > 0 ? results : ALL_OPPORTUNITIES.slice(0, 3);
-  const onePick = list[0]!;
+  // 스코어링 결과 우선, 없으면 카탈로그 상위 3개.
+  const list = results.length > 0 ? results : catalog.slice(0, 3);
+  const onePick = list[0];
   const related = list.slice(1);
 
   const openDetail = (id: string) => router.push({ pathname: "/opportunity", params: { id } });
+
+  // 데이터 없으면 상태 화면.
+  if (!onePick) {
+    const isError = catalogStatus === "error" || catalogStatus === "unconfigured";
+    return (
+      <View style={styles.emptyWrap}>
+        <Text style={styles.emptyTitle}>
+          {isError ? "활동을 불러오지 못했어요" : "아직 추천할 활동이 없어요"}
+        </Text>
+        <Text style={styles.emptyDesc}>
+          {isError
+            ? "잠시 후 다시 시도하거나, 60초 진단으로 원픽을 받아보세요."
+            : "60초 진단을 하면 우리 동네 원픽을 골라드려요."}
+        </Text>
+        <View style={{ marginTop: 24, alignSelf: "stretch", gap: 10, paddingHorizontal: 32 }}>
+          <Button
+            label={isError ? "다시 시도" : "60초 진단하기"}
+            onPress={() => router.replace(isError ? "/loading" : "/diagnosis")}
+          />
+          <Button label="탐색 둘러보기" variant="ghost" onPress={() => router.push("/explore")} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={styles.content}>
@@ -54,7 +81,7 @@ export default function ReportScreen() {
 
           <View style={styles.incomeBox}>
             <View>
-              <Text style={styles.incomeCap}>참가비</Text>
+              <Text style={styles.incomeCap}>{onePick.costHeading}</Text>
               <Text style={styles.incomeVal}>{onePick.costLabel}</Text>
             </View>
             {!!onePick.costNote && (
@@ -113,6 +140,9 @@ export default function ReportScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24 },
+  emptyWrap: { flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
+  emptyTitle: { fontSize: 20, fontWeight: "800", color: C.ink, textAlign: "center" },
+  emptyDesc: { marginTop: 8, fontSize: 14, lineHeight: 21, color: C.muted, textAlign: "center", maxWidth: 320 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingTop: 4 },
   hTitle: { fontSize: 18, fontWeight: "800", color: C.ink },
   redo: {

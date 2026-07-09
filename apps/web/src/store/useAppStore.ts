@@ -6,7 +6,7 @@
 import type { DiagnosisAnswers, Location, UserAnchors } from "@motungi/core";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { MockOpportunity } from "@/data/opportunities";
+import type { CatalogStatus, MockOpportunity } from "@/data/opportunities";
 import { supabase } from "@/lib/supabase";
 
 type AnchorSlot = "home" | "work";
@@ -24,6 +24,8 @@ interface AppState {
   results: MockOpportunity[];
   /** 전체 활동 카탈로그(서버 실데이터). 탐색/상세/보관함이 참조. 세션 캐시. */
   catalog: MockOpportunity[];
+  /** 카탈로그 로드 상태. 아직 안 불러왔으면 "idle". */
+  catalogStatus: CatalogStatus | "idle";
   savedIds: string[];
   /** 로그인 사용자. null = 게스트. */
   user: AuthUser | null;
@@ -31,7 +33,7 @@ interface AppState {
   setAnchor: (slot: AnchorSlot, location: Location) => void;
   setAnswers: (answers: DiagnosisAnswers) => void;
   setResults: (results: MockOpportunity[]) => void;
-  setCatalog: (catalog: MockOpportunity[]) => void;
+  setCatalog: (catalog: MockOpportunity[], status: CatalogStatus) => void;
   setUser: (user: AuthUser | null) => void;
   setSavedIds: (ids: string[]) => void;
   toggleSaved: (id: string) => void;
@@ -44,6 +46,7 @@ export const useAppStore = create<AppState>()(
       answers: null,
       results: [],
       catalog: [],
+      catalogStatus: "idle",
       savedIds: [],
       user: null,
 
@@ -51,7 +54,7 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ anchors: { ...s.anchors, [slot]: location } })),
       setAnswers: (answers) => set({ answers }),
       setResults: (results) => set({ results }),
-      setCatalog: (catalog) => set({ catalog }),
+      setCatalog: (catalog, status) => set({ catalog, catalogStatus: status }),
       setUser: (user) => set({ user }),
       setSavedIds: (savedIds) => set({ savedIds }),
       toggleSaved: (id) => {

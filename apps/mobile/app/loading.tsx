@@ -19,11 +19,11 @@ export default function LoadingScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    // Supabase 실데이터(폴백 mock)를 받아 진단 답변으로 스코어링 → 상위 3개 저장.
+    // Supabase 실데이터를 받아 진단 답변으로 스코어링 → 상위 3개 저장.
     void (async () => {
-      const candidates = await fetchOpportunities();
+      const { data: candidates, status } = await fetchOpportunities();
       if (cancelled) return;
-      setCatalog(candidates); // 탐색/상세/보관함이 참조할 전체 카탈로그
+      setCatalog(candidates, status); // 탐색/상세/보관함이 참조할 전체 카탈로그 + 상태
       const ranked = answers
         ? pickTop(candidates, answers, anchors, 3).map((r) => {
             const opp = r.opportunity as MockOpportunity;
