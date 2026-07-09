@@ -150,3 +150,91 @@ export function UserIcon(p: IconProps) {
     </Svg>
   );
 }
+
+export function ArrowRightIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
+    </Svg>
+  );
+}
+
+export function FireIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M12 3c1 3-1 4-1 6a3 3 0 1 0 5 2c1 2 1.5 3.5 1.5 5A5.5 5.5 0 1 1 8 12c.5-2 2-3.5 4-9Z" />
+    </Svg>
+  );
+}
+
+export function SparkleIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" />
+    </Svg>
+  );
+}
+
+export function BoltIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" />
+    </Svg>
+  );
+}
+
+export function SavingsIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M19 9a2 2 0 0 0 0-4c-1 0-1.6.7-1.9 1.4A7 7 0 0 0 4 11v3l-2 1v3h4l1-2a7 7 0 0 0 8 0v2h3v-4a7 7 0 0 0-1-6.5" />
+      <circle cx="8.5" cy="10.5" r="0.5" fill="currentColor" />
+    </Svg>
+  );
+}
+
+export function InfoIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5" />
+      <path d="M12 8h.01" />
+    </Svg>
+  );
+}
+
+export function ShieldIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M12 3 5 6v5c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6l-7-3Z" />
+    </Svg>
+  );
+}
+
+export function TimerIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="12" cy="13" r="8" />
+      <path d="M12 13V9" />
+      <path d="M9 2h6" />
+    </Svg>
+  );
+}
+
+export function CloseIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M6 6l12 12M18 6 6 18" />
+    </Svg>
+  );
+}
+
+export function InsightsIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M4 19V5" />
+      <path d="M4 15l5-5 4 3 6-7" />
+      <path d="M19 6h.01" />
+    </Svg>
+  );
+}

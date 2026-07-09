@@ -1,32 +1,78 @@
-import { DIAGNOSIS_STEPS } from "@motungi/core";
-import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Logo } from "@/ui/components";
+import { C } from "@/ui/theme";
 
-/**
- * 스캐폴딩 확인용 플레이스홀더. 디자인/UI는 다음 단계에서.
- * 공용 패키지(@motungi/core) import가 앱에서 동작하는지만 증명한다.
- */
-export default function Index() {
+const TEASERS = [
+  { k: "마찰 제로", v: "진단 60초면 끝나요" },
+  { k: "원픽", v: "수백 개 대신 딱 1~3개만" },
+  { k: "하이퍼로컬", v: "내 동네 기준으로 추천돼요" },
+];
+
+/** A1 · 온보딩 — 선셋 그라데이션 히어로 */
+export default function OnboardingScreen() {
+  const router = useRouter();
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>모퉁이 Corner</Text>
-      <Text>내 동네 모퉁이에, 기회가 있다.</Text>
-      <Text style={styles.muted}>
-        스캐폴딩 완료 · 진단 {DIAGNOSIS_STEPS.length}문항 준비됨
-      </Text>
-      <StatusBar style="auto" />
-    </View>
+    <LinearGradient
+      colors={["#e25067", "#e05f67", "#f2a06a"]}
+      locations={[0, 0.42, 1]}
+      start={{ x: 0.1, y: 0 }}
+      end={{ x: 0.9, y: 1 }}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        <View style={styles.body}>
+          <Logo onDark size={30} />
+
+          <View style={{ marginTop: 56 }}>
+            <Text style={styles.title}>퇴근하고{"\n"}뭐하지?</Text>
+            <Text style={styles.sub}>
+              퇴근 후·주말 내 동네에서 할 만한 것,{"\n"}딱 1~3개만 골라드려요.
+            </Text>
+          </View>
+
+          <View style={{ marginTop: 32, gap: 14 }}>
+            {TEASERS.map((t) => (
+              <View key={t.k} style={styles.teaser}>
+                <Text style={styles.teaserK}>{t.k}</Text>
+                <Text style={styles.teaserV}>{t.v}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.actions}>
+            <Pressable style={styles.cta} onPress={() => router.push("/location")}>
+              <Text style={styles.ctaLabel}>내 동네에서 찾기</Text>
+            </Pressable>
+            <Pressable style={styles.ghost} onPress={() => router.push("/location")}>
+              <Text style={styles.ghostLabel}>로그인 없이 시작하기</Text>
+            </Pressable>
+          </View>
+        </View>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  safe: { flex: 1 },
+  body: { flex: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16 },
+  title: { fontSize: 34, lineHeight: 40, fontWeight: "800", color: C.white, letterSpacing: -0.6 },
+  sub: { marginTop: 16, fontSize: 15, lineHeight: 23, color: "rgba(255,255,255,0.85)" },
+  teaser: { flexDirection: "row", alignItems: "baseline", gap: 12 },
+  teaserK: { width: 78, fontSize: 14, fontWeight: "700", color: C.white },
+  teaserV: { fontSize: 14, color: "rgba(255,255,255,0.75)" },
+  actions: { marginTop: "auto", gap: 12 },
+  cta: {
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: C.white,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    padding: 24,
   },
-  title: { fontSize: 24, fontWeight: "700" },
-  muted: { color: "#888" },
+  ctaLabel: { fontSize: 16, fontWeight: "700", color: C.primaryDeep },
+  ghost: { height: 44, alignItems: "center", justifyContent: "center" },
+  ghostLabel: { fontSize: 14, fontWeight: "600", color: "rgba(255,255,255,0.8)" },
 });
