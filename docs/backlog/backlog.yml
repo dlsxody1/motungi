@@ -18,15 +18,18 @@ backlog:
   - id: M-001
     title: culture/active 어댑터 구현 및 단위 테스트
     priority: high
-    status: todo
+    status: done
     scope: [packages/core]
     done_when:
       - "packages/core에 culture·active 어댑터가 Raw* 응답을 OppRow로 매핑한다"
       - "각 어댑터에 대응하는 *.test.ts가 추가되고 통과한다"
       - "pnpm --filter @motungi/core test 통과"
     notes: >
-      HANDOFF §2 '진행 중/미완'. seed·Edge Function 어댑터는 있으나 core 레벨 어댑터·테스트 미완.
-      기존 packages/core/src/*.test.ts 컨벤션을 따를 것.
+      [2026-07-10 야간 파이프라인] 이미 완료된 작업이었음 — 백로그가 stale했다.
+      packages/core/src/adapters/에 seoul-culture(→culture)·culture-info(→culture)·
+      trail(→active) 어댑터와 각 *.test.ts가 이미 존재하고, index.ts에 매핑이 문서화됨.
+      pnpm --filter @motungi/core test 61/61 통과 확인. done_when 3개 모두 충족.
+      원인: HANDOFF.md §2가 stale해서 완료된 항목을 백로그에 등재했음. → HANDOFF §2 갱신 필요(후속).
 
   - id: M-002
     title: 목업 데이터 → Supabase 읽기 전환 (웹)
