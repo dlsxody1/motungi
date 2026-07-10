@@ -1,0 +1,64 @@
+# 모퉁이(motungi) 야간 파이프라인 백로그 (작업 큐)
+#
+# 밤마다 routine이 여기서 status:todo 중 priority 최상위 1개를 집는다 (동순위면 id 오름차순).
+# "제품을 발전시켜" 같은 열린 지시 금지 — 모든 야간 작업은 여기 등재된 이슈 단위로만 흐른다.
+#
+# 필드:
+#   id         고유 ID (M-NNN). 브랜치·PR·리포트에서 이 id로 추적.
+#   title      한 줄 제목
+#   priority   high | medium | low  (planner가 이 순으로 집음)
+#   status     todo | doing | done  (reviewer가 PR 열 때 todo→doing, 사람이 머지 후 done)
+#   scope      건드릴 디렉토리 경계 (범위 밖 금지)
+#   done_when  수용 기준. planner가 검증 가능한 체크리스트로 확장한다.
+#   notes      배경/참고 (HANDOFF.md 근거 등)
+#
+# 새 이슈 추가는 사람이 이 파일에 손으로. 밤 에이전트는 status만 갱신한다.
+
+backlog:
+  - id: M-001
+    title: culture/active 어댑터 구현 및 단위 테스트
+    priority: high
+    status: todo
+    scope: [packages/core]
+    done_when:
+      - "packages/core에 culture·active 어댑터가 Raw* 응답을 OppRow로 매핑한다"
+      - "각 어댑터에 대응하는 *.test.ts가 추가되고 통과한다"
+      - "pnpm --filter @motungi/core test 통과"
+    notes: >
+      HANDOFF §2 '진행 중/미완'. seed·Edge Function 어댑터는 있으나 core 레벨 어댑터·테스트 미완.
+      기존 packages/core/src/*.test.ts 컨벤션을 따를 것.
+
+  - id: M-002
+    title: 목업 데이터 → Supabase 읽기 전환 (웹)
+    priority: high
+    status: todo
+    scope: [apps/web]
+    done_when:
+      - "apps/web의 화면이 목업 대신 opportunities 테이블을 읽는다"
+      - "로딩/에러/빈 상태가 처리된다"
+      - "apps/web typecheck 통과, 관련 컴포넌트 테스트 통과"
+    notes: >
+      HANDOFF §3-2. 적재 Edge Function+Cron은 이미 있음(0007). 이제 읽기측을 실데이터로.
+
+  - id: M-003
+    title: scoring.ts cost+time 가중치 엣지케이스 테스트 보강
+    priority: medium
+    status: todo
+    scope: [packages/core]
+    done_when:
+      - "cost=0(무료) 가점, time 윈도우 경계, 2앵커 min 거리에 대한 테스트가 추가된다"
+      - "packages/core 테스트 통과"
+    notes: >
+      HANDOFF §3-1. 피벗으로 income→cost+time 재설계 완료됐으나 엣지케이스 커버리지 부족.
+
+  - id: M-004
+    title: 진단 플로우 접근성(a11y) 점검 및 개선
+    priority: low
+    status: todo
+    scope: [apps/web]
+    done_when:
+      - "진단 3문항 플로우에 axe 접근성 위반이 없다"
+      - "키보드 내비게이션·포커스 순서가 올바르다"
+      - "관련 테스트 통과"
+    notes: >
+      react-testing 스킬의 axe 단언 활용. 저위험·검증가능 → 야간 파이프라인 첫 대상으로 적합.
