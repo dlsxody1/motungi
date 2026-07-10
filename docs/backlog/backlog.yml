@@ -42,6 +42,8 @@ backlog:
       - "apps/web typecheck 통과, 관련 컴포넌트 테스트 통과"
     notes: >
       HANDOFF §3-2. 적재 Edge Function+Cron은 이미 있음(0007). 이제 읽기측을 실데이터로.
+      실데이터 읽기는 커밋 7b180a6(2026-07-09)에서 이미 구현됨. 이번 야간 작업의 실제 범위는
+      apps/web 테스트 인프라 신규 구축 + 검증 테스트(fetchOpportunities 4상태, 화면 상태 UI 렌더)였음.
 
   - id: M-003
     title: scoring.ts cost+time 가중치 엣지케이스 테스트 보강
