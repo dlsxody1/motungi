@@ -34,7 +34,7 @@ backlog:
   - id: M-002
     title: 목업 데이터 → Supabase 읽기 전환 (웹)
     priority: high
-    status: todo
+    status: doing
     scope: [apps/web]
     done_when:
       - "apps/web의 화면이 목업 대신 opportunities 테이블을 읽는다"
@@ -42,6 +42,17 @@ backlog:
       - "apps/web typecheck 통과, 관련 컴포넌트 테스트 통과"
     notes: >
       HANDOFF §3-2. 적재 Edge Function+Cron은 이미 있음(0007). 이제 읽기측을 실데이터로.
+      [2026-07-11 야간 파이프라인] M-001과 동일한 패턴 — done_when 1·2번(실데이터 바인딩,
+      4상태 처리)은 커밋 7b180a6(2026-07-09)에서 이미 완료돼 있었음. apps/web/src/data/opportunities.ts가
+      이미 Supabase opportunities 테이블을 읽고 ok/empty/error/unconfigured 4상태를 반환하며,
+      목업 배열·폴백은 없음. 실제로 부족했던 건 3번 — apps/web에 vitest 등 테스트 인프라 자체가
+      없었음. 이번 밤엔 vitest 인프라 도입(vitest.config.ts, vitest.setup.ts, package.json test
+      스크립트) + opportunities.test.ts(4상태 매핑 단위 테스트) + explore/report page.test.tsx
+      (catalogStatus별 렌더 컴포넌트 테스트, useAppStore.setState로 fetch 우회)를 추가.
+      pnpm --filter @motungi/web test 3 files/10 tests 통과, typecheck·build 통과, core 61개
+      회귀 없음. report 페이지는 ReportEmpty(빈/에러) 케이스만 커버, 정상 원픽 렌더 케이스는
+      미검증(후속 과제). apps/mobile은 이번 스코프 밖이라 미전환 상태로 추정, 확인 안 함.
+      done_when 3개 모두 사실상 충족되었으나, 사람 리뷰 후 머지되기 전까지는 doing으로 둔다.
 
   - id: M-003
     title: scoring.ts cost+time 가중치 엣지케이스 테스트 보강
