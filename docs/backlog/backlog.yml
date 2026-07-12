@@ -46,13 +46,17 @@ backlog:
   - id: M-003
     title: scoring.ts cost+time 가중치 엣지케이스 테스트 보강
     priority: medium
-    status: todo
+    status: doing
     scope: [packages/core]
     done_when:
       - "cost=0(무료) 가점, time 윈도우 경계, 2앵커 min 거리에 대한 테스트가 추가된다"
       - "packages/core 테스트 통과"
     notes: >
       HANDOFF §3-1. 피벗으로 income→cost+time 재설계 완료됐으나 엣지케이스 커버리지 부족.
+      [2026-07-12 야간 파이프라인] scoring.test.ts에 cost/time/distance 엣지케이스 12개 추가
+      (commit 13aee6f, nightly/2026-07-12). scoring.ts 로직은 수정 없음 — 손계산 검증 결과
+      기존 구현이 모든 신규 AC를 이미 충족. pnpm --filter @motungi/core test 71/71 통과,
+      typecheck 에러 0. draft PR(main 대상) 생성 대기 중 — 사람 리뷰·머지 필요.
 
   - id: M-004
     title: 진단 플로우 접근성(a11y) 점검 및 개선
