@@ -57,7 +57,7 @@ backlog:
   - id: M-004
     title: 진단 플로우 접근성(a11y) 점검 및 개선
     priority: low
-    status: todo
+    status: doing
     scope: [apps/web]
     done_when:
       - "진단 3문항 플로우에 axe 접근성 위반이 없다"
@@ -65,3 +65,13 @@ backlog:
       - "관련 테스트 통과"
     notes: >
       react-testing 스킬의 axe 단언 활용. 저위험·검증가능 → 야간 파이프라인 첫 대상으로 적합.
+      [2026-07-13 야간 파이프라인, 브랜치 nightly/2026-07-13] AC-1~AC-6 전부 통과로 status를
+      doing으로 전환. apps/web에 vitest+RTL+vitest-axe 테스트 인프라 신규 도입, diagnosis/page.tsx에
+      aria-label 1개 + data-testid 2개만 추가(TDD, axe RED 확인 후 GREEN). 상세는
+      docs/nightly/nightly-2026-07-13.md 참고.
+      선정 배경: 원래 기계적 최우선은 M-002(high)였으나, M-002/M-003을 다룬 draft PR #6/#7/#8이
+      이미 열려 있고 3일째 사람의 리뷰/머지 없이 정체 중이라 중복 작업 방지를 위해 우회하고
+      M-004를 대신 선택함. → 사람이 PR #6/#7/#8을 검토해 머지 또는 폐기 결정을 내려야 하고,
+      결과에 따라 M-002/M-003의 status를 갱신해야 함. 또한 이 브랜치가 새로 만든 vitest 인프라
+      파일(vitest.config.ts/vitest.setup.ts/apps/web/package.json/pnpm-lock.yaml)이 PR #6/#7과
+      겹칠 가능성이 있어, 먼저 머지되는 쪽 기준으로 나머지가 rebase 필요.
