@@ -97,12 +97,12 @@ export default function DiagnosisPage() {
   return (
     <>
       {/* ── 모바일 ── */}
-      <div className="md:hidden">
+      <div className="md:hidden" data-testid="diagnosis-mobile">
         <MobileScreen>
           <div className="flex flex-1 flex-col bg-bg">
             <SafeTop />
             <div className="flex items-center gap-3 px-6 py-2">
-              <button onClick={goBack} className="tap-safe -ml-2 flex w-9 text-ink">
+              <button onClick={goBack} aria-label="뒤로가기" className="tap-safe -ml-2 flex w-9 text-ink">
                 <ChevronLeftIcon size={22} />
               </button>
               <div className="h-[6px] flex-1 overflow-hidden rounded-full bg-line-alt">
@@ -177,7 +177,7 @@ export default function DiagnosisPage() {
       </div>
 
       {/* ── 데스크탑 ── */}
-      <div className="hidden min-h-dvh flex-col bg-bg md:flex">
+      <div className="hidden min-h-dvh flex-col bg-bg md:flex" data-testid="diagnosis-desktop">
         {/* 슬림 앱바 */}
         <header className="flex h-[66px] items-center justify-between border-b border-line-alt bg-surface px-10">
           <WebLogo size={32} />
