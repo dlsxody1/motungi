@@ -34,7 +34,7 @@ backlog:
   - id: M-002
     title: 목업 데이터 → Supabase 읽기 전환 (웹)
     priority: high
-    status: todo
+    status: done
     scope: [apps/web]
     done_when:
       - "apps/web의 화면이 목업 대신 opportunities 테이블을 읽는다"
@@ -42,11 +42,14 @@ backlog:
       - "apps/web typecheck 통과, 관련 컴포넌트 테스트 통과"
     notes: >
       HANDOFF §3-2. 적재 Edge Function+Cron은 이미 있음(0007). 이제 읽기측을 실데이터로.
+      [2026-07-14 통합] 실데이터 바인딩(fetchOpportunities 4상태)은 커밋 7b180a6에서 이미
+      완료돼 있었음. 부족했던 테스트 인프라·커버리지만 채움. 중복 draft #6·#7은 close하고
+      단일 통합 커밋 a8e857a로 main에 병합(vitest+RTL+jsdom, web 10 tests). done_when 전부 충족.
 
   - id: M-003
     title: scoring.ts cost+time 가중치 엣지케이스 테스트 보강
     priority: medium
-    status: doing
+    status: done
     scope: [packages/core]
     done_when:
       - "cost=0(무료) 가점, time 윈도우 경계, 2앵커 min 거리에 대한 테스트가 추가된다"
@@ -61,7 +64,7 @@ backlog:
   - id: M-004
     title: 진단 플로우 접근성(a11y) 점검 및 개선
     priority: low
-    status: todo
+    status: done
     scope: [apps/web]
     done_when:
       - "진단 3문항 플로우에 axe 접근성 위반이 없다"
@@ -69,3 +72,5 @@ backlog:
       - "관련 테스트 통과"
     notes: >
       react-testing 스킬의 axe 단언 활용. 저위험·검증가능 → 야간 파이프라인 첫 대상으로 적합.
+      [2026-07-14 통합] #9의 diagnosis 산출물(page.tsx data-testid·aria-label + axe/키보드
+      테스트 6개)을 체리픽해 커밋 48d699d로 병합. vitest-axe 추가. web 16 tests 통과.
