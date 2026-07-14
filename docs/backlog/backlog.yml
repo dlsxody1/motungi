@@ -34,14 +34,16 @@ backlog:
   - id: M-002
     title: 목업 데이터 → Supabase 읽기 전환 (웹)
     priority: high
-    status: todo
+    status: done
     scope: [apps/web]
     done_when:
       - "apps/web의 화면이 목업 대신 opportunities 테이블을 읽는다"
       - "로딩/에러/빈 상태가 처리된다"
       - "apps/web typecheck 통과, 관련 컴포넌트 테스트 통과"
     notes: >
-      HANDOFF §3-2. 적재 Edge Function+Cron은 이미 있음(0007). 이제 읽기측을 실데이터로.
+      [2026-07-10 정정] 이미 완료된 작업이었음 — HANDOFF §2가 stale해 백로그에 등재됨(M-001과 동일 패턴).
+      web/mobile 둘 다 data/opportunities.ts에서 목업 배열 제거, fetchOpportunities()가 opportunities
+      테이블을 select, useAppStore가 catalogStatus로 로딩/에러/빈 상태 처리. done_when 3개 모두 충족.
 
   - id: M-003
     title: scoring.ts cost+time 가중치 엣지케이스 테스트 보강
@@ -65,3 +67,35 @@ backlog:
       - "관련 테스트 통과"
     notes: >
       react-testing 스킬의 axe 단언 활용. 저위험·검증가능 → 야간 파이프라인 첫 대상으로 적합.
+
+  - id: M-005
+    title: active(두루누비) 좌표 백필 — GPX에서 대표 좌표 추출
+    priority: high
+    status: done
+    scope: [supabase, packages/core]
+    done_when:
+      - "적재(ingest)가 두루누비 gpxpath GPX의 첫 trkpt lat/lon을 코스 대표 좌표로 백필한다"
+      - "기존 active 30행의 lat/lng/geom이 채워진다"
+      - "core 테스트 통과, edge function 배포"
+    notes: >
+      [2026-07-10] 버그: active 30행 전부 lat/lng NULL → 거리 스코어링(2앵커 haversine)이
+      active 카테고리 전체에서 무력화. 원인: 두루누비 courseList/routeList 응답엔 좌표가 없고
+      좌표는 오직 GPX(gpxpath)의 <trkpt lat lon> 속성에만 존재(실측 확인). mapTrail이 lat/lng을
+      하드코딩 null로 둠. 수정: ingest/index.ts에 enrichTrailCoords 추가(GPX 첫 trkpt 파싱,
+      동시성 8). 기존 30행은 백필 UPDATE로 처리 → 30/30 with_geom 확인. edge function v3 배포.
+
+  - id: M-006
+    title: 빈 카테고리(side_job/food/market/class) 데이터 확보 또는 UI 처리
+    priority: medium
+    status: done
+    scope: [supabase, apps/web, apps/mobile]
+    done_when:
+      - "side_job(seoul_jobs 어댑터 존재)을 적재 파이프라인(ingest/index.ts)에 실제로 연결하거나"
+      - "또는 데이터 0건인 카테고리를 탐색 필터에서 숨겨 '눌러도 빈 화면'을 방지한다"
+      - "선택한 방향에 대한 테스트/타입체크 통과"
+    notes: >
+      [2026-07-13 정정] "UI 처리" arm이 이미 web/mobile 둘 다 구현돼 있어 done.
+      web: explore/page.tsx의 CATEGORIES가 `.filter((c) => c.label === "전체" || c.count > 0)`로
+      데이터 0건 카테고리를 동적 숨김. mobile: explore.tsx가 `FILTERS.filter((f) => !f.category ||
+      source.some((o) => o.category === f.category))`로 동일 처리. → '눌러도 빈 화면' 문제 없음.
+      side_job 실적재(seoul_jobs 어댑터 연결)는 데이터 품질·좌표 검증이 필요한 별도 기획 이슈로 미룸.

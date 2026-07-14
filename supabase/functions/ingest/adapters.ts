@@ -168,6 +168,7 @@ export function mapTrail(raw: Record<string, string>): OppRow | null {
     cost_krw: 0,
     difficulty,
     dong_name: raw.sigun || null,
+    // courseList엔 좌표 없음 — 적재(index.ts enrichTrailCoords)가 gpxpath GPX에서 백필.
     lat: null,
     lng: null,
     cta_url: raw.gpxpath || null,

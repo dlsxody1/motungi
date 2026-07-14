@@ -19,12 +19,14 @@
   },
   "devDependencies": {
     "turbo": "^2.3.3",
-    "typescript": "^5.7.3"
+    "typescript": "^7.0.2"
   },
   "pnpm": {
     "overrides": {
       "@types/react": "19.2.17",
-      "@types/react-dom": "19.2.3"
+      "@types/react-dom": "19.2.3",
+      "@motungi/web>typescript": "5.7.3",
+      "@motungi/mobile>typescript": "5.7.3"
     }
   }
 }

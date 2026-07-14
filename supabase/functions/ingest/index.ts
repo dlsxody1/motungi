@@ -83,6 +83,54 @@ async function fetchDataGoKrXml(url: string): Promise<Record<string, string>[]> 
   return items;
 }
 
+/**
+ * 두루누비 GPX에서 코스 대표 좌표(시작점) 추출.
+ * courseList/routeList 응답에는 좌표가 없고, 좌표는 오직 gpxpath(GPX 파일)의
+ * 첫 <trkpt lat="..." lon="..."> 속성에만 존재한다(실측 확인). WGS84.
+ * 실패(네트워크·빈 GPX)는 null 반환 → lat/lng NULL 유지(하드 실패 아님).
+ */
+async function fetchTrailStartCoord(
+  gpxpath?: string | null,
+): Promise<{ lat: number; lng: number } | null> {
+  if (!gpxpath) return null;
+  try {
+    const res = await fetch(gpxpath, { redirect: "follow" });
+    if (!res.ok) return null;
+    const xml = await res.text();
+    // 첫 trkpt(시작점). lat/lon은 자식 요소가 아니라 속성 — 순서 무관하게 각각 추출.
+    const m = xml.match(/<trkpt\b[^>]*>/);
+    if (!m) return null;
+    const lat = Number(m[0].match(/\blat="([^"]+)"/)?.[1]);
+    const lng = Number(m[0].match(/\blon="([^"]+)"/)?.[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 걷기길 row 배열에 GPX 시작 좌표를 백필. 코스마다 GPX 1회 fetch이므로
+ * 동시성 상한(CONCURRENCY)으로 청크 실행 — 소스 서버 부하·타임아웃 보호.
+ * gpxpath는 cta_url에 저장돼 있다(mapTrail).
+ */
+const TRAIL_GPX_CONCURRENCY = 8;
+async function enrichTrailCoords(rows: OppRow[]): Promise<OppRow[]> {
+  for (let i = 0; i < rows.length; i += TRAIL_GPX_CONCURRENCY) {
+    const chunk = rows.slice(i, i + TRAIL_GPX_CONCURRENCY);
+    const coords = await Promise.all(
+      chunk.map((r) => fetchTrailStartCoord(r.cta_url)),
+    );
+    coords.forEach((c, j) => {
+      if (c) {
+        chunk[j]!.lat = c.lat;
+        chunk[j]!.lng = c.lng;
+      }
+    });
+  }
+  return rows;
+}
+
 /** OppRow[] → opportunities upsert. (source, external_id) 충돌 시 갱신. */
 async function upsertRows(rows: OppRow[]): Promise<number> {
   if (!rows.length) return 0;
@@ -152,7 +200,12 @@ Deno.serve(async (req) => {
       if (!dataGoKrKey) throw new Error("DATA_GO_KR_SERVICE_KEY 없음");
       const url = `https://apis.data.go.kr/B551011/Durunubi/courseList?serviceKey=${enc}&numOfRows=${LIMIT}&pageNo=1&MobileOS=ETC&MobileApp=motungi&_type=json`;
       const raw = await fetchDataGoKrJson(url);
-      return raw.map(mapTrail).filter((r): r is OppRow => r != null && inMetro(r.dong_name));
+      const rows = raw
+        .map(mapTrail)
+        .filter((r): r is OppRow => r != null && inMetro(r.dong_name));
+      // courseList에는 좌표가 없다 — GPX에서 대표 좌표(시작점)를 백필해야
+      // 거리 스코어링(2앵커 haversine)이 active 카테고리에서 작동한다.
+      return await enrichTrailCoords(rows);
     }),
   ]);
 

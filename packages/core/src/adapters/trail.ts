@@ -3,7 +3,8 @@
  * 소스: data.go.kr B551011/Durunubi/courseList (공용 인증키).
  *
  * 전국 데이터 — 적재 계층이 sigun으로 서울/수도권만 필터한다.
- * 좌표는 gpxpath(GPX 파일)라 어댑터에서 채우지 않는다(적재 계층이 필요시 파싱).
+ * 좌표는 courseList 응답에 없고 gpxpath(GPX 파일)의 첫 <trkpt>에만 있다.
+ * 이 어댑터는 좌표를 채우지 않고, 적재 계층(ingest)이 GPX를 파싱해 백필한다.
  */
 import type { Opportunity } from "../types";
 
