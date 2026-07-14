@@ -12,7 +12,7 @@ model: claude-sonnet-5
 planner의 수용 기준 + 구현자(frontend-impl/backend-impl)의 diff.
 
 ## 할 일 (직접 실행 — 보고만 믿지 마라)
-1. `nightly/YYYY-MM-DD` 브랜치를 체크아웃한 상태에서 검증한다.
+1. (`origin/dev`에서 갈라낸) `nightly/YYYY-MM-DD` 브랜치를 체크아웃한 상태에서 검증한다.
 2. 관련 검증을 **실제로 실행**하고 출력을 기록한다:
    - `pnpm install --frozen-lockfile` (필요 시)
    - 영향받은 워크스페이스 typecheck
