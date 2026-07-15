@@ -201,3 +201,27 @@ describe("scoreOpportunity 축", () => {
     expect(sideJob.breakdown.cost).toBe(0.5);
   });
 });
+
+// M-006: time 축이 진단 timeSlot을 반영한다.
+describe("scoreOpportunity time 축 — timeSlot 분기", () => {
+  const evening = opp({ timeWindow: { startHour: 19, endHour: 21 } });
+  const daytime = opp({ timeWindow: { startHour: 13, endHour: 15 } });
+
+  it("weekday_evening: 저녁 활동은 가점, 낮 활동은 0", () => {
+    const a = { ...answers, timeSlot: "weekday_evening" as const };
+    expect(scoreOpportunity(evening, a, anchors).breakdown.time).toBeGreaterThan(0);
+    expect(scoreOpportunity(daytime, a, anchors).breakdown.time).toBe(0);
+  });
+
+  it("weekend: 낮 활동도 종일 창(10~22시)과 겹쳐 가점된다", () => {
+    const a = { ...answers, timeSlot: "weekend" as const };
+    // weekday_evening이면 0이던 낮 활동이 weekend 창에선 > 0.
+    expect(scoreOpportunity(daytime, a, anchors).breakdown.time).toBeGreaterThan(0);
+  });
+
+  it("flexible: 시간 선호 없음 → 활동 시간대와 무관하게 중립(0.5)", () => {
+    const a = { ...answers, timeSlot: "flexible" as const };
+    expect(scoreOpportunity(evening, a, anchors).breakdown.time).toBe(0.5);
+    expect(scoreOpportunity(daytime, a, anchors).breakdown.time).toBe(0.5);
+  });
+});

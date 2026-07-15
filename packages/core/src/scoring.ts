@@ -5,7 +5,7 @@
  * 축(뼈대): fit(관심사↔카테고리) · distance(2앵커 min) · time(퇴근후 겹침) · difficulty · cost.
  * v0: 규칙 가중합. 실데이터 연동 후 재보정 전제.
  */
-import type { DiagnosisAnswers, Energy } from "./diagnosis";
+import type { DiagnosisAnswers, Energy, TimeSlot } from "./diagnosis";
 import type { Location, Opportunity, TimeWindow, UserAnchors } from "./types";
 
 export interface ScoreWeights {
@@ -30,8 +30,17 @@ const ENERGY_DIFFICULTY_TOLERANCE: Record<Energy, number> = {
   active: 1.0,
 };
 
-/** 퇴근 후 코어 시간대(18~22시). time 축 겹침 판정 기준. */
-const AFTERWORK_WINDOW: TimeWindow = { startHour: 18, endHour: 22 };
+/**
+ * timeSlot별 선호 시간창. time 축 겹침 판정 기준.
+ * - weekday_evening: 퇴근 후 코어(18~22시)
+ * - weekend: 주간~저녁 종일 창(10~22시)
+ * - flexible: 시간 선호 없음(null) → time 축 중립(0.5)
+ */
+const TIMESLOT_WINDOW: Record<TimeSlot, TimeWindow | null> = {
+  weekday_evening: { startHour: 18, endHour: 22 },
+  weekend: { startHour: 10, endHour: 22 },
+  flexible: null,
+};
 
 /** cost 스코어 정규화 기준(원). 무료=만점, 이 값 이상이면 0점. */
 const COST_CEILING_KRW = 50_000;
@@ -88,13 +97,15 @@ export function scoreOpportunity(
   const d = nearestAnchorKm(anchors, opp.location);
   const distance = d == null ? 0.5 : clamp01(1 - d / 5);
 
-  // 시간: 퇴근후 코어(18~22시)와 활동 시간대 겹침 비율. 정보 없으면 중립.
+  // 시간: 진단 timeSlot의 선호 창과 활동 시간대 겹침 비율.
+  // 활동 시간 정보가 없거나 flexible(선호 없음)이면 중립.
+  const prefWindow = TIMESLOT_WINDOW[answers.timeSlot];
   const time =
-    opp.timeWindow == null
+    prefWindow == null || opp.timeWindow == null
       ? 0.5
       : clamp01(
-          overlapHours(AFTERWORK_WINDOW, opp.timeWindow) /
-            (AFTERWORK_WINDOW.endHour - AFTERWORK_WINDOW.startHour),
+          overlapHours(prefWindow, opp.timeWindow) /
+            (prefWindow.endHour - prefWindow.startHour),
         );
 
   // 난이도: 성향 허용치 이내면 만점, 넘으면 감점.

@@ -103,4 +103,32 @@ describe("whyReasons", () => {
     const r = whyReasons(opp({ costKrw: 12000 }), null);
     expect(r.some((x) => x.includes("참가비") && x.includes("12,000"))).toBe(true);
   });
+
+  // M-006: side_job은 costKrw가 벌이 성격 → '참가비/무료' 문구 금지, '예상 수입'으로.
+  it("side_job은 '참가비' 대신 '예상 수입' 문구를 쓴다", () => {
+    const r = whyReasons(opp({ category: "side_job", costKrw: 480_000 }), answers);
+    const joined = r.join(" ");
+    expect(joined).toContain("예상 수입");
+    expect(joined).toContain("+48만 원");
+    expect(joined).not.toContain("참가비");
+  });
+
+  it("side_job엔 '무료/참가비 없이' 문구를 붙이지 않는다(costKrw 0)", () => {
+    const r = whyReasons(opp({ category: "side_job", costKrw: 0 }), answers);
+    expect(r.join(" ")).not.toContain("참가비");
+    expect(r.some((x) => x.includes("그냥 가면"))).toBe(false);
+  });
+});
+
+describe("diagnosisSummaryChips — side_job 수입 톤(M-006)", () => {
+  it("side_job 유료는 '가성비 중심'이 아니라 '용돈벌이'", () => {
+    const chips = diagnosisSummaryChips(answers, opp({ category: "side_job", costKrw: 300_000 }));
+    expect(chips).toContain("용돈벌이");
+    expect(chips).not.toContain("가성비 중심");
+  });
+
+  it("일반 카테고리 유료는 여전히 '가성비 중심'", () => {
+    const chips = diagnosisSummaryChips(answers, opp({ category: "culture", costKrw: 12000 }));
+    expect(chips).toContain("가성비 중심");
+  });
 });

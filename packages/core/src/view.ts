@@ -147,7 +147,9 @@ export function diagnosisSummaryChips(
   if (firstInterest) chips.push(CATEGORY_LABEL[firstInterest]);
   chips.push(TIMESLOT_LABEL[answers.timeSlot]);
   chips.push(ENERGY_LABEL[answers.energy]);
-  chips.push(opp && opp.costKrw != null && opp.costKrw > 0 ? "가성비 중심" : "무료 위주");
+  // side_job은 costKrw가 벌이 성격 → '가성비/무료' 대신 수입 톤으로.
+  const paid = opp != null && opp.costKrw != null && opp.costKrw > 0;
+  chips.push(paid ? (opp!.category === "side_job" ? "용돈벌이" : "가성비 중심") : "무료 위주");
   return chips;
 }
 
@@ -183,8 +185,13 @@ export function whyReasons(
     reasons.push("퇴근 후 저녁 시간대에 즐기기 좋아요.");
   }
 
-  // ④ 비용.
-  if (opp.costKrw === 0) {
+  // ④ 비용(또는 side_job은 수입).
+  if (opp.category === "side_job") {
+    // side_job의 costKrw는 지출이 아니라 벌이 → '참가비/무료' 문구 금지.
+    if (opp.costKrw != null && opp.costKrw > 0) {
+      reasons.push(`${costHeading(opp.category)} ${costLabel(opp.costKrw, opp.category)} 받으며 즐길 수 있어요.`);
+    }
+  } else if (opp.costKrw === 0) {
     reasons.push("예약도 참가비도 없이 그냥 가면 돼요.");
   } else if (opp.costKrw != null && opp.costKrw > 0) {
     reasons.push(`참가비 ${costLabel(opp.costKrw, opp.category)}로 부담 없이 시작할 수 있어요.`);

@@ -101,7 +101,7 @@ backlog:
   - id: M-006
     title: "core 스코어링/카피 정확성: time 축 timeSlot 반영 + side_job 비용→수입 분기"
     priority: medium
-    status: todo
+    status: done
     scope: [packages/core]
     done_when:
       - "scoreOpportunity가 answers.timeSlot을 읽어 time 축을 분기한다(weekday_evening→18~22시, weekend→주간/종일 창, flexible→중립 0.5 또는 완화)"
@@ -112,6 +112,10 @@ backlog:
       correctness finding 2건 통합: 'time 축이 timeSlot 미사용'(medium)과 'whyReasons가 side_job 수입을
       참가비로 표기'(low+medium 중복 2건). 둘 다 packages/core의 규칙/카피 정확성 결함이라 한 밤 작업으로 묶음. side_job은
       현재 미배선이라 잠복이나 costHeading이 없앤 충돌 재발이라 함께 고정.
+      [2026-07-15 완료] scoring.ts에 TIMESLOT_WINDOW(weekday_evening 18~22 / weekend 10~22 /
+      flexible null=중립) 도입해 time 축을 answers.timeSlot으로 분기. view.ts whyReasons ④·
+      diagnosisSummaryChips가 side_job이면 costHeading '예상 수입'/'용돈벌이'로 분기, '참가비/무료'
+      문구 금지. 테스트 +7(scoring weekend/flexible 3, view side_job 4). core 91 통과, typecheck 클린.
   - id: M-007
     title: "core 테스트 커버리지 보강: scoring difficulty 축 + rowToOpportunity 부분 필드"
     priority: medium
