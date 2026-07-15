@@ -300,7 +300,7 @@ backlog:
   - id: M-019
     title: "문서 정합성 스윕: 역지오코딩·파이프라인 아키텍처·완료상태·데드 파이프라인 정정"
     priority: medium
-    status: todo
+    status: done
     scope: [docs, 루트(README.md·PRODUCT.md)]
     done_when:
       - "위치 역지오코딩 서술을 Naver Cloud Maps + NAVER_MAP_CLIENT_ID/NAVER_MAP_Client_SECRET로 교체하고(DATA-SOURCES·API-DESIGN·HANDOFF) Kakao는 소셜 로그인 용도로만 남긴다"
@@ -313,3 +313,8 @@ backlog:
       오기재(medium)·HANDOFF §2 완료항목 미반영(medium)·youth-policy 잔존(low)·API-DESIGN §5/§6
       stale(low)·PRODUCT.md 수입/지원금(low). 온보딩을 오도(잘못된 키 발급·비활성 크론)하는 코드-문서 불일치라 medium. 문서는
       편집 저렴해 한 밤 스윕 가능.
+      [2026-07-15 완료] 역지오코딩=Naver Cloud Maps임을 코드(api/geo/route.ts)로 검증 후 5개 문서
+      (DATA-SOURCES·API-DESIGN·HANDOFF·README·PRODUCT) 정정: Kakao Local→Naver(env·엔드포인트·프록시),
+      youth_policy/normalizeYouthPolicy 제거 명시, 파이프라인 GitHub Actions→Supabase Edge Function+
+      pg_cron(0007), 마이그레이션 실제명, 완료상태 반영, 수입/지원금 톤 제거(피벗 히스토리는 보존).
+      .md만 변경(코드 무수정), live stale 참조 0 검증.

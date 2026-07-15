@@ -22,8 +22,11 @@
 - UI 레이아웃(웹 Next.js + 앱 Expo), 디자인 시스템(`@motungi/tokens`), 공용 프리미티브.
 - DB 스키마 골격 `supabase/migrations/0001_init.sql`.
 - 도메인 골격 `packages/core` (types·diagnosis·scoring, 어댑터 스캐폴드 + 테스트 21개 통과).
-- **API 발급 완료**: data.go.kr 공용키(상권·두루누비·문화정보) + 서울 일자리(OA-13341).
+- **API 발급 완료**: data.go.kr 공용키(상권·두루누비·문화정보) + 서울 일자리(OA-13341) + Naver Cloud Maps(위치 역지오코딩).
 - **Supabase 신규 키 체계 적용**: publishable/secret key로 웹·앱 클라이언트 코드 갱신 완료.
+- **위치 역지오코딩 프록시 완료**: Naver Cloud Maps Reverse Geocoding 서버 프록시 `apps/web/src/app/api/geo/route.ts`(좌표→행정동). Client Secret은 서버 전용.
+- **적재 Edge Function + pg_cron 완료**: `supabase/functions/ingest` + 마이그레이션 `0007_cron_ingest_daily.sql`(일 1회). 현재 `seoul_culture`·`culture_info`·`trail` 배선.
+- **어댑터 구현 완료**: `packages/core/src/adapters`에 `seoul-culture`·`culture-info`·`trail`·`sports-facility`·`seoul-jobs`(TDD).
 
 ### 옛 기획 잔재 정리 — 완료 (2026-07-03)
 §3 인벤토리 전면 처리 완료:
@@ -33,9 +36,9 @@
 - **검증**: core 테스트 18개 통과, web/mobile typecheck 통과. (§2의 "테스트 21개"는 실제 18개였음.)
 
 ### 진행 중 / 미완
-- Kakao REST 키 발급(위치 프록시).
-- 적재 Edge Function + Cron, 목업→Supabase 읽기 전환.
-- culture/active 어댑터 구현(발급 응답으로 `Raw*` 확정 후).
+- `sports_facility`·`seoul_jobs` 어댑터 ingest 배선(매퍼는 있으나 발급 응답으로 `Raw*` 확정 후 게이팅 해제).
+- 목업→Supabase select 읽기 전환(`data/opportunities.ts` → DB).
+- 주소만 있는 소스(일자리)의 주소→좌표 지오코딩.
 
 ## 3. 바꿔야 할 것 인벤토리 (옛 기획 잔재)
 
@@ -139,7 +142,7 @@
 `.env.example` 참고. 요지:
 - data.go.kr 3종 = 공용 키 `DATA_GO_KR_SERVICE_KEY`(Decoding, 서버 전용).
 - 서울 일자리 = `SEOUL_OPENAPI_KEY`(서버 전용).
-- Kakao = `KAKAO_REST_API_KEY`(서버 전용, 미발급).
+- Naver Cloud Maps(위치 역지오코딩) = `NAVER_MAP_CLIENT_ID` + `NAVER_MAP_Client_SECRET`(서버 전용, 발급 완료).
 - Supabase = `NEXT_PUBLIC_/EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`(공개) + `SUPABASE_SECRET_KEY`(서버 전용).
 - **원칙**: 외부 API 키·secret은 Edge Function 시크릿으로만. 클라는 publishable 읽기만.
 
@@ -154,12 +157,12 @@
 4. **목업 데이터 교체** (🟠) — web/mobile `opportunities.ts` 동시 (culture/active 예시).
 5. **UX 카피 교체** (🟠) — 진단 Q2/Q4 → 리포트 "월 수입" → 상세 "근무/지원" → 탐색 필터 → 랜딩.
 6. **메타데이터·문서** (🟡) — layout metadata, package.json, PRODUCT/README.
-7. **인프라 잇기** — Kakao 키 발급 → 위치 프록시 → 발급 응답으로 어댑터 `Raw*` 확정 → 적재 Edge Function + Cron → 목업→Supabase select 전환.
+7. **인프라 잇기** — ✅ Naver 위치 프록시 · ✅ 적재 Edge Function + pg_cron(seoul_culture·culture_info·trail) 완료. 남은 것: 발급 응답으로 미배선 어댑터(`sports_facility`·`seoul_jobs`) `Raw*` 확정·배선 → 목업→Supabase select 전환.
 
 ## 7. 알아둘 함정
 
 - **Supabase 신규 키 체계**: anon/service_role(레거시)이 아니라 **publishable/secret**를 쓴다. 코드(`apps/*/lib/supabase.ts`)·`.env`·문서 모두 이미 신규 체계로 통일됨 — 레거시 명칭으로 되돌리지 말 것.
 - **`.env`는 gitignore됨**(실제 키 로컬 전용). 커밋되는 건 `.env.example`뿐.
 - **data.go.kr 키 1개 공용**: 상권·두루누비·문화정보가 같은 `DATA_GO_KR_SERVICE_KEY`. Decoding 값을 넣고 코드에서 `encodeURIComponent`.
-- **외부 키·secret은 서버 전용**: `NEXT_PUBLIC_`/`EXPO_PUBLIC_` 절대 금지. Kakao 역지오코딩도 프록시(Edge Function/Route Handler) 경유.
+- **외부 키·secret은 서버 전용**: `NEXT_PUBLIC_`/`EXPO_PUBLIC_` 절대 금지. Naver Reverse Geocoding도 서버 프록시(`api/geo/route.ts`) 경유해 Client Secret을 감춘다. (Kakao는 소셜 로그인 전용 — Supabase Auth Providers에 등록, `signInWithOAuth({provider:"kakao"})`만 호출.)
 - **어댑터 `Raw*` 필드명은 추정값 + TODO**: 발급 응답 1건 받아 확정해야 실동작. 필드명만 갈아끼우면 되도록 계약은 고정돼 있음.
