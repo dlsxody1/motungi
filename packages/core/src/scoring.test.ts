@@ -202,6 +202,44 @@ describe("scoreOpportunity 축", () => {
   });
 });
 
+// M-007: difficulty 축은 energy 성향 허용치(tolerance)를 기준으로 감점한다.
+describe("scoreOpportunity difficulty 축 — energy tolerance", () => {
+  const drained = { ...answers, energy: "drained" as const }; // tolerance 0.3
+  const moderate = { ...answers, energy: "moderate" as const }; // 0.6
+  const active = { ...answers, energy: "active" as const }; // 1.0
+
+  it("허용치 이내면 만점(1)", () => {
+    expect(scoreOpportunity(opp({ difficulty: 0.2 }), drained, anchors).breakdown.difficulty).toBe(1);
+    expect(scoreOpportunity(opp({ difficulty: 0.5 }), moderate, anchors).breakdown.difficulty).toBe(1);
+  });
+
+  it("경계값(difficulty === tolerance)도 만점(1)", () => {
+    expect(scoreOpportunity(opp({ difficulty: 0.3 }), drained, anchors).breakdown.difficulty).toBe(1);
+    expect(scoreOpportunity(opp({ difficulty: 0.6 }), moderate, anchors).breakdown.difficulty).toBe(1);
+  });
+
+  it("허용치 초과분만큼 정확히 감점(drained tol 0.3, difficulty 0.5 → 0.8)", () => {
+    expect(
+      scoreOpportunity(opp({ difficulty: 0.5 }), drained, anchors).breakdown.difficulty,
+    ).toBeCloseTo(0.8);
+  });
+
+  it("초과가 커도 0 밑으로 안 내려간다(clamp)", () => {
+    // drained tol 0.3, difficulty 1.0 → 1 - 0.7 = 0.3
+    expect(
+      scoreOpportunity(opp({ difficulty: 1 }), drained, anchors).breakdown.difficulty,
+    ).toBeCloseTo(0.3);
+  });
+
+  it("difficulty 정보 없으면 중립(0.5)", () => {
+    expect(scoreOpportunity(opp({}), drained, anchors).breakdown.difficulty).toBe(0.5);
+  });
+
+  it("active(허용치 1.0)는 최고 난이도도 만점", () => {
+    expect(scoreOpportunity(opp({ difficulty: 1 }), active, anchors).breakdown.difficulty).toBe(1);
+  });
+});
+
 // M-006: time 축이 진단 timeSlot을 반영한다.
 describe("scoreOpportunity time 축 — timeSlot 분기", () => {
   const evening = opp({ timeWindow: { startHour: 19, endHour: 21 } });

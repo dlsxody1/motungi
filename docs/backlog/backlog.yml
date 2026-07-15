@@ -119,7 +119,7 @@ backlog:
   - id: M-007
     title: "core 테스트 커버리지 보강: scoring difficulty 축 + rowToOpportunity 부분 필드"
     priority: medium
-    status: todo
+    status: done
     scope: [packages/core]
     done_when:
       - "scoring.test.ts에 'difficulty 축' describe 추가: energy별 tolerance(drained 0.3/moderate 0.6/active 1.0) 이내→breakdown.difficulty===1, 초과 감점 정확값(예 drained+0.5→0.8), difficulty===null→0.5, 경계값(difficulty===tolerance)→1"
@@ -129,6 +129,9 @@ backlog:
       test-gaps finding 2건 통합: '5축 중 difficulty만 무테스트(부호/tolerance 뒤집어도 CI 초록)'(medium)와
       'rowToOpportunity 부분 좌표/시간 분기 미검증'(low). 동일 파일군 커버리지 공백이라 한 묶음. M-003에서
       cost/time/distance는 이미 보강됨.
+      [2026-07-15 완료] scoring.test에 difficulty 축 describe 6개(허용치 이내/경계/초과 감점 0.8/clamp
+      0.3/null 0.5/active 만점), view.test에 rowToOpportunity describe 5개(lat·lng 쌍, time_start·
+      end 쌍, null 정규화). core 91→102 통과, 소스 변경 없음(테스트 전용).
   - id: M-008
     title: "opportunities/catalog/useEnsureCatalog를 packages/core로 승격(web·mobile 복제 제거)"
     priority: medium

@@ -5,6 +5,8 @@ import {
   diagnosisSummaryChips,
   displayNameOf,
   ENERGY_LABEL,
+  type OpportunityRow,
+  rowToOpportunity,
   TIMESLOT_LABEL,
   whyReasons,
 } from "./view";
@@ -130,5 +132,61 @@ describe("diagnosisSummaryChips — side_job 수입 톤(M-006)", () => {
   it("일반 카테고리 유료는 여전히 '가성비 중심'", () => {
     const chips = diagnosisSummaryChips(answers, opp({ category: "culture", costKrw: 12000 }));
     expect(chips).toContain("가성비 중심");
+  });
+});
+
+// M-007: DB row → Opportunity 변환의 부분 필드 분기(좌표/시간대는 쌍이 다 있어야 생성).
+describe("rowToOpportunity — 부분 필드", () => {
+  function row(over: Partial<OpportunityRow> = {}): OpportunityRow {
+    return {
+      id: "r1",
+      source: "seoul_culture",
+      category: "culture",
+      external_id: null,
+      title: "t",
+      summary: "s",
+      cost_krw: null,
+      difficulty: null,
+      dong_name: null,
+      lat: null,
+      lng: null,
+      cta_url: null,
+      deadline: null,
+      source_label: null,
+      time_start_hour: null,
+      time_end_hour: null,
+      ...over,
+    };
+  }
+
+  it("lat만/lng만 있으면 point는 undefined(둘 다 있어야 좌표)", () => {
+    expect(rowToOpportunity(row({ lat: 37.5 })).location?.point).toBeUndefined();
+    expect(rowToOpportunity(row({ lng: 127 })).location?.point).toBeUndefined();
+  });
+
+  it("lat·lng 둘 다 있으면 point를 생성한다", () => {
+    expect(rowToOpportunity(row({ lat: 37.5, lng: 127 })).location?.point).toEqual({
+      lat: 37.5,
+      lng: 127,
+    });
+  });
+
+  it("time_start만/time_end만 있으면 timeWindow는 undefined(둘 다 있어야)", () => {
+    expect(rowToOpportunity(row({ time_start_hour: 18 })).timeWindow).toBeUndefined();
+    expect(rowToOpportunity(row({ time_end_hour: 22 })).timeWindow).toBeUndefined();
+  });
+
+  it("time_start·time_end 둘 다 있으면 timeWindow를 생성한다", () => {
+    expect(rowToOpportunity(row({ time_start_hour: 18, time_end_hour: 22 })).timeWindow).toEqual({
+      startHour: 18,
+      endHour: 22,
+    });
+  });
+
+  it("null 필드는 undefined로 정규화한다(cost_krw/difficulty/dong_name)", () => {
+    const o = rowToOpportunity(row());
+    expect(o.costKrw).toBeUndefined();
+    expect(o.difficulty).toBeUndefined();
+    expect(o.location?.dongName).toBeUndefined();
   });
 });
