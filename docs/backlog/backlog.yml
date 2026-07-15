@@ -135,7 +135,7 @@ backlog:
   - id: M-008
     title: "opportunities/catalog/useEnsureCatalog를 packages/core로 승격(web·mobile 복제 제거)"
     priority: medium
-    status: todo
+    status: doing
     scope: [packages/core, apps/web, apps/mobile]
     done_when:
       - "MockOpportunity·rowToMock·NEIGHBORHOOD_POINTS·CatalogStatus/CatalogResult가 packages/core(예: catalog.ts)로 이동·export된다"
@@ -147,6 +147,12 @@ backlog:
       architecture finding 2건 통합: 'opportunities.ts 100% 복제'(medium)와 'useEnsureCatalog
       복제'(low). 파생 로직 진짜 소스는 이미 core이고 어댑터+훅 계층만 두 앱이 복제해 select 컬럼 변경 시 조용히 어긋남.
       useEnsureCatalog는 저비용이라 함께 승격 권장(finding 자체가 묶음 처리 명시).
+      [2026-07-15 야간] 데이터/타입 레이어(위 done_when 1·2·4·5번)는 완료: packages/core/src/catalog.ts
+      신규 + web/mobile opportunities.ts를 core 위임 래퍼(99→16줄)로 축소, 구 테스트 3종을
+      core catalog.test.ts(25 tests)로 통합, useEnsureCatalog* 4개 파일 diff 0 유지(호출부 무변경
+      요건 충족). core 129/129·web 87/87·mobile 23/23 테스트 및 4워크스페이스 typecheck 전부 통과.
+      잔여: useEnsureCatalog를 store 셀렉터·fetch 주입형 공유 훅으로 통합하는 작업(위 done_when 3번,
+      core에 React 훅 신규 도입 필요)은 범위가 커서 이번 밤 제외 — 다음 밤 후속 필요.
   - id: M-009
     title: "useAppStore를 createAppStore 팩토리로 core 승격(저장 동기화 단일 소유)"
     priority: medium
