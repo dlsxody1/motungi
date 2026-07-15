@@ -285,7 +285,7 @@ backlog:
   - id: M-018
     title: "리포 위생: 중복 SKILL 복사본·.env 백업 파일 제거"
     priority: low
-    status: todo
+    status: done
     scope: [.claude, 루트(리포 최상위)]
     done_when:
       - ".claude/skills/ux/'SKILL copy.md'를 git rm으로 제거한다"
@@ -294,6 +294,9 @@ backlog:
     notes: >
       residue finding 2건 통합: 'SKILL copy.md 바이트 동일 중복 추적'(low)과 '.env.bak-spacefix 실키 담긴
       백업 잔존'(low). 둘 다 저비용 청소 작업. .env.bak은 gitignore로 원격 유출 경로는 없으나 로컬 위생상 제거.
+      [2026-07-15 완료] 'SKILL copy.md' git rm, .gitignore에 *.bak-*/*.bak 패턴 추가.
+      ⚠️ .env.bak-spacefix(실키 담긴 untracked 로컬 백업)는 되돌릴 수 없는 삭제라 안전정책상
+      에이전트가 지우지 못함 — 사람이 `rm .env.bak-spacefix` 수동 실행 필요(이미 gitignore돼 원격 유출은 없음).
   - id: M-019
     title: "문서 정합성 스윕: 역지오코딩·파이프라인 아키텍처·완료상태·데드 파이프라인 정정"
     priority: medium

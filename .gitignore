@@ -16,6 +16,10 @@ web-build/
 .env.*
 !.env.example
 
+# 로컬 백업(예: .env.bak-spacefix) — 실키 담길 수 있어 추적 금지
+*.bak-*
+*.bak
+
 # supabase (local)
 supabase/.branches/
 supabase/.temp/
