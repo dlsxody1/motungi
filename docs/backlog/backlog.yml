@@ -74,3 +74,220 @@ backlog:
       react-testing 스킬의 axe 단언 활용. 저위험·검증가능 → 야간 파이프라인 첫 대상으로 적합.
       [2026-07-14 통합] #9의 diagnosis 산출물(page.tsx data-testid·aria-label + axe/키보드
       테스트 6개)을 체리픽해 커밋 48d699d로 병합. vitest-axe 추가. web 16 tests 통과.
+
+# ─────────────────────────────────────────────────────────────────────────
+# [2026-07-15 감사 파이프라인] 8축 병렬 감사 → 적대검증 통과 44개 findings를
+# 15개 이슈(M-005~M-019)로 dedup·클러스터링. 멀티에이전트 워크플로 산출.
+# 우선순위=영향×비용. status는 모두 todo(밤 에이전트가 doing으로, 사람이 done).
+# ─────────────────────────────────────────────────────────────────────────
+
+  - id: M-005
+    title: "탐색(Explore) 매칭 점수 재계산·정렬 수정 (전 카드 '매칭 0%' 버그)"
+    priority: high
+    status: todo
+    scope: [apps/web, apps/mobile, packages/core]
+    done_when:
+      - "진단 완료(answers/anchors 존재) 상태에서 explore 카드가 pickTop/scoreOpportunity로 재계산된 matchScore로 렌더되고 매칭 내림차순 정렬된다"
+      - "진단 전(answers 없음)에는 매칭 % 뱃지·'매칭순 정렬' 라벨·i===0 '★원픽' 표기가 숨겨진다(matchScore 0 가드)"
+      - "웹(explore/page.tsx)·모바일(explore.tsx) 모두 동일 동작하고, matchScore:0을 정상으로 고정하던 opportunities 테스트 가정을 갱신한다"
+      - "pnpm test 및 typecheck 통과, 실적재 culture/trail 데이터로 0% 미노출 확인"
+    notes: >
+      high finding '탐색 화면이 모든 활동 매칭 0%·정렬 안 됨' 단독. rowToMock가 matchScore:0 고정, catalog는
+      재스코어링 없이 그대로 렌더되어 양 플랫폼 전 카드에 상시 노출되는 사용자 대면 표시 버그. 매칭이 핵심 기능이라 최우선.
+  - id: M-006
+    title: "core 스코어링/카피 정확성: time 축 timeSlot 반영 + side_job 비용→수입 분기"
+    priority: medium
+    status: todo
+    scope: [packages/core]
+    done_when:
+      - "scoreOpportunity가 answers.timeSlot을 읽어 time 축을 분기한다(weekday_evening→18~22시, weekend→주간/종일 창, flexible→중립 0.5 또는 완화)"
+      - "whyReasons ④ 비용 근거와 diagnosisSummaryChips가 category==='side_job'이면 costHeading('예상 수입') 기반 문구로 분기해 '참가비 +48만 원' 의미충돌을 제거하고, costKrw 0/무료 문구는 side_job에 적용하지 않는다"
+      - "scoring.test.ts에 weekend/flexible 케이스, view.test.ts에 side_job 비용 카피 케이스 추가"
+      - "pnpm --filter @motungi/core test 통과"
+    notes: >
+      correctness finding 2건 통합: 'time 축이 timeSlot 미사용'(medium)과 'whyReasons가 side_job 수입을
+      참가비로 표기'(low+medium 중복 2건). 둘 다 packages/core의 규칙/카피 정확성 결함이라 한 밤 작업으로 묶음. side_job은
+      현재 미배선이라 잠복이나 costHeading이 없앤 충돌 재발이라 함께 고정.
+  - id: M-007
+    title: "core 테스트 커버리지 보강: scoring difficulty 축 + rowToOpportunity 부분 필드"
+    priority: medium
+    status: todo
+    scope: [packages/core]
+    done_when:
+      - "scoring.test.ts에 'difficulty 축' describe 추가: energy별 tolerance(drained 0.3/moderate 0.6/active 1.0) 이내→breakdown.difficulty===1, 초과 감점 정확값(예 drained+0.5→0.8), difficulty===null→0.5, 경계값(difficulty===tolerance)→1"
+      - "view.test.ts에 rowToOpportunity 부분 필드 테스트: lat만/lng만→point undefined, time_start만/time_end만→timeWindow undefined"
+      - "pnpm --filter @motungi/core test 통과"
+    notes: >
+      test-gaps finding 2건 통합: '5축 중 difficulty만 무테스트(부호/tolerance 뒤집어도 CI 초록)'(medium)와
+      'rowToOpportunity 부분 좌표/시간 분기 미검증'(low). 동일 파일군 커버리지 공백이라 한 묶음. M-003에서
+      cost/time/distance는 이미 보강됨.
+  - id: M-008
+    title: "opportunities/catalog/useEnsureCatalog를 packages/core로 승격(web·mobile 복제 제거)"
+    priority: medium
+    status: todo
+    scope: [packages/core, apps/web, apps/mobile]
+    done_when:
+      - "MockOpportunity·rowToMock·NEIGHBORHOOD_POINTS·CatalogStatus/CatalogResult가 packages/core(예: catalog.ts)로 이동·export된다"
+      - "fetchOpportunities는 supabase 클라이언트를 인자로 받는 core 함수로 두거나 각 앱은 core rowToMock만 재사용하고 얇은 fetch 래퍼만 남긴다"
+      - "useEnsureCatalog가 store 셀렉터·fetch 주입형 공유 훅으로 통합되고 웹 'use client'는 얇은 래퍼로 유지된다"
+      - "web/mobile data/opportunities.ts 바이트 동일 복제가 제거되고 복제 테스트 3종이 core 단일 테스트로 통합된다"
+      - "전체 typecheck·test 통과, 웹/모바일 explore·loading 회귀 없음"
+    notes: >
+      architecture finding 2건 통합: 'opportunities.ts 100% 복제'(medium)와 'useEnsureCatalog
+      복제'(low). 파생 로직 진짜 소스는 이미 core이고 어댑터+훅 계층만 두 앱이 복제해 select 컬럼 변경 시 조용히 어긋남.
+      useEnsureCatalog는 저비용이라 함께 승격 권장(finding 자체가 묶음 처리 명시).
+  - id: M-009
+    title: "useAppStore를 createAppStore 팩토리로 core 승격(저장 동기화 단일 소유)"
+    priority: medium
+    status: todo
+    scope: [packages/core, apps/web, apps/mobile]
+    done_when:
+      - "core에 createAppStore({ storage, supabase }) 팩토리 추가, state 형태·setter·toggleSaved 서버동기화(upsert/delete)·isSaved를 단일 소유한다"
+      - "웹은 localStorage, 모바일은 AsyncStorage 어댑터만 주입해 인스턴스화한다"
+      - "isSaved가 양 플랫폼에 동일 제공(웹 누락 해소)되고 toggleSaved 내부 변수명 불일치(mobile nextSaved)가 정리된다"
+      - "복제된 useAppStore.test가 팩토리 단위 테스트로 통합되고 typecheck·test 통과"
+    notes: >
+      architecture finding 'useAppStore 복제, 이미 드리프트 시작'(medium). storage 백엔드만 다른데
+      toggleSaved 서버동기화 전체를 복붙, web엔 isSaved 없어 API가 갈라지기 시작. 저장 동기화는 로그인 사용자 데이터 정합성과 직결.
+      M-008과 별개 밤으로 분리(둘 합치면 하룻밤 초과).
+  - id: M-010
+    title: "Edge ingest 순수 파서 단일화 + fetch/파싱/필터 테스트 도입"
+    priority: medium
+    status: todo
+    scope: [packages/core, supabase/functions/ingest]
+    done_when:
+      - "parseFeeKrw/parseHour/toIsoDate/hashKey를 core util 단일 소스로 두고(core 내부 3중 hashKey 복제 제거) Edge가 Deno에서 해당 모듈을 import해 재구현을 제거한다"
+      - "좌표 가드 조건을 일치화한다(core parsePoint의 유한/(0,0) 배제 vs edge la&&lo)"
+      - "ingest 순수 로직(fetchDataGoKrXml 파싱부, JSON item 추출, inMetro, external_id dedup)을 export해 픽스처 기반 테스트 추가: CDATA 포함 XML·중첩 태그·빈 item·단일객체 JSON·서울/부산/null·중복 제거"
+      - "core↔edge 매퍼 parity 또는 스냅샷 테스트로 드리프트를 감지한다(형태 어댑터 필요 시 포함)"
+      - "CI에서 실행되어 통과"
+    notes: >
+      architecture/test-gaps finding 3건 통합: 'edge adapters가 core 파서·필드매핑
+      재구현·드리프트'(medium,L), 'ingest fetch/파싱/필터 무테스트'(medium), 'edge adapters 무테스트로 드리프트
+      미감지'(medium). ingest는 프로덕션 적재 유일 경로인데 미테스트 사본이 구동, 테스트된 core 사본은 미사용. 파서 3종 단일화가 최소
+      조치.
+  - id: M-011
+    title: "Supabase 클라이언트 Database 제네릭 주입 + 경계 캐스팅 제거"
+    priority: medium
+    status: todo
+    scope: [apps/web, apps/mobile, supabase]
+    done_when:
+      - "supabase gen types typescript로 Database 타입을 생성해 createClient<Database>()로 주입한다"
+      - "opportunities.ts:94 (data as OpportunityRow[]) 및 auth.ts의 as string 캐스팅이 제거되거나 경계에서 런타임 검증으로 대체된다"
+      - "source/category 유니온 멤버십을 런타임 검증(zod 등)해 유니온 밖 값을 방어하고 CATEGORY_LABEL undefined 반환 경로를 막는다"
+      - "웹/모바일 typecheck 통과, 관련 테스트 통과"
+    notes: >
+      type-safety finding 'Database 제네릭 미주입→검증 없는 강제 캐스팅'(medium).
+      strict·noUncheckedIndexedAccess를 켜놓고도 DB 데이터 경계 전체가 타입 검증에서 빠짐. text 컬럼 값이 유니온을 단언해
+      타입/런타임 불일치 잠재.
+  - id: M-012
+    title: "타입 안전성 하드닝: 진단 답변 유니온 검증 + pickTop 제네릭"
+    priority: medium
+    status: todo
+    scope: [apps/web, apps/mobile, packages/core]
+    done_when:
+      - "진단 옵션 값을 유니온으로 좁혀 저장하거나(as const+satisfies) saveAnswers 직전 isDiagnosisComplete로 검증하고, final[0] undefined 가드로 interests:[undefined] 생성을 막는다"
+      - "scoreOpportunity/pickTop을 <T extends Opportunity>(candidates:T[])=>ScoredOpportunity<T>[] 제네릭으로 만들어 loading 페이지의 as MockOpportunity 다운캐스트를 제거한다"
+      - "웹/모바일 typecheck 통과, scoring 테스트 통과"
+    notes: >
+      type-safety finding 2건 통합: '진단 답변 Record<number,string>→도메인 유니온 무검증 캐스팅'(medium)과
+      'pickTop이 구체 타입 잃어 다운캐스트 강제'(low). 둘 다 core 진단/스코어링 타입 흐름의 unsound 캐스팅이라 함께 처리.
+  - id: M-013
+    title: "a11y: 아이콘 전용 컨트롤 접근 가능한 이름 스윕 + 선택/현재상태 노출"
+    priority: high
+    status: todo
+    scope: [apps/web]
+    done_when:
+      - "opportunity 모바일 뒤로가기/공유/저장, location 모바일 뒤로가기, report 원픽 저장 버튼에 aria-label을 부여하고 저장 토글에는 aria-pressed={saved}를 추가한다"
+      - "explore·location 검색 input에 aria-label 또는 sr-only <label htmlFor>를 연결한다"
+      - "Chip에 aria-pressed={active}, 활성 내비(bottom-nav·web-shell)에 aria-current=\"page\"를 부여한다"
+      - "axe 단언 테스트로 각 컨트롤의 접근 가능한 이름 존재·위반 0을 검증하고 typecheck·test 통과"
+    notes: >
+      a11y finding 6건 통합(모두 aria 속성 추가 성격): opportunity 아이콘버튼(medium)·report 원픽
+      저장버튼(high)·location 뒤로가기(medium)·검색 input 라벨(low)·Chip aria-pressed(medium)·nav
+      aria-current(low). report 저장버튼 high 포함으로 우선순위 high. 순수 속성 추가라 한 밤 스윕 적합.
+  - id: M-014
+    title: "a11y: 구조·모션·확대 결함 수정(중첩 인터랙티브·포커스·live region·viewport)"
+    priority: medium
+    status: todo
+    scope: [apps/web]
+    done_when:
+      - "saved 카드의 <button> 안 role=button 중첩을 제거해 상세 이동과 저장 토글을 형제로 분리하고 토글에 aria-label을 부여한다"
+      - "explore 데스크탑 sr-only 체크박스의 포커스를 시각화한다(peer-focus-visible/focus-within ring)"
+      - "loading 화면 텍스트 컨테이너에 role=\"status\" aria-live=\"polite\"를 부여하고 corner-spinner에 prefers-reduced-motion 대응을 추가한다"
+      - "layout.tsx viewport에서 maximumScale:1을 제거해 확대(핀치 줌)를 허용한다"
+      - "axe·렌더 테스트 통과"
+    notes: >
+      a11y finding 4건 통합(구조/CSS 변경 성격): saved 중첩 인터랙티브(medium)·explore 체크박스
+      포커스(medium)·loading live region+reduced-motion(medium)·viewport 확대차단
+      WCAG1.4.4(medium). 속성 추가만으로 안 되고 DOM/스타일 변경이 필요해 M-013과 분리.
+  - id: M-015
+    title: "웹/모바일 패리티 정합: 라우팅·누락 섹션·마이크로카피 통일"
+    priority: medium
+    status: todo
+    scope: [apps/web, apps/mobile, packages/core]
+    done_when:
+      - "웹 report ReportEmpty onRetry를 isError로 분기(오류→/loading, 미진단→/diagnosis)해 모바일과 일치시킨다"
+      - "모바일 온보딩 보조 CTA를 router.push('/report')+웹과 통일된 라벨('로그인 없이 바로 시작')로 수정해 기본 버튼과의 완전 중복을 없앤다"
+      - "웹 opportunity 모바일(md:hidden) 레이아웃에 whyReasons '왜 ○○님께 맞을까요?' 카드를 추가한다"
+      - "disclaimer '자세히 보기'→'보러 가기', 원픽 CTA 문구, 진단 Q2 옵션 title/desc를 웹·모바일 통일(가능하면 core 공유 소스)한다"
+      - "typecheck·test 통과"
+    notes: >
+      parity finding 6건 통합: report 빈화면 라우팅(medium)·onboarding 보조 CTA(low)·opportunity why
+      섹션 웹 모바일 누락(medium)·disclaimer 버튼명(low)·onePick CTA 카피(low)·진단 Q2 옵션 카피(low). 기능
+      결함(라우팅·누락)과 카피 불일치를 한 패리티 밤으로 묶되 대부분 소규모 diff.
+  - id: M-016
+    title: "seoul_jobs/sports_facility 어댑터 잔재 정리: address 버그·미러 통일·미배선 게이팅"
+    priority: low
+    status: todo
+    scope: [packages/core, supabase/functions/ingest]
+    done_when:
+      - "normalizeSeoulJob의 location 폴백 버그를 수정한다(dongName: raw.region ?? raw.address 반영 또는 조건을 raw.region으로 좁힘)"
+      - "seoul_jobs 파트타임 키워드·고용형태 분류를 core를 SoT로 통일하고 edge가 동일 규칙을 미러하도록 공유 상수화(계약직 등 발산 제거)한다"
+      - "미배선 sports_facility/seoul_jobs 어댑터를 배선하거나 '발급대기·미배선' 사유를 명시해 데드코드임을 드러낸다(외부 API 키 없이 배선 불가한 부분은 명시적 게이팅)"
+      - "관련 core 어댑터 테스트 통과"
+    notes: >
+      residue finding 4건 통합: ingest가 두 매퍼 미호출(low)·Raw* 필드명 미확정 TODO(medium)·core↔edge 미러
+      발산(low)·normalizeSeoulJob address 버림(low). 모두 미출시 seoul_jobs/sports_facility 어댑터 관련.
+      Raw* 필드 확정은 외부 인증키 발급 대기라 야간 불가 → 버그수정·통일·게이팅만 수행.
+  - id: M-017
+    title: "RN 모바일 화면 렌더 테스트 도입(report·diagnosis 스모크)"
+    priority: medium
+    status: todo
+    scope: [apps/mobile]
+    done_when:
+      - "vitest.config.ts resolve.alias에 react-native→react-native-web를 추가하고 expo-router를 vi.mock으로 우회한다"
+      - "web의 report/diagnosis smoke test를 미러링해 스토어를 empty/error/unconfigured로 시딩 후 render하고 안내문구·CTA 라벨을 단언한다"
+      - "최소 report·diagnosis 2개 화면 테스트가 pnpm --filter mobile test에서 통과"
+    notes: >
+      test-gaps finding 'RN 화면 렌더 테스트 전무'(medium). web은 동일 report/diagnosis
+      분기(isError·results 폴백·안내문구)를 테스트하나 mobile은 store/lib/data/hooks만 테스트해 화면 회귀를 CI가 못
+      잡음. vitest.config 주석이 '별도 과제'로 미뤄둠.
+  - id: M-018
+    title: "리포 위생: 중복 SKILL 복사본·.env 백업 파일 제거"
+    priority: low
+    status: todo
+    scope: [.claude, 루트(리포 최상위)]
+    done_when:
+      - ".claude/skills/ux/'SKILL copy.md'를 git rm으로 제거한다"
+      - ".env.bak-spacefix를 삭제하고 .gitignore에 *.bak-* 패턴을 추가한다"
+      - "git status가 청결하고 스킬 로더가 정상 동작한다"
+    notes: >
+      residue finding 2건 통합: 'SKILL copy.md 바이트 동일 중복 추적'(low)과 '.env.bak-spacefix 실키 담긴
+      백업 잔존'(low). 둘 다 저비용 청소 작업. .env.bak은 gitignore로 원격 유출 경로는 없으나 로컬 위생상 제거.
+  - id: M-019
+    title: "문서 정합성 스윕: 역지오코딩·파이프라인 아키텍처·완료상태·데드 파이프라인 정정"
+    priority: medium
+    status: todo
+    scope: [docs, 루트(README.md·PRODUCT.md)]
+    done_when:
+      - "위치 역지오코딩 서술을 Naver Cloud Maps + NAVER_MAP_CLIENT_ID/NAVER_MAP_Client_SECRET로 교체하고(DATA-SOURCES·API-DESIGN·HANDOFF) Kakao는 소셜 로그인 용도로만 남긴다"
+      - "README 상태 체크리스트를 실제(어댑터·스코어링·UI 완료)로 갱신하고 파이프라인을 'Supabase Edge Function + pg_cron(0007)'으로 정정, GitHub Actions(if:false) 죽은 스캐폴드 서술과 존재하지 않는 §참조·'수익' 옛 용어를 제거한다"
+      - "HANDOFF §2 미완 항목 중 완료분(Edge Function+Cron·culture/active 어댑터·Naver 위치 프록시)을 완료로 이동한다"
+      - "DATA-SOURCES/API-DESIGN에서 youth-policy·normalizeYouthPolicy·마이그레이션 파일명(0002/0003)·완료된 미래작업 오기재를 정정하고 PRODUCT.md의 수입/지원금 언어를 비용/거리·여가 큐레이션 톤으로 재서술한다"
+      - "코드 변경 없이 문서만 갱신되고 링크·용어가 실제 코드와 일치한다"
+    notes: >
+      doc-staleness finding 6건 통합: Kakao→Naver 역지오코딩(medium)·README 상태·아키텍처
+      오기재(medium)·HANDOFF §2 완료항목 미반영(medium)·youth-policy 잔존(low)·API-DESIGN §5/§6
+      stale(low)·PRODUCT.md 수입/지원금(low). 온보딩을 오도(잘못된 키 발급·비활성 크론)하는 코드-문서 불일치라 medium. 문서는
+      편집 저렴해 한 밤 스윕 가능.
