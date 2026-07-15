@@ -178,6 +178,39 @@ export function mapTrail(raw: Record<string, string>): OppRow | null {
   };
 }
 
+// ── 공공체육시설 → active ─────────────────────────────────
+// ⚠️ 필드명 미확정(추정) — 발급 응답 확정 후 교체. core sports-facility.ts 미러.
+
+export function mapSportsFacility(raw: Record<string, string>): OppRow | null {
+  const title = raw.FCLTY_NM?.trim();
+  if (!title) return null;
+  const addr = raw.RDNMADR?.trim() || raw.LNMADR?.trim();
+  const externalId = raw.FCLTY_SN?.trim() || hashKey(`${title}|${addr ?? ""}`);
+  const la = num(raw.LATITUDE);
+  const lo = num(raw.LONGITUDE);
+  const summary =
+    [raw.FCLTY_TY_NM, raw.SIGNGU_NM, addr].map((s) => s?.trim()).filter(Boolean).join(" · ") ||
+    title;
+  return {
+    source: "sports_facility",
+    category: "active",
+    external_id: externalId,
+    title,
+    summary,
+    // 시설은 무료·유료가 섞임 — 요금 미상이면 0이 아니라 null.
+    cost_krw: parseFeeKrw(raw.UTILIZA_CHRGE) ?? null,
+    difficulty: null,
+    dong_name: raw.SIGNGU_NM?.trim() || null,
+    lat: la && lo ? la : null,
+    lng: la && lo ? lo : null,
+    cta_url: raw.HMPG_URL?.trim() || null,
+    deadline: null,
+    source_label: "공공체육시설",
+    time_start_hour: null,
+    time_end_hour: null,
+  };
+}
+
 // ── 서울시 일자리 → side_job (파트/단기만) ─────────────────
 
 const PART_KEYWORDS = ["파트", "시간제", "단기", "아르바이트", "알바", "일용", "계약직"];

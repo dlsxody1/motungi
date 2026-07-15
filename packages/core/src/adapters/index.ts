@@ -6,16 +6,17 @@
  * 여기서는 "받은 레코드 → Opportunity" 변환 규칙만 소유한다(TDD 대상).
  *
  * 소스 ↔ SourceKind 매핑 (docs/DATA-SOURCES.md):
- *   seoul-culture → culture   (서울시 문화행사, 1순위)
- *   culture-info  → culture   (한눈에보는문화정보, 전국 보조)
- *   trail         → active    (두루누비 걷기길)
- *   seoul-jobs    → side_job  (퇴근후 파트/단기 부업, 보조 카테고리)
+ *   seoul-culture   → culture   (서울시 문화행사, 1순위)
+ *   culture-info    → culture   (한눈에보는문화정보, 전국 보조)
+ *   sports-facility → active    (공공체육시설 — 필드명 미확정, 발급후 확정)
+ *   trail           → active    (두루누비 걷기길)
+ *   seoul-jobs      → side_job  (퇴근후 파트/단기 부업, 보조 카테고리)
  *
  * 공통 파서(요금/시간/날짜)는 ./util.
- * TODO: sports_facility(공공체육시설) 어댑터 — 엔드포인트 확정 후 추가.
  */
 export * from "./util";
 export * from "./seoul-culture";
 export * from "./culture-info";
+export * from "./sports-facility";
 export * from "./trail";
 export * from "./seoul-jobs";
