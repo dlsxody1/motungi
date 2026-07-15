@@ -116,6 +116,14 @@ describe("Chip", () => {
     expect(chip.className).toContain("border-primary");
     expect(chip.className).toContain("text-primary");
   });
+
+  // a11y (M-013): 선택 상태를 aria-pressed로 노출
+  it("aria-pressed가 active를 반영한다", () => {
+    const { rerender } = render(<Chip active>문화</Chip>);
+    expect(screen.getByRole("button", { name: "문화", pressed: true })).toBeInTheDocument();
+    rerender(<Chip>문화</Chip>);
+    expect(screen.getByRole("button", { name: "문화", pressed: false })).toBeInTheDocument();
+  });
 });
 
 describe("Tag", () => {

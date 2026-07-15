@@ -91,12 +91,14 @@ function OpportunityInner() {
             <div className="flex items-center justify-between px-5 py-1">
               <button
                 onClick={() => router.back()}
+                aria-label="뒤로 가기"
                 className="tap-safe -ml-2 flex w-11 items-center text-ink"
               >
                 <ChevronLeftIcon size={24} />
               </button>
               <button
                 onClick={onShare}
+                aria-label="공유하기"
                 className="tap-safe flex w-11 items-center justify-end text-ink"
               >
                 <ShareIcon size={22} />
@@ -162,6 +164,8 @@ function OpportunityInner() {
             <div className="flex shrink-0 items-center gap-3 px-5 pb-2 pt-2">
               <button
                 onClick={() => toggleSaved(o.id)}
+                aria-label={saved ? "저장 취소" : "저장하기"}
+                aria-pressed={saved}
                 className={`tap-safe grid size-[52px] shrink-0 place-items-center rounded-xl border bg-surface ${
                   saved ? "border-primary bg-tint text-primary" : "border-line text-label"
                 }`}
@@ -316,6 +320,7 @@ function OpportunityInner() {
                   <div className="mt-2.5 flex gap-2.5">
                     <button
                       onClick={() => toggleSaved(o.id)}
+                      aria-pressed={saved}
                       className={`flex h-[46px] flex-1 items-center justify-center gap-1.5 rounded-xl border bg-surface text-[14px] font-semibold hover:border-faint ${
                         saved ? "border-primary text-primary" : "border-line text-label"
                       }`}

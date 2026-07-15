@@ -88,6 +88,7 @@ export function TopNav({
             <Link
               key={it.label}
               href={it.href}
+              aria-current={active === it.key ? "page" : undefined}
               className={`text-[15px] font-semibold transition-colors hover:text-ink-dark ${
                 active === it.key ? "text-ink-dark" : "text-nav-link"
               }`}

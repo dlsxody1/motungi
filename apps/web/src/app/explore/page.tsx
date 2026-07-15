@@ -112,6 +112,7 @@ export default function ExplorePage() {
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                  aria-label="활동·키워드 검색"
                   className="flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-muted"
                   placeholder="활동·키워드 검색"
                 />
@@ -186,6 +187,7 @@ export default function ExplorePage() {
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                  aria-label="활동 검색"
                   className="flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-muted"
                   placeholder="활동 검색"
                 />

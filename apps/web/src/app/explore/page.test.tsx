@@ -137,3 +137,22 @@ describe("ExplorePage 매칭 랭킹 (M-005)", () => {
     expect(within(card!).getByText("망원동 동네 전시")).toBeInTheDocument();
   });
 });
+
+describe("ExplorePage a11y (M-013)", () => {
+  afterEach(cleanup);
+
+  it("검색 input에 접근 가능한 이름(aria-label)이 있다", () => {
+    seed("ok", [ONE_PICK]);
+    render(<ExplorePage />);
+    // 모바일·데스크탑 각각의 검색 input
+    expect(screen.getByLabelText("활동·키워드 검색")).toBeInTheDocument();
+    expect(screen.getByLabelText("활동 검색")).toBeInTheDocument();
+  });
+
+  it("필터 칩이 선택 상태를 aria-pressed로 노출한다('전체' 기본 선택)", () => {
+    seed("ok", [ONE_PICK]);
+    render(<ExplorePage />);
+    // 기본 활성 필터 '전체' → pressed 칩이 최소 1개
+    expect(screen.getAllByRole("button", { pressed: true }).length).toBeGreaterThan(0);
+  });
+});

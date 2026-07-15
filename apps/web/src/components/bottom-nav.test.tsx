@@ -5,7 +5,11 @@
  */
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { axe } from "vitest-axe";
+import { toHaveNoViolations } from "vitest-axe/dist/matchers";
 import { BottomNav } from "./bottom-nav";
+
+expect.extend({ toHaveNoViolations });
 
 // vitest globals:false → 자동 cleanup이 등록되지 않으므로 수동으로 DOM을 비운다.
 afterEach(cleanup);
@@ -86,5 +90,20 @@ describe("BottomNav", () => {
       const link = linkForLabel(label);
       expect(link.querySelector("svg")).not.toBeNull();
     }
+  });
+
+  // ── a11y (M-013) ──
+  it("활성 탭에만 aria-current='page'가 부여된다", () => {
+    render(<BottomNav active="explore" />);
+    const current = screen.getAllByRole("link", { current: "page" });
+    expect(current).toHaveLength(1);
+    expect(within(current[0]!).getByText("탐색")).toBeInTheDocument();
+  });
+
+  it("axe 접근성 위반이 없다", async () => {
+    const { container } = render(<BottomNav active="home" />);
+    const results = await axe(container);
+    // @ts-expect-error vitest-axe 타입 선언 미스매치 — 런타임은 정상
+    expect(results).toHaveNoViolations();
   });
 });

@@ -235,6 +235,7 @@ export default function ReportPage() {
                     <div className="mt-3 flex gap-2.5">
                       <button
                         onClick={() => toggleSaved(onePick.id)}
+                        aria-label={onePickSaved ? "저장 취소" : "저장하기"}
                         aria-pressed={onePickSaved}
                         className="grid h-12 w-13 shrink-0 place-items-center rounded-xl border border-line bg-surface text-label hover:border-faint"
                       >

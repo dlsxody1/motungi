@@ -124,6 +124,7 @@ export function Chip({
 }: ButtonHTMLAttributes<HTMLButtonElement> & { active?: boolean }) {
   return (
     <button
+      aria-pressed={active}
       className={`inline-flex h-[34px] items-center gap-1 rounded-pill border px-3.5 text-[13px] font-semibold transition-colors ${
         active
           ? "border-primary bg-primary/8 text-primary"

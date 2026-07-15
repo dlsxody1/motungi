@@ -22,6 +22,7 @@ export function BottomNav({ active }: { active: TabKey }) {
           <Link
             key={key}
             href={href}
+            aria-current={on ? "page" : undefined}
             className={`flex flex-1 flex-col items-center gap-1 pb-1 pt-0.5 ${
               on ? "text-primary" : "text-muted"
             }`}

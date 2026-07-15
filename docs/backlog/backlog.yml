@@ -199,7 +199,7 @@ backlog:
   - id: M-013
     title: "a11y: 아이콘 전용 컨트롤 접근 가능한 이름 스윕 + 선택/현재상태 노출"
     priority: high
-    status: todo
+    status: done
     scope: [apps/web]
     done_when:
       - "opportunity 모바일 뒤로가기/공유/저장, location 모바일 뒤로가기, report 원픽 저장 버튼에 aria-label을 부여하고 저장 토글에는 aria-pressed={saved}를 추가한다"
@@ -210,6 +210,10 @@ backlog:
       a11y finding 6건 통합(모두 aria 속성 추가 성격): opportunity 아이콘버튼(medium)·report 원픽
       저장버튼(high)·location 뒤로가기(medium)·검색 input 라벨(low)·Chip aria-pressed(medium)·nav
       aria-current(low). report 저장버튼 high 포함으로 우선순위 high. 순수 속성 추가라 한 밤 스윕 적합.
+      [2026-07-15 완료] opportunity(뒤로/공유/저장)·location 뒤로가기·report 저장 버튼에 aria-label,
+      저장 토글 전부에 aria-pressed. explore·location 검색 input 4개에 aria-label. Chip aria-pressed,
+      bottom-nav·web-shell 활성 링크 aria-current="page". 테스트: bottom-nav aria-current+axe(위반 0),
+      Chip aria-pressed, explore 검색 input 이름. web 103 통과, 4패키지 typecheck 클린.
   - id: M-014
     title: "a11y: 구조·모션·확대 결함 수정(중첩 인터랙티브·포커스·live region·viewport)"
     priority: medium

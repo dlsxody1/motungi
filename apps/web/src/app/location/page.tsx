@@ -84,7 +84,7 @@ export default function LocationPage() {
           <div className="flex flex-1 flex-col bg-bg">
             <SafeTop />
             <div className="flex flex-1 flex-col overflow-y-auto px-6 pb-4">
-              <Link href="/" className="tap-safe -ml-2 flex w-11 items-center text-ink">
+              <Link href="/" aria-label="홈으로" className="tap-safe -ml-2 flex w-11 items-center text-ink">
                 <ChevronLeftIcon size={24} />
               </Link>
 
@@ -129,6 +129,7 @@ export default function LocationPage() {
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                  aria-label="동네 이름 검색"
                   className="flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-muted"
                   placeholder="동네 이름 검색 (예: 망원동)"
                 />
@@ -215,6 +216,7 @@ export default function LocationPage() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                aria-label="동네 이름 검색"
                 className="flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-muted"
                 placeholder="동네 이름 검색 (예: 망원동)"
               />
