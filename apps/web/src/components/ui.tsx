@@ -55,11 +55,11 @@ export function MobileScreen({
   const bg = tone === "surface" ? "bg-surface" : "bg-bg";
   return (
     <div className="flex min-h-dvh justify-center bg-surface-alt/60 sm:py-8">
-      <div
+      <main
         className={`flex min-h-dvh w-full max-w-[420px] flex-col ${bg} sm:min-h-[calc(100dvh-4rem)] sm:rounded-[28px] sm:shadow-card`}
       >
         {children}
-      </div>
+      </main>
     </div>
   );
 }

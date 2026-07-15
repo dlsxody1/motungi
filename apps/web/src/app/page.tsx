@@ -13,7 +13,7 @@ export default function Home() {
     <>
       {/* 모바일 히어로 */}
       <div className="flex min-h-dvh justify-center bg-surface-alt/60 md:hidden">
-        <div className="flex min-h-dvh w-full max-w-[420px] flex-col">
+        <main className="flex min-h-dvh w-full max-w-[420px] flex-col">
           <div
             className="relative flex flex-1 flex-col overflow-hidden text-white"
             style={{
@@ -66,7 +66,7 @@ export default function Home() {
             </div>
             <SafeBottom />
           </div>
-        </div>
+        </main>
       </div>
 
       {/* 데스크탑 랜딩 */}

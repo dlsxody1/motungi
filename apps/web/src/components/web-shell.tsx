@@ -197,8 +197,16 @@ export function DesktopShell({
 }) {
   return (
     <div className="hidden min-h-dvh flex-col bg-bg md:flex">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-100 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-[14px] focus:font-bold focus:text-white"
+      >
+        본문 바로가기
+      </a>
       <TopNav active={active} variant={variant} dongName={dongName} userName={userName} />
-      <main className="flex-1">{children}</main>
+      <main id="main" className="flex-1">
+        {children}
+      </main>
       {footer && <SiteFooter />}
     </div>
   );
