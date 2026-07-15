@@ -83,7 +83,9 @@ export function normalizeSeoulJob(raw: RawSeoulJob): Opportunity | null {
     summary: buildSummary(raw),
     // side_job은 costKrw가 지출이 아니라 벌이(income) 성격 — UI에서 카테고리로 분기 표기.
     costKrw: parseWageKrw(raw.wage),
-    location: raw.region || raw.address ? { dongName: raw.region } : undefined,
+    // region 우선, 없으면 address로 폴백(둘 다 없으면 location 생략).
+    // 좌표(point)는 적재 계층이 주소를 Kakao로 지오코딩해 채운다.
+    location: raw.region || raw.address ? { dongName: raw.region ?? raw.address } : undefined,
     ctaUrl: raw.detailUrl,
     deadline: raw.deadline,
     sourceLabel: "서울시 일자리플러스센터",

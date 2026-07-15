@@ -254,7 +254,7 @@ backlog:
   - id: M-016
     title: "seoul_jobs/sports_facility 어댑터 잔재 정리: address 버그·미러 통일·미배선 게이팅"
     priority: low
-    status: todo
+    status: done
     scope: [packages/core, supabase/functions/ingest]
     done_when:
       - "normalizeSeoulJob의 location 폴백 버그를 수정한다(dongName: raw.region ?? raw.address 반영 또는 조건을 raw.region으로 좁힘)"
@@ -265,6 +265,10 @@ backlog:
       residue finding 4건 통합: ingest가 두 매퍼 미호출(low)·Raw* 필드명 미확정 TODO(medium)·core↔edge 미러
       발산(low)·normalizeSeoulJob address 버림(low). 모두 미출시 seoul_jobs/sports_facility 어댑터 관련.
       Raw* 필드 확정은 외부 인증키 발급 대기라 야간 불가 → 버그수정·통일·게이팅만 수행.
+      [2026-07-15 완료] normalizeSeoulJob location을 raw.region ?? raw.address 폴백으로 수정
+      (address만 있을 때 dongName undefined 버그 제거). edge PART_KEYWORDS를 core PART_TIME_KEYWORDS와
+      일치(계약직 제외)하고 core를 SoT로 주석 명시. ingest/index.ts에 sports_facility·seoul_jobs
+      미배선 사유(Raw* 미확정=발급 대기, 게이팅) 주석 추가. core 어댑터 테스트 +2, 104 통과.
   - id: M-017
     title: "RN 모바일 화면 렌더 테스트 도입(report·diagnosis 스모크)"
     priority: medium

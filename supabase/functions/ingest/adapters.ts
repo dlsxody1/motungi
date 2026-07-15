@@ -213,7 +213,9 @@ export function mapSportsFacility(raw: Record<string, string>): OppRow | null {
 
 // ── 서울시 일자리 → side_job (파트/단기만) ─────────────────
 
-const PART_KEYWORDS = ["파트", "시간제", "단기", "아르바이트", "알바", "일용", "계약직"];
+// ⚠️ 분류 규칙 SoT는 core seoul-jobs.ts(PART_TIME_KEYWORDS). 여기 목록은 그 미러다.
+// (계약직은 단기 보장이 없어 core와 함께 제외 — 목록을 core와 일치시킨다.)
+const PART_KEYWORDS = ["파트", "시간제", "단기", "아르바이트", "알바", "일용"];
 
 export function mapSeoulJob(raw: Record<string, string>): OppRow | null {
   const empType = raw.EMPLYM_STLE_CMMN_MM || "";

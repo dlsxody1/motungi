@@ -154,6 +154,9 @@ Deno.serve(async (req) => {
       const raw = await fetchDataGoKrJson(url);
       return raw.map(mapTrail).filter((r): r is OppRow => r != null && inMetro(r.dong_name));
     }),
+    // ⚠️ sports_facility(mapSportsFacility)·seoul_jobs(mapSeoulJob)는 의도적으로 미배선.
+    //    매퍼는 준비됐으나 Raw* 필드명이 추정값(발급 응답 미확정)이라 실호출 시 전량 null 위험.
+    //    데드코드가 아니라 게이팅 상태 — 인증키 발급 후 응답 1건으로 필드 확정하면 여기 runSource 추가.
   ]);
 
   const total = results.reduce((s, r) => s + r.upserted, 0);

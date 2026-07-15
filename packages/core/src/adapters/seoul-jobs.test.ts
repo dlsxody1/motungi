@@ -71,6 +71,17 @@ describe("normalizeSeoulJob", () => {
     expect(normalizeSeoulJob({ ...RAW, employmentType: "정규직" })).toBeNull();
   });
 
+  // M-016: region이 없고 address만 있으면 dongName을 address로 폴백(과거엔 undefined 버그).
+  it("region 없이 address만 있으면 dongName은 address로 폴백", () => {
+    const o = normalizeSeoulJob({ ...RAW, region: undefined, address: "서울 마포구 월드컵로 100" })!;
+    expect(o.location?.dongName).toBe("서울 마포구 월드컵로 100");
+  });
+
+  it("region·address 둘 다 없으면 location 생략", () => {
+    const o = normalizeSeoulJob({ ...RAW, region: undefined, address: undefined })!;
+    expect(o.location).toBeUndefined();
+  });
+
   it("배열 정규화 시 부적합 레코드 제거", () => {
     const out = normalizeSeoulJobs([RAW, { ...RAW, jobId: "x", employmentType: "정규직" }]);
     expect(out).toHaveLength(1);
