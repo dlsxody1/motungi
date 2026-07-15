@@ -1,7 +1,7 @@
 "use client";
 
 import type { OpportunityCategory } from "@motungi/core";
-import { TIMESLOT_LABEL } from "@motungi/core";
+import { scoreAll, TIMESLOT_LABEL } from "@motungi/core";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { BottomNav } from "@/components/bottom-nav";
@@ -37,8 +37,23 @@ export default function ExplorePage() {
   const user = useAppStore((s) => s.user);
   const catalog = useAppStore((s) => s.catalog);
   const catalogStatus = useAppStore((s) => s.catalogStatus);
-  const timeSlot = useAppStore((s) => s.answers?.timeSlot);
-  const source = catalog; // 서버 실데이터만 사용(목업 폴백 없음).
+  const answers = useAppStore((s) => s.answers);
+  const anchors = useAppStore((s) => s.anchors);
+  const timeSlot = answers?.timeSlot;
+  // 진단 완료 시에만 매칭 랭킹 활성화. 진단 전에는 카탈로그 원본(매칭 % 미표기).
+  const matchActive = answers != null;
+  // 서버 실데이터만 사용(목업 폴백 없음). 진단 답변이 있으면 전체를 재스코어링해
+  // matchScore를 채우고 매칭 내림차순 정렬한다(catalog의 matchScore는 0 고정이므로).
+  const source = useMemo(
+    () =>
+      answers
+        ? scoreAll(catalog, answers, anchors).map((r) => ({
+            ...r.opportunity,
+            matchScore: Math.round(r.score * 100),
+          }))
+        : catalog,
+    [catalog, answers, anchors],
+  );
   const [filter, setFilter] = useState("전체");
   const [query, setQuery] = useState("");
   const [easyOnly, setEasyOnly] = useState(false);
@@ -142,7 +157,7 @@ export default function ExplorePage() {
                       <p className={`text-[15px] font-extrabold ${o.tone === "mint" ? "text-mint" : "text-primary"}`}>
                         {o.costLabel}
                       </p>
-                      <p className="text-[12px] text-muted">매칭 {o.matchScore}%</p>
+                      {matchActive && <p className="text-[12px] text-muted">매칭 {o.matchScore}%</p>}
                     </div>
                   </button>
                 ))}
@@ -162,7 +177,7 @@ export default function ExplorePage() {
             <div>
               <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-ink">{dongName}에서 할 만한 것</h1>
               <p className="mt-1.5 text-[15px] text-muted">
-                퇴근 후·주말 활동 {source.length}건 · 진단 기준 정렬
+                퇴근 후·주말 활동 {source.length}건{matchActive ? " · 진단 기준 정렬" : ""}
               </p>
             </div>
             <div className="flex items-center gap-2.5">
@@ -175,9 +190,11 @@ export default function ExplorePage() {
                   placeholder="활동 검색"
                 />
               </div>
-              <span className="flex h-11 items-center gap-1.5 rounded-[11px] border border-line bg-surface px-4 text-[14px] font-semibold text-muted">
-                매칭순 정렬
-              </span>
+              {matchActive && (
+                <span className="flex h-11 items-center gap-1.5 rounded-[11px] border border-line bg-surface px-4 text-[14px] font-semibold text-muted">
+                  매칭순 정렬
+                </span>
+              )}
             </div>
           </div>
 
@@ -262,7 +279,7 @@ export default function ExplorePage() {
               )}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {list.map((o, i) => {
-                  const pick = i === 0;
+                  const pick = matchActive && i === 0;
                   return (
                     <button
                       key={o.id}
@@ -298,7 +315,9 @@ export default function ExplorePage() {
                         <p className={`text-[18px] font-extrabold ${o.tone === "mint" ? "text-mint" : "text-primary"}`}>
                           {o.costLabel}
                         </p>
-                        <p className="text-[13px] font-semibold text-muted">매칭 {o.matchScore}%</p>
+                        {matchActive && (
+                          <p className="text-[13px] font-semibold text-muted">매칭 {o.matchScore}%</p>
+                        )}
                       </div>
                     </button>
                   );

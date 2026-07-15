@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DiagnosisAnswers } from "./diagnosis";
-import { pickTop, scoreOpportunity } from "./scoring";
+import { pickTop, scoreAll, scoreOpportunity } from "./scoring";
 import type { Location, Opportunity, UserAnchors } from "./types";
 
 const answers: DiagnosisAnswers = {
@@ -40,6 +40,42 @@ describe("pickTop", () => {
 
   it("빈 후보는 빈 결과", () => {
     expect(pickTop([], answers, anchors)).toHaveLength(0);
+  });
+});
+
+describe("scoreAll", () => {
+  const near = opp({ id: "near", difficulty: 0.1, costKrw: 0, location: here });
+  const far = opp({
+    id: "far",
+    difficulty: 0.9,
+    costKrw: 40_000,
+    location: { point: { lat: 37.7, lng: 127.1 } },
+  });
+
+  it("자르지 않고 후보 전체를 점수 내림차순으로 반환(탐색 랭킹용)", () => {
+    const result = scoreAll([far, near], answers, anchors);
+    expect(result).toHaveLength(2); // pickTop과 달리 slice 없음
+    expect(result[0]?.opportunity.id).toBe("near");
+    expect(result[0]!.score).toBeGreaterThanOrEqual(result[1]!.score);
+  });
+
+  it("입력 파생 타입 T를 보존한다(표시 필드가 붙은 항목)", () => {
+    const tagged = { ...near, matchScore: 0, categoryLabel: "문화" };
+    const result = scoreAll([tagged], answers, anchors);
+    // opportunity가 원본 객체(파생 필드 포함)를 그대로 유지 → matchScore 채우기 가능
+    expect(result[0]!.opportunity.categoryLabel).toBe("문화");
+    expect(Math.round(result[0]!.score * 100)).toBeGreaterThan(0);
+  });
+
+  it("pickTop은 scoreAll의 상위 N개와 동일하다", () => {
+    const all = scoreAll([far, near], answers, anchors);
+    const top1 = pickTop([far, near], answers, anchors, 1);
+    expect(top1).toHaveLength(1);
+    expect(top1[0]!.opportunity.id).toBe(all[0]!.opportunity.id);
+  });
+
+  it("빈 후보는 빈 배열", () => {
+    expect(scoreAll([], answers, anchors)).toHaveLength(0);
   });
 });
 

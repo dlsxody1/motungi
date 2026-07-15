@@ -84,7 +84,7 @@ backlog:
   - id: M-005
     title: "탐색(Explore) 매칭 점수 재계산·정렬 수정 (전 카드 '매칭 0%' 버그)"
     priority: high
-    status: todo
+    status: done
     scope: [apps/web, apps/mobile, packages/core]
     done_when:
       - "진단 완료(answers/anchors 존재) 상태에서 explore 카드가 pickTop/scoreOpportunity로 재계산된 matchScore로 렌더되고 매칭 내림차순 정렬된다"
@@ -94,6 +94,10 @@ backlog:
     notes: >
       high finding '탐색 화면이 모든 활동 매칭 0%·정렬 안 됨' 단독. rowToMock가 matchScore:0 고정, catalog는
       재스코어링 없이 그대로 렌더되어 양 플랫폼 전 카드에 상시 노출되는 사용자 대면 표시 버그. 매칭이 핵심 기능이라 최우선.
+      [2026-07-15 완료] core에 scoreAll() 추가(pickTop이 재사용), web·mobile explore가 answers 있으면
+      catalog를 scoreAll로 재스코어링해 matchScore 채우고 매칭 내림차순 정렬. matchActive 가드로 진단 전엔
+      매칭%·'매칭순 정렬'·★원픽 숨김. core scoreAll 테스트 4개 + web explore 가드 테스트 2개 추가.
+      core 84 / mobile 32 / web 98 통과, 4패키지 typecheck 클린.
   - id: M-006
     title: "core 스코어링/카피 정확성: time 축 timeSlot 반영 + side_job 비용→수입 분기"
     priority: medium

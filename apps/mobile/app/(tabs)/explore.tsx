@@ -1,4 +1,5 @@
 import type { OpportunityCategory } from "@motungi/core";
+import { scoreAll } from "@motungi/core";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -29,7 +30,22 @@ export default function ExploreScreen() {
 
   const catalog = useAppStore((s) => s.catalog);
   const catalogStatus = useAppStore((s) => s.catalogStatus);
-  const source = catalog; // 서버 실데이터만 사용(목업 폴백 없음).
+  const answers = useAppStore((s) => s.answers);
+  const anchors = useAppStore((s) => s.anchors);
+  // 진단 완료 시에만 매칭 랭킹 활성화. 진단 전에는 카탈로그 원본(매칭 % 미표기).
+  const matchActive = answers != null;
+  // 진단 답변이 있으면 전체를 재스코어링해 matchScore를 채우고 매칭 내림차순 정렬한다
+  // (catalog의 matchScore는 0 고정이므로). 서버 실데이터만 사용(목업 폴백 없음).
+  const source = useMemo(
+    () =>
+      answers
+        ? scoreAll(catalog, answers, anchors).map((r) => ({
+            ...r.opportunity,
+            matchScore: Math.round(r.score * 100),
+          }))
+        : catalog,
+    [catalog, answers, anchors],
+  );
 
   const list = useMemo(() => {
     const cat = FILTERS.find((f) => f.label === filter)?.category ?? null;
@@ -113,7 +129,7 @@ export default function ExploreScreen() {
               <Text style={[styles.cost, { color: o.tone === "mint" ? C.mint : C.primary }]}>
                 {o.costLabel}
               </Text>
-              <Text style={styles.match}>매칭 {o.matchScore}%</Text>
+              {matchActive && <Text style={styles.match}>매칭 {o.matchScore}%</Text>}
             </View>
           </Pressable>
         ))}

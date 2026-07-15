@@ -119,6 +119,22 @@ export function scoreOpportunity(
   return { opportunity: opp, score, breakdown };
 }
 
+/**
+ * 후보 전체를 점수순 내림차순 정렬(상위 N 자르지 않음).
+ * 탐색 목록처럼 카탈로그 전체를 진단 기준으로 랭킹할 때 사용한다.
+ * 입력 타입 T(예: 표시용 파생 필드가 붙은 MockOpportunity)를 보존한다.
+ */
+export function scoreAll<T extends Opportunity>(
+  candidates: T[],
+  answers: DiagnosisAnswers,
+  anchors: UserAnchors,
+  weights: ScoreWeights = DEFAULT_WEIGHTS,
+): (ScoredOpportunity & { opportunity: T })[] {
+  return candidates
+    .map((c) => ({ ...scoreOpportunity(c, answers, anchors, weights), opportunity: c }))
+    .sort((a, b) => b.score - a.score);
+}
+
 /** 후보를 점수순 정렬해 상위 topN(기본 3)개의 "원픽 + 보조" 리스트 반환. */
 export function pickTop(
   candidates: Opportunity[],
@@ -127,8 +143,5 @@ export function pickTop(
   topN = 3,
   weights: ScoreWeights = DEFAULT_WEIGHTS,
 ): ScoredOpportunity[] {
-  return candidates
-    .map((c) => scoreOpportunity(c, answers, anchors, weights))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topN);
+  return scoreAll(candidates, answers, anchors, weights).slice(0, topN);
 }
