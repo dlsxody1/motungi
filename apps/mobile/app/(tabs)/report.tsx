@@ -79,13 +79,13 @@ export default function ReportScreen() {
           <Text style={styles.heroTitle}>{onePick.title}</Text>
           <Text style={styles.heroSummary}>{onePick.summary}</Text>
 
-          <View style={styles.incomeBox}>
+          <View style={styles.costBox}>
             <View>
-              <Text style={styles.incomeCap}>{onePick.costHeading}</Text>
-              <Text style={styles.incomeVal}>{onePick.costLabel}</Text>
+              <Text style={styles.costCap}>{onePick.costHeading}</Text>
+              <Text style={styles.costVal}>{onePick.costLabel}</Text>
             </View>
             {!!onePick.costNote && (
-              <Text style={styles.incomeNote}>{onePick.costNote}</Text>
+              <Text style={styles.costNote}>{onePick.costNote}</Text>
             )}
           </View>
         </View>
@@ -115,7 +115,7 @@ export default function ReportScreen() {
               <Text style={styles.relSummary}>{o.summary}</Text>
             </View>
             <View style={{ alignItems: "flex-end" }}>
-              <Text style={[styles.relIncome, { color: o.tone === "mint" ? C.mint : C.primary }]}>
+              <Text style={[styles.relCost, { color: o.tone === "mint" ? C.mint : C.primary }]}>
                 {o.costLabel}
               </Text>
               <Text style={styles.relMore}>자세히 →</Text>
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   match: { fontSize: 13, fontWeight: "700", color: C.primary },
   heroTitle: { marginTop: 12, fontSize: 21, lineHeight: 28, fontWeight: "800", color: C.ink },
   heroSummary: { marginTop: 10, fontSize: 14, lineHeight: 22, color: C.label },
-  incomeBox: {
+  costBox: {
     marginTop: 16,
     flexDirection: "row",
     justifyContent: "space-between",
@@ -179,9 +179,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  incomeCap: { fontSize: 12, fontWeight: "600", color: C.primaryDeep },
-  incomeVal: { fontSize: 26, fontWeight: "800", color: C.primaryDeep },
-  incomeNote: { textAlign: "right", fontSize: 12, lineHeight: 16, color: C.muted },
+  costCap: { fontSize: 12, fontWeight: "600", color: C.primaryDeep },
+  costVal: { fontSize: 26, fontWeight: "800", color: C.primaryDeep },
+  costNote: { textAlign: "right", fontSize: 12, lineHeight: 16, color: C.muted },
   heroCta: { height: 50, borderRadius: R.lg, backgroundColor: C.primary, alignItems: "center", justifyContent: "center" },
   heroCtaLabel: { fontSize: 16, fontWeight: "700", color: C.white },
   relItem: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 16 },
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   relCat: { fontSize: 12, fontWeight: "700" },
   relTitle: { marginTop: 4, fontSize: 16, fontWeight: "700", color: C.ink },
   relSummary: { marginTop: 2, fontSize: 13, color: C.muted },
-  relIncome: { fontSize: 16, fontWeight: "800" },
+  relCost: { fontSize: 16, fontWeight: "800" },
   relMore: { fontSize: 12, color: C.muted },
   sumBanner: {
     marginTop: 12,

@@ -72,16 +72,16 @@ export default function OpportunityScreen() {
           <Text style={styles.locText}>{o.location?.dongName ?? "우리 동네"}</Text>
         </View>
 
-        {/* 비용/수입 카드 */}
-        <View style={styles.incomeCard}>
-          <Text style={styles.incomeCap}>{o.costHeading}</Text>
-          <Text style={styles.incomeVal}>
-            {o.costLabel} <Text style={styles.incomeUnit}>/ {o.costUnit}</Text>
+        {/* 비용 카드 */}
+        <View style={styles.costCard}>
+          <Text style={styles.costCap}>{o.costHeading}</Text>
+          <Text style={styles.costVal}>
+            {o.costLabel} <Text style={styles.costUnit}>/ {o.costUnit}</Text>
           </Text>
           {!!o.costNote && (
             <>
-              <View style={styles.incomeLine} />
-              <Text style={styles.incomeSub}>{o.costNote}</Text>
+              <View style={styles.costLine} />
+              <Text style={styles.costSub}>{o.costNote}</Text>
             </>
           )}
         </View>
@@ -163,12 +163,12 @@ const styles = StyleSheet.create({
   title: { marginTop: 12, fontSize: 23, lineHeight: 30, fontWeight: "800", color: C.ink },
   locRow: { marginTop: 8, flexDirection: "row", alignItems: "center", gap: 4 },
   locText: { fontSize: 14, color: C.muted },
-  incomeCard: { marginTop: 16, backgroundColor: "rgba(251,232,236,0.6)", borderRadius: R.lg, padding: 16 },
-  incomeCap: { fontSize: 12, fontWeight: "600", color: C.primaryDeep },
-  incomeVal: { fontSize: 30, fontWeight: "800", color: C.primaryDeep },
-  incomeUnit: { fontSize: 15, fontWeight: "700", color: C.muted },
-  incomeLine: { marginTop: 8, height: 1, backgroundColor: "rgba(226,80,103,0.15)" },
-  incomeSub: { marginTop: 8, fontSize: 13, color: C.muted },
+  costCard: { marginTop: 16, backgroundColor: "rgba(251,232,236,0.6)", borderRadius: R.lg, padding: 16 },
+  costCap: { fontSize: 12, fontWeight: "600", color: C.primaryDeep },
+  costVal: { fontSize: 30, fontWeight: "800", color: C.primaryDeep },
+  costUnit: { fontSize: 15, fontWeight: "700", color: C.muted },
+  costLine: { marginTop: 8, height: 1, backgroundColor: "rgba(226,80,103,0.15)" },
+  costSub: { marginTop: 8, fontSize: 13, color: C.muted },
   whyCard: { marginTop: 16, backgroundColor: C.surface, borderRadius: R.lg, padding: 16, ...cardShadow },
   whyTitle: { fontSize: 15, fontWeight: "700", color: C.ink, marginBottom: 12 },
   whyRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },

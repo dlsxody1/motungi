@@ -110,7 +110,7 @@ export default function ExploreScreen() {
               <Text style={styles.summary}>{o.summary}</Text>
             </View>
             <View style={{ alignItems: "flex-end" }}>
-              <Text style={[styles.income, { color: o.tone === "mint" ? C.mint : C.primary }]}>
+              <Text style={[styles.cost, { color: o.tone === "mint" ? C.mint : C.primary }]}>
                 {o.costLabel}
               </Text>
               <Text style={styles.match}>매칭 {o.matchScore}%</Text>
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   cat: { fontSize: 12, fontWeight: "700" },
   title: { marginTop: 4, fontSize: 16, fontWeight: "700", color: C.ink },
   summary: { marginTop: 2, fontSize: 13, color: C.muted },
-  income: { fontSize: 15, fontWeight: "800" },
+  cost: { fontSize: 15, fontWeight: "800" },
   match: { fontSize: 12, color: C.muted },
   empty: { paddingVertical: 40, textAlign: "center", fontSize: 14, color: C.muted },
 });

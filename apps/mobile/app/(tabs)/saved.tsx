@@ -79,7 +79,7 @@ export default function SavedScreen() {
                 <Text style={styles.meta}>{s.location?.dongName ?? ""}</Text>
               </View>
               <View style={{ alignItems: "flex-end", gap: 6 }}>
-                <Text style={[styles.income, { color: s.tone === "mint" ? C.mint : C.primary }]}>
+                <Text style={[styles.cost, { color: s.tone === "mint" ? C.mint : C.primary }]}>
                   {s.costLabel}
                 </Text>
                 <Pressable onPress={() => toggleSaved(s.id)} hitSlop={10}>
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   cat: { fontSize: 12, fontWeight: "700" },
   title: { marginTop: 4, fontSize: 16, fontWeight: "700", color: C.ink },
   meta: { marginTop: 2, fontSize: 13, color: C.muted },
-  income: { fontSize: 15, fontWeight: "800" },
+  cost: { fontSize: 15, fontWeight: "800" },
   empty: { alignItems: "center", paddingVertical: 48, gap: 8 },
   emptyTitle: { marginTop: 4, fontSize: 16, fontWeight: "700", color: C.ink },
   emptySub: { fontSize: 13, color: C.muted, textAlign: "center" },
