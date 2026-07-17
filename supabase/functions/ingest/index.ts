@@ -17,6 +17,12 @@ import {
   mapTrail,
   type OppRow,
 } from "./adapters.ts";
+import {
+  dedupByKey,
+  inMetro,
+  parseJsonItems,
+  parseXmlItems,
+} from "../../../packages/core/src/adapters/ingest-fetch.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 // Edge 런타임 자동 주입은 SERVICE_ROLE_KEY. 커스텀 secret도 fallback 허용.
@@ -25,8 +31,6 @@ const SERVICE_KEY =
 
 /** 소스별 최대 적재 건수(1회 실행). 부하·쿼터 보호. */
 const LIMIT = 300;
-/** 수도권 필터(전국 소스용). 서울/경기/인천만 카드로. */
-const METRO_PREFIXES = ["서울", "경기", "인천"];
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { persistSession: false },
@@ -55,32 +59,20 @@ async function fetchSeoul(
   return body.row;
 }
 
-/** data.go.kr JSON 응답에서 item 배열 추출. */
+/** data.go.kr JSON 응답 fetch — 파싱(단일object quirk 정규화 포함)은 core parseJsonItems가 담당. */
 async function fetchDataGoKrJson(url: string): Promise<Record<string, string>[]> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`data.go.kr HTTP ${res.status}`);
   const json = await res.json();
-  const items = json?.response?.body?.items?.item ?? json?.body?.items ?? [];
-  return Array.isArray(items) ? items : [items].filter(Boolean);
+  return parseJsonItems(json);
 }
 
-/** data.go.kr XML 응답에서 <item> 블록별 태그를 추출(경량 파서). */
+/** data.go.kr XML 응답 fetch — <item> 블록 파싱은 core parseXmlItems가 담당. */
 async function fetchDataGoKrXml(url: string): Promise<Record<string, string>[]> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`data.go.kr HTTP ${res.status}`);
   const xml = await res.text();
-  const items: Record<string, string>[] = [];
-  for (const block of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
-    const inner = block[1]!;
-    const rec: Record<string, string> = {};
-    for (const tag of inner.matchAll(/<([a-zA-Z0-9_]+)>([\s\S]*?)<\/\1>/g)) {
-      rec[tag[1]!] = tag[2]!
-        .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
-        .trim();
-    }
-    if (Object.keys(rec).length) items.push(rec);
-  }
-  return items;
+  return parseXmlItems(xml);
 }
 
 /** OppRow[] → opportunities upsert. (source, external_id) 충돌 시 갱신. */
@@ -93,11 +85,6 @@ async function upsertRows(rows: OppRow[]): Promise<number> {
     .upsert(payload, { onConflict: "source,external_id", count: "exact" });
   if (error) throw new Error(error.message);
   return count ?? payload.length;
-}
-
-function inMetro(dong?: string | null): boolean {
-  if (!dong) return true;
-  return METRO_PREFIXES.some((p) => dong.startsWith(p));
 }
 
 async function runSource(
@@ -132,19 +119,17 @@ Deno.serve(async (req) => {
     runSource("culture_info", async () => {
       if (!dataGoKrKey) throw new Error("DATA_GO_KR_SERVICE_KEY 없음");
       // period2는 XML + 페이지당 10건 고정 → 여러 페이지 순회하며 수도권만 수집.
-      const rows: OppRow[] = [];
-      const seen = new Set<string>();
+      let candidates: OppRow[] = [];
+      let rows: OppRow[] = [];
       for (let page = 1; page <= 40 && rows.length < LIMIT; page++) {
         const url = `https://apis.data.go.kr/B553457/cultureinfo/period2?serviceKey=${enc}&numOfRows=10&PageNo=${page}&from=20260708&to=20261231`;
         const raw = await fetchDataGoKrXml(url);
         if (raw.length === 0) break; // 마지막 페이지
         for (const r of raw) {
           const mapped = mapCultureInfo(r);
-          if (mapped && inMetro(mapped.dong_name) && !seen.has(mapped.external_id)) {
-            seen.add(mapped.external_id);
-            rows.push(mapped);
-          }
+          if (mapped && inMetro(mapped.dong_name)) candidates.push(mapped);
         }
+        rows = dedupByKey(candidates, (r) => r.external_id);
       }
       return rows;
     }),

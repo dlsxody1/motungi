@@ -2,9 +2,13 @@
  * 소스 어댑터 (Deno/Edge 런타임용).
  *
  * ⚠️ 로직 원본은 packages/core/src/adapters (TDD 테스트 소유).
- *    Edge Function은 Deno라 npm 워크스페이스를 직접 import하기 어려워, 순수 변환 로직을
- *    여기 복제한다. 필드 매핑·파서를 바꿀 때는 core와 이 파일을 함께 수정할 것.
+ *    Edge Function은 Deno라 npm 워크스페이스(패키지명) import는 불가하지만,
+ *    상대경로(.ts 확장자 명시) import는 가능하므로 공통 파서(parseFeeKrw/parseHour/
+ *    toIsoDate/hashKey/parsePoint)는 core/adapters/util.ts를 그대로 import해 중복을 없앤다.
+ *    필드 매핑 규칙(mapSeoulCulture 등)은 이 파일이 SoT — core adapters(seoul-culture.ts 등)와
+ *    필드명이 다르므로 함께 수정할 것.
  */
+import { hashKey, parseFeeKrw, parseHour, parsePoint, toIsoDate } from "../../../packages/core/src/adapters/util.ts";
 
 /** DB opportunities row (upsert 페이로드). */
 export interface OppRow {
@@ -25,70 +29,6 @@ export interface OppRow {
   time_end_hour: number | null;
 }
 
-// ── 공통 파서 (core/adapters/util.ts 미러) ─────────────────
-
-export function parseFeeKrw(fee?: string | number): number | undefined {
-  if (fee == null) return undefined;
-  if (typeof fee === "number") return Number.isFinite(fee) ? fee : undefined;
-  const s = fee.trim();
-  if (!s) return undefined;
-  if (s.includes("무료")) return 0;
-  const amounts: number[] = [];
-  for (const m of s.matchAll(/([\d,.]+)\s*만/g)) {
-    const n = Number(m[1]!.replace(/,/g, ""));
-    if (Number.isFinite(n)) amounts.push(Math.round(n * 10_000));
-  }
-  if (amounts.length === 0) {
-    for (const m of s.matchAll(/([\d,]{3,})/g)) {
-      const n = Number(m[1]!.replace(/,/g, ""));
-      if (Number.isFinite(n) && n > 0) amounts.push(n);
-    }
-  }
-  return amounts.length ? Math.min(...amounts) : undefined;
-}
-
-export function parseHour(time?: string): number | undefined {
-  if (!time) return undefined;
-  const s = time.trim();
-  const hm = s.match(/(\d{1,2}):(\d{2})/);
-  if (hm) {
-    const h = Number(hm[1]);
-    if (h >= 0 && h <= 24) return h % 24;
-  }
-  const kor = s.match(/(오전|오후)?\s*(\d{1,2})\s*시/);
-  if (kor) {
-    let h = Number(kor[2]);
-    if (h >= 0 && h <= 24) {
-      if (kor[1] === "오후" && h < 12) h += 12;
-      if (kor[1] === "오전" && h === 12) h = 0;
-      return h % 24;
-    }
-  }
-  return undefined;
-}
-
-export function toIsoDate(raw?: string): string | undefined {
-  if (!raw) return undefined;
-  const s = raw.trim();
-  if (!s) return undefined;
-  const compact = s.match(/^(\d{4})(\d{2})(\d{2})$/);
-  if (compact) return `${compact[1]}-${compact[2]}-${compact[3]}`;
-  const dash = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
-  if (dash) return `${dash[1]}-${dash[2]!.padStart(2, "0")}-${dash[3]!.padStart(2, "0")}`;
-  return undefined;
-}
-
-function hashKey(s: string): string {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
-  return h.toString(36);
-}
-
-function num(v?: string): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
 // ── 서울시 문화행사 → culture ──────────────────────────────
 
 export function mapSeoulCulture(raw: Record<string, string>): OppRow | null {
@@ -97,8 +37,7 @@ export function mapSeoulCulture(raw: Record<string, string>): OppRow | null {
   const externalId = hashKey(`${title}|${raw.STRTDATE ?? ""}|${raw.PLACE ?? ""}`);
   const cost = raw.IS_FREE?.includes("무료") ? 0 : parseFeeKrw(raw.USE_FEE);
   const startHour = parseHour(raw.PRO_TIME);
-  const la = num(raw.LAT);
-  const lo = num(raw.LOT);
+  const point = parsePoint(raw.LAT, raw.LOT);
   return {
     source: "seoul_culture",
     category: "culture",
@@ -108,8 +47,8 @@ export function mapSeoulCulture(raw: Record<string, string>): OppRow | null {
     cost_krw: cost ?? null,
     difficulty: null,
     dong_name: raw.GUNAME || null,
-    lat: la && lo ? la : null,
-    lng: la && lo ? lo : null,
+    lat: point?.lat ?? null,
+    lng: point?.lng ?? null,
     cta_url: raw.ORG_LINK || null,
     deadline: toIsoDate(raw.END_DATE) ?? null,
     source_label: "서울시 문화행사",
@@ -124,8 +63,7 @@ export function mapCultureInfo(raw: Record<string, string>): OppRow | null {
   const seq = raw.seq?.trim();
   const title = raw.title?.trim();
   if (!seq || !title) return null;
-  const la = num(raw.gpsY);
-  const lo = num(raw.gpsX);
+  const point = parsePoint(raw.gpsY, raw.gpsX);
   return {
     source: "culture_info",
     category: "culture",
@@ -135,8 +73,8 @@ export function mapCultureInfo(raw: Record<string, string>): OppRow | null {
     cost_krw: null,
     difficulty: null,
     dong_name: [raw.area, raw.sigungu].filter(Boolean).join(" ") || null,
-    lat: la && lo ? la : null,
-    lng: la && lo ? lo : null,
+    lat: point?.lat ?? null,
+    lng: point?.lng ?? null,
     cta_url: null,
     deadline: toIsoDate(raw.endDate) ?? null,
     source_label: "한눈에보는문화정보",
@@ -186,8 +124,7 @@ export function mapSportsFacility(raw: Record<string, string>): OppRow | null {
   if (!title) return null;
   const addr = raw.RDNMADR?.trim() || raw.LNMADR?.trim();
   const externalId = raw.FCLTY_SN?.trim() || hashKey(`${title}|${addr ?? ""}`);
-  const la = num(raw.LATITUDE);
-  const lo = num(raw.LONGITUDE);
+  const point = parsePoint(raw.LATITUDE, raw.LONGITUDE);
   const summary =
     [raw.FCLTY_TY_NM, raw.SIGNGU_NM, addr].map((s) => s?.trim()).filter(Boolean).join(" · ") ||
     title;
@@ -201,8 +138,8 @@ export function mapSportsFacility(raw: Record<string, string>): OppRow | null {
     cost_krw: parseFeeKrw(raw.UTILIZA_CHRGE) ?? null,
     difficulty: null,
     dong_name: raw.SIGNGU_NM?.trim() || null,
-    lat: la && lo ? la : null,
-    lng: la && lo ? lo : null,
+    lat: point?.lat ?? null,
+    lng: point?.lng ?? null,
     cta_url: raw.HMPG_URL?.trim() || null,
     deadline: null,
     source_label: "공공체육시설",
