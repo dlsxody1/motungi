@@ -95,3 +95,26 @@ export function toIsoDate(raw?: string): string | undefined {
 
   return undefined;
 }
+
+/**
+ * 결정적 문자열 해시(djb2). 여러 어댑터의 external_id 생성에 공용으로 쓴다.
+ * Edge(Deno)/브라우저/Node 어디서나 동일 결과.
+ */
+export function hashKey(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+/**
+ * 위도/경도 문자열 → { lat, lng } | undefined.
+ * - 파싱 불가/NaN/Infinity → undefined
+ * - (0, 0)만 → undefined (미기재 좌표를 0,0으로 채워 보내는 소스가 있어 방어)
+ * - 한쪽만 0이고 다른 쪽이 유효한 값이면 유효한 point로 반환.
+ */
+export function parsePoint(lat?: string, lng?: string): { lat: number; lng: number } | undefined {
+  const la = Number(lat);
+  const lo = Number(lng);
+  if (!Number.isFinite(la) || !Number.isFinite(lo) || (la === 0 && lo === 0)) return undefined;
+  return { lat: la, lng: lo };
+}

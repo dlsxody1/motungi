@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseFeeKrw, parseHour, toIsoDate } from "./util";
+import { hashKey, parseFeeKrw, parseHour, parsePoint, toIsoDate } from "./util";
 
 describe("parseFeeKrw", () => {
   it("무료 표기는 0", () => {
@@ -52,5 +52,37 @@ describe("toIsoDate", () => {
     expect(toIsoDate("")).toBeUndefined();
     expect(toIsoDate(undefined)).toBeUndefined();
     expect(toIsoDate("상시")).toBeUndefined();
+  });
+});
+
+describe("hashKey", () => {
+  it("동일 입력 → 동일 해시(결정적)", () => {
+    expect(hashKey("a|b|c")).toBe(hashKey("a|b|c"));
+  });
+  it("다른 입력 → 다른 해시", () => {
+    expect(hashKey("a|b|c")).not.toBe(hashKey("a|b|d"));
+  });
+});
+
+describe("parsePoint", () => {
+  it("정상 좌표는 { lat, lng }로 반환", () => {
+    expect(parsePoint("37.5556", "126.9019")).toEqual({ lat: 37.5556, lng: 126.9019 });
+  });
+  it("(0,0)은 undefined", () => {
+    expect(parsePoint("0", "0")).toBeUndefined();
+  });
+  it("NaN/비숫자는 undefined", () => {
+    expect(parsePoint("abc", "126.9019")).toBeUndefined();
+    expect(parsePoint("37.5556", "xyz")).toBeUndefined();
+    expect(parsePoint(undefined, undefined)).toBeUndefined();
+  });
+  it("Infinity(숫자/문자열 모두)는 undefined", () => {
+    expect(parsePoint("Infinity", "126.9019")).toBeUndefined();
+    expect(parsePoint("37.5556", "Infinity")).toBeUndefined();
+    expect(parsePoint("-Infinity", "126.9019")).toBeUndefined();
+  });
+  it("한쪽만 0이고 다른쪽이 유효하면 유효한 point 반환", () => {
+    expect(parsePoint("0", "126.9019")).toEqual({ lat: 0, lng: 126.9019 });
+    expect(parsePoint("37.5556", "0")).toEqual({ lat: 37.5556, lng: 0 });
   });
 });

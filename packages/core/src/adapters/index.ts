@@ -20,3 +20,4 @@ export * from "./culture-info";
 export * from "./sports-facility";
 export * from "./trail";
 export * from "./seoul-jobs";
+export * from "./ingest-fetch";

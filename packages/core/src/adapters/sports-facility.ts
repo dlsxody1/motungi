@@ -10,7 +10,7 @@
  *    (seoul-jobs.ts와 동일한 미확정 소스 처리 방식.)
  */
 import type { Opportunity } from "../types";
-import { parseFeeKrw } from "./util";
+import { hashKey, parseFeeKrw, parsePoint } from "./util";
 
 /**
  * 공공체육시설 상세 원본 레코드(추정 스키마).
@@ -37,20 +37,6 @@ export interface RawSportsFacility {
   UTILIZA_CHRGE?: string;
   /** 홈페이지/예약 URL — 예: HMPG_URL */
   HMPG_URL?: string;
-}
-
-/** 결정적 문자열 해시(djb2). 시설 일련번호가 없을 때 external_id 생성용. */
-function hashKey(s: string): string {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
-  return h.toString(36);
-}
-
-function parsePoint(lat?: string, lng?: string): { lat: number; lng: number } | undefined {
-  const la = Number(lat);
-  const lo = Number(lng);
-  if (!Number.isFinite(la) || !Number.isFinite(lo) || (la === 0 && lo === 0)) return undefined;
-  return { lat: la, lng: lo };
 }
 
 export function normalizeSportsFacility(raw: RawSportsFacility): Opportunity | null {
