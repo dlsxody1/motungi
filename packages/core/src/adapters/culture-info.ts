@@ -6,7 +6,7 @@
  * 요금 정보가 응답에 없어 costKrw는 미상(undefined)으로 둔다.
  */
 import type { Opportunity } from "../types";
-import { toIsoDate } from "./util";
+import { parsePoint, toIsoDate } from "./util";
 
 /** cultureinfo item (실제 필드명). */
 export interface RawCultureInfo {
@@ -29,13 +29,6 @@ export interface RawCultureInfo {
   gpsX?: string;
   /** 위도 */
   gpsY?: string;
-}
-
-function parsePoint(lat?: string, lng?: string): { lat: number; lng: number } | undefined {
-  const la = Number(lat);
-  const lo = Number(lng);
-  if (!Number.isFinite(la) || !Number.isFinite(lo) || (la === 0 && lo === 0)) return undefined;
-  return { lat: la, lng: lo };
 }
 
 export function normalizeCultureInfo(raw: RawCultureInfo): Opportunity | null {
