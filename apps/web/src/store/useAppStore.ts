@@ -7,7 +7,7 @@
  * 검증됨). 여기서는 web 전용 어댑터(localStorage/supabase)를 주입해 vanilla 스토어를
  * 만들고, zustand의 useStore로 React 훅으로 감싼다.
  */
-import type { AnchorSlot, AppState, AuthUser } from "@motungi/core";
+import type { AnchorSlot, AppState, AuthUser, SavedOpportunitiesClient } from "@motungi/core";
 import { createAppStore } from "@motungi/core";
 import { useStore } from "zustand";
 import type { StateStorage } from "zustand/middleware";
@@ -29,9 +29,12 @@ const webStorage: StateStorage = {
   removeItem: (name) => localStorage.removeItem(name),
 };
 
+// createAppStore는 저장 동기화에 필요한 최소 write 인터페이스(SavedOpportunitiesClient)만 쓴다.
+// 전체 SupabaseClient<Database> 제네릭을 그대로 넘기면 postgrest 재귀 타입이 TS2589로 폭발하므로,
+// 이 스토어가 실제로 요구하는 구조로 좁혀서 주입한다.
 const store = createAppStore<MockOpportunity, CatalogStatus>({
   storage: webStorage,
-  supabase,
+  supabase: supabase as SavedOpportunitiesClient | null,
 });
 
 /**

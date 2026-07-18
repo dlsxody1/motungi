@@ -46,4 +46,7 @@ describe("fetchOpportunities (web 래퍼)", () => {
     expect(client.from).toHaveBeenCalledWith("opportunities");
     expect(result.status).toBe("empty");
   });
+
+  // 레거시 값 필터링·rowToMock 변환 등 쿼리/변환 시나리오는 core로 승격됐다(M-008) —
+  // 커버리지는 packages/core/src/catalog.test.ts에 있다. 여기 래퍼 테스트는 위임만 검증한다.
 });

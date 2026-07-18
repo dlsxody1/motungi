@@ -129,6 +129,33 @@ describe("fetchOpportunities — CatalogStatus 4분기", () => {
     expect(result).toEqual({ data: [], status: "empty" });
   });
 
+  it("카테고리/소스가 알 수 없는(레거시) 값인 row는 제외하고 유효한 것만 매핑한다(M-011)", async () => {
+    const client = makeClient({
+      data: [
+        makeRow({ id: "ok-row", category: "culture" }),
+        { ...makeRow({ id: "legacy-category", category: "culture" }), category: "subsidy" },
+        { ...makeRow({ id: "legacy-source", category: "culture" }), source: "youth_policy" },
+      ],
+      error: null,
+    });
+
+    const result = await fetchOpportunities(asClient(client));
+
+    expect(result.status).toBe("ok");
+    expect(result.data.map((d) => d.id)).toEqual(["ok-row"]);
+  });
+
+  it("모든 row가 레거시 값이라 하나도 남지 않으면 empty 상태를 반환한다(M-011)", async () => {
+    const client = makeClient({
+      data: [{ ...makeRow({ id: "legacy-only", category: "culture" }), category: "subsidy" }],
+      error: null,
+    });
+
+    const result = await fetchOpportunities(asClient(client));
+
+    expect(result).toEqual({ data: [], status: "empty" });
+  });
+
   it("조회 실패(query error)면 error 상태를 반환한다", async () => {
     const client = makeClient({ data: null, error: { message: "boom" } });
 
