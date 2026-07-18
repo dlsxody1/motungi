@@ -180,7 +180,7 @@ backlog:
   - id: M-011
     title: "Supabase 클라이언트 Database 제네릭 주입 + 경계 캐스팅 제거"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web, apps/mobile, supabase]
     done_when:
       - "supabase gen types typescript로 Database 타입을 생성해 createClient<Database>()로 주입한다"
@@ -191,6 +191,14 @@ backlog:
       type-safety finding 'Database 제네릭 미주입→검증 없는 강제 캐스팅'(medium).
       strict·noUncheckedIndexedAccess를 켜놓고도 DB 데이터 경계 전체가 타입 검증에서 빠짐. text 컬럼 값이 유니온을 단언해
       타입/런타임 불일치 잠재.
+      [2026-07-18 야간 파이프라인] packages/core에 database.types.ts 수기 작성(supabase gen types는 이 세션
+      환경 제약으로 미실행 — Docker/원격 토큰 부재) + isOpportunityCategory/isSourceKind 런타임 가드(zod 대신
+      Set 기반). web/mobile lib/supabase.ts에 createClient<Database>() 주입, opportunities.ts/auth.ts 캐스팅
+      3곳 제거. qa PASS(typecheck 4패키지, test 249개, build 19페이지) — 리뷰어가 재실행 확인. status는
+      done이 아니라 doing으로 둔다: (1) done_when 1번(gen types 실제 생성)이 수기 작성으로 대체됐고,
+      (2) web/mobile lib/supabase.ts에 GenericSchema 보강 타입 23줄 중복(byte-identical)이 남아 후속 정리
+      필요. 사람 리뷰 후 두 항목 판단해 done 여부 확정. PR: nightly/2026-07-18 → main (draft, 미머지).
+      ⚠️ dev 브랜치 미실재로 4일 연속(07-15~07-18) main을 기준선으로 우회 — 미머지 PR 4개 누적, 사람 조치 필요.
   - id: M-012
     title: "타입 안전성 하드닝: 진단 답변 유니온 검증 + pickTop 제네릭"
     priority: medium
