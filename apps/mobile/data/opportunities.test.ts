@@ -135,6 +135,36 @@ describe("fetchOpportunities — 상태 분기", () => {
     expect(res.status).toBe("ok");
     expect(res.data).toHaveLength(1);
   });
+
+  it("카테고리/소스가 알 수 없는(레거시) 값이면 해당 row를 제외한다", async () => {
+    h.state.result = {
+      data: [
+        makeRow({ id: "ok-row" }),
+        { ...makeRow({ id: "legacy-category" }), category: "subsidy" },
+        { ...makeRow({ id: "legacy-source" }), source: "youth_policy" },
+      ],
+      error: null,
+    };
+    const { fetchOpportunities } = await import("./opportunities");
+
+    const res = await fetchOpportunities();
+
+    expect(res.status).toBe("ok");
+    expect(res.data.map((d) => d.id)).toEqual(["ok-row"]);
+  });
+
+  it("모든 row가 레거시 값이라 하나도 남지 않으면 empty 상태를 반환한다", async () => {
+    h.state.result = {
+      data: [{ ...makeRow({ id: "legacy-only" }), category: "subsidy" }],
+      error: null,
+    };
+    const { fetchOpportunities } = await import("./opportunities");
+
+    const res = await fetchOpportunities();
+
+    expect(res.status).toBe("empty");
+    expect(res.data).toEqual([]);
+  });
 });
 
 describe("fetchOpportunities — Supabase 쿼리 계약", () => {

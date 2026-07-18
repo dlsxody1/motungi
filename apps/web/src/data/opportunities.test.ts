@@ -90,4 +90,25 @@ describe("fetchOpportunities", () => {
     expect(result.status).toBe("unconfigured");
     expect(result.data).toEqual([]);
   });
+
+  it("카테고리/소스가 알 수 없는(레거시) 값이면 해당 row를 제외한다", async () => {
+    const legacyCategoryRow = { ...ROW, id: "op-legacy-category", category: "subsidy" };
+    const legacySourceRow = { ...ROW, id: "op-legacy-source", source: "youth_policy" };
+    state.client = makeClient({ data: [ROW, legacyCategoryRow, legacySourceRow], error: null });
+
+    const result = await fetchOpportunities();
+
+    expect(result.status).toBe("ok");
+    expect(result.data.map((d) => d.id)).toEqual(["op-1"]);
+  });
+
+  it("모든 row가 레거시 값이라 하나도 남지 않으면 empty 상태를 반환한다", async () => {
+    const legacyCategoryRow = { ...ROW, id: "op-legacy-category", category: "subsidy" };
+    state.client = makeClient({ data: [legacyCategoryRow], error: null });
+
+    const result = await fetchOpportunities();
+
+    expect(result.status).toBe("empty");
+    expect(result.data).toEqual([]);
+  });
 });

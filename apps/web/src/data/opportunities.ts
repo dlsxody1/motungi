@@ -10,6 +10,8 @@ import {
   costHeading,
   costLabel,
   costUnit,
+  isOpportunityCategory,
+  isSourceKind,
   rowToOpportunity,
 } from "@motungi/core";
 import { supabase } from "@/lib/supabase";
@@ -91,5 +93,14 @@ export async function fetchOpportunities(): Promise<CatalogResult> {
     .limit(200);
   if (error) return { data: [], status: "error" };
   if (!data || data.length === 0) return { data: [], status: "empty" };
-  return { data: (data as OpportunityRow[]).map(rowToMock), status: "ok" };
+  // DB의 category/source enum에는 앱이 모르는 레거시 값이 남아있을 수 있다(§database.types.ts) —
+  // 가드로 검증된 row만 남기고 캐스팅 없이 OpportunityRow로 좁힌다.
+  const rows: OpportunityRow[] = data.filter(
+    (row): row is OpportunityRow => isOpportunityCategory(row.category) && isSourceKind(row.source),
+  );
+  // 판단: 원본 조회는 1건 이상이었지만 전부 레거시 값이라 필터링되면 "empty"로 취급한다.
+  // "ok"는 항상 1건 이상 렌더 가능한 데이터를 의미하는 기존 계약(위 CatalogStatus 주석)을 지키기 위함 —
+  // 호출부가 status==="ok"일 때 data가 비어있지 않다고 가정해도 안전하도록.
+  if (rows.length === 0) return { data: [], status: "empty" };
+  return { data: rows.map(rowToMock), status: "ok" };
 }
