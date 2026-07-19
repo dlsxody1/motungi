@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { fetchOpportunities } from "@/data/opportunities";
-import type { MockOpportunity } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 
 /** A4 · 로딩 — 데이터 취합 중. 2.4초 후 리포트로 자동 이동. 반응형. */
@@ -26,8 +25,7 @@ export default function LoadingPage() {
       setCatalog(candidates, status); // 탐색/상세/보관함이 참조할 전체 카탈로그 + 상태
       const ranked = answers
         ? pickTop(candidates, answers, anchors, 3).map((r) => {
-            const opp = r.opportunity as MockOpportunity;
-            return { ...opp, matchScore: Math.round(r.score * 100) };
+            return { ...r.opportunity, matchScore: Math.round(r.score * 100) };
           })
         : candidates.slice(0, 3);
       setResults(ranked);
