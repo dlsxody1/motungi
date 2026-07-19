@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { fetchOpportunities } from "@/data/opportunities";
-import type { MockOpportunity } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 import { Screen } from "@/ui/components";
 import { C } from "@/ui/theme";
@@ -26,8 +25,7 @@ export default function LoadingScreen() {
       setCatalog(candidates, status); // 탐색/상세/보관함이 참조할 전체 카탈로그 + 상태
       const ranked = answers
         ? pickTop(candidates, answers, anchors, 3).map((r) => {
-            const opp = r.opportunity as MockOpportunity;
-            return { ...opp, matchScore: Math.round(r.score * 100) };
+            return { ...r.opportunity, matchScore: Math.round(r.score * 100) };
           })
         : candidates.slice(0, 3);
       setResults(ranked);
