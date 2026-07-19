@@ -194,7 +194,7 @@ backlog:
   - id: M-012
     title: "타입 안전성 하드닝: 진단 답변 유니온 검증 + pickTop 제네릭"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web, apps/mobile, packages/core]
     done_when:
       - "진단 옵션 값을 유니온으로 좁혀 저장하거나(as const+satisfies) saveAnswers 직전 isDiagnosisComplete로 검증하고, final[0] undefined 가드로 interests:[undefined] 생성을 막는다"
@@ -203,6 +203,15 @@ backlog:
     notes: >
       type-safety finding 2건 통합: '진단 답변 Record<number,string>→도메인 유니온 무검증 캐스팅'(medium)과
       'pickTop이 구체 타입 잃어 다운캐스트 강제'(low). 둘 다 core 진단/스코어링 타입 흐름의 unsound 캐스팅이라 함께 처리.
+      [2026-07-19 야간 파이프라인] packages/core에 draftToAnswers(진단 draft→DiagnosisAnswers 순수 검증
+      함수, 기존 사장 코드였던 isDiagnosisComplete 재사용) 추가해 interests:[undefined] 생성 경로를 원천
+      차단. pickTop을 scoreAll과 동일한 <T extends Opportunity> 제네릭으로 일반화해 loading 페이지의
+      as MockOpportunity 다운캐스트 제거. web·mobile diagnosis/loading 화면 배선 완료. core 신규 테스트
+      10개(diagnosis.test.ts)+1개(scoring.test.ts). core 9 files/115 tests, web 11 files/103 tests,
+      mobile 4 files/32 tests 전부 통과, 4패키지 typecheck 클린, web build 19/19 라우트 성공. apps/mobile
+      화면 단위 테스트 인프라 부재는 기존 공백(이번 범위 밖). draft PR(main 대상) 생성 대기 중 — 사람
+      리뷰·머지 필요. 참고: main 대상 미병합 draft PR이 이미 4개(#11~#14, M-008~M-011) 쌓여 있어 리뷰
+      적체 심화 중.
   - id: M-013
     title: "a11y: 아이콘 전용 컨트롤 접근 가능한 이름 스윕 + 선택/현재상태 노출"
     priority: high
