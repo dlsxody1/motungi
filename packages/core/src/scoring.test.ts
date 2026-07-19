@@ -41,6 +41,15 @@ describe("pickTop", () => {
   it("빈 후보는 빈 결과", () => {
     expect(pickTop([], answers, anchors)).toHaveLength(0);
   });
+
+  it("입력 파생 타입 T를 보존한다(표시 필드가 붙은 항목) — M-012", () => {
+    const near = opp({ id: "near", difficulty: 0.1, costKrw: 0, location: here });
+    const tagged = { ...near, matchScore: 0, categoryLabel: "문화" };
+    const result = pickTop([tagged], answers, anchors, 3);
+    // opportunity가 원본 객체(파생 필드 포함)를 그대로 유지 → matchScore 채우기 가능
+    expect(result[0]!.opportunity.categoryLabel).toBe("문화");
+    expect(Math.round(result[0]!.score * 100)).toBeGreaterThan(0);
+  });
 });
 
 describe("scoreAll", () => {
