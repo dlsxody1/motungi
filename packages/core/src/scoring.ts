@@ -146,13 +146,16 @@ export function scoreAll<T extends Opportunity>(
     .sort((a, b) => b.score - a.score);
 }
 
-/** 후보를 점수순 정렬해 상위 topN(기본 3)개의 "원픽 + 보조" 리스트 반환. */
-export function pickTop(
-  candidates: Opportunity[],
+/**
+ * 후보를 점수순 정렬해 상위 topN(기본 3)개의 "원픽 + 보조" 리스트 반환.
+ * scoreAll과 동일하게 입력 타입 T(예: 표시용 파생 필드가 붙은 MockOpportunity)를 보존한다.
+ */
+export function pickTop<T extends Opportunity>(
+  candidates: T[],
   answers: DiagnosisAnswers,
   anchors: UserAnchors,
   topN = 3,
   weights: ScoreWeights = DEFAULT_WEIGHTS,
-): ScoredOpportunity[] {
+): (ScoredOpportunity & { opportunity: T })[] {
   return scoreAll(candidates, answers, anchors, weights).slice(0, topN);
 }

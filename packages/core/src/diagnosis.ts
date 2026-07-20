@@ -40,3 +40,55 @@ export function isDiagnosisComplete(
     partial.energy != null
   );
 }
+
+const VALID_INTERESTS: ReadonlySet<Interest> = new Set([
+  "culture",
+  "active",
+  "side_job",
+  "class",
+  "food",
+  "market",
+]);
+const VALID_TIME_SLOTS: ReadonlySet<TimeSlot> = new Set([
+  "weekday_evening",
+  "weekend",
+  "flexible",
+]);
+const VALID_ENERGIES: ReadonlySet<Energy> = new Set(["drained", "moderate", "active"]);
+
+/**
+ * 진단 화면(web/mobile)의 draft 상태를 검증된 DiagnosisAnswers로 변환한다.
+ * draft는 DIAGNOSIS_STEPS 순서(0=interests·1=timeSlot·2=energy)의 문항 인덱스를 키로,
+ * 선택된 옵션 value(string)를 값으로 갖는다(미선택 시 undefined 가능).
+ * Q1(interests)은 UI가 단일 선택이라 draft[0]는 문자열 하나지만, DiagnosisAnswers.interests는
+ * 배열이므로 값 검증 후에만 [interest]로 감싼다 — 미완료/미검증 값이 배열에 undefined로 섞이지 않는다.
+ * 완료되지 않았거나 유효하지 않은 값이 있으면 null을 반환한다.
+ */
+export function draftToAnswers(
+  draft: Record<number, string | undefined>,
+): DiagnosisAnswers | null {
+  const interestRaw = draft[0];
+  const timeSlotRaw = draft[1];
+  const energyRaw = draft[2];
+
+  const interest =
+    interestRaw != null && VALID_INTERESTS.has(interestRaw as Interest)
+      ? (interestRaw as Interest)
+      : undefined;
+  const timeSlot =
+    timeSlotRaw != null && VALID_TIME_SLOTS.has(timeSlotRaw as TimeSlot)
+      ? (timeSlotRaw as TimeSlot)
+      : undefined;
+  const energy =
+    energyRaw != null && VALID_ENERGIES.has(energyRaw as Energy)
+      ? (energyRaw as Energy)
+      : undefined;
+
+  const candidate: Partial<DiagnosisAnswers> = {
+    interests: interest != null ? [interest] : undefined,
+    timeSlot,
+    energy,
+  };
+
+  return isDiagnosisComplete(candidate) ? candidate : null;
+}

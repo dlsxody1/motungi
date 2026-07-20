@@ -5,7 +5,7 @@
  * 실제 응답(2026-07)으로 필드 확정. 고유 ID 필드가 없어 제목+시작일+장소로 external_id 생성.
  */
 import type { Opportunity } from "../types";
-import { parseFeeKrw, parseHour, toIsoDate } from "./util";
+import { hashKey, parseFeeKrw, parseHour, parsePoint, toIsoDate } from "./util";
 
 /** culturalEventInfo row (실제 필드명). */
 export interface RawSeoulCulture {
@@ -37,20 +37,6 @@ export interface RawSeoulCulture {
   IS_FREE?: string;
   /** 공연시간 "수요일 11:00" */
   PRO_TIME?: string;
-}
-
-/** 결정적 문자열 해시(djb2). Edge/브라우저 어디서나 동일 결과. */
-function hashKey(s: string): string {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
-  return h.toString(36);
-}
-
-function parsePoint(lat?: string, lng?: string): { lat: number; lng: number } | undefined {
-  const la = Number(lat);
-  const lo = Number(lng);
-  if (!Number.isFinite(la) || !Number.isFinite(lo) || (la === 0 && lo === 0)) return undefined;
-  return { lat: la, lng: lo };
 }
 
 /** 무료 판정: IS_FREE="무료"거나 요금 파싱 결과가 0. */

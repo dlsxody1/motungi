@@ -1,6 +1,6 @@
 "use client";
 
-import type { Energy, Interest, TimeSlot } from "@motungi/core";
+import { draftToAnswers } from "@motungi/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -75,13 +75,11 @@ export default function DiagnosisPage() {
       setStep(step + 1);
       return;
     }
-    // 마지막 질문 완료 → 진단 답변을 core 형태로 매핑해 저장 후 스코어링(로딩)으로.
+    // 마지막 질문 완료 → 진단 답변을 core 형태로 검증·매핑해 저장 후 스코어링(로딩)으로.
     const final = { ...answers, [step]: answers[step]! };
-    saveAnswers({
-      interests: [final[0] as Interest],
-      timeSlot: (final[1] as TimeSlot) ?? "flexible",
-      energy: (final[2] as Energy) ?? "moderate",
-    });
+    const validated = draftToAnswers(final);
+    if (!validated) return; // 방어적 분기 — 자동 진행 UX 상 실제로는 도달하지 않음.
+    saveAnswers(validated);
     router.push("/loading");
   };
   const pick = (value: string, soon?: boolean) => {

@@ -1,8 +1,8 @@
 /**
- * fetchOpportunities()가 Supabase 응답을 4가지 CatalogStatus로 올바르게 매핑하는지 검증.
- * @/lib/supabase가 export하는 클라이언트 자체를 모킹해서 실제 네트워크 호출 없이 테스트한다.
+ * opportunities.ts는 이제 @motungi/core.catalog을 감싸는 얇은 래퍼다(M-008).
+ * 변환/쿼리 시나리오 전체는 packages/core/src/catalog.test.ts로 이관됐으니, 여기서는
+ * 이 앱의 "@/lib/supabase" 클라이언트가 core의 fetchOpportunities에 그대로 위임되는지만 확인한다.
  */
-import type { OpportunityRow } from "@motungi/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { state } = vi.hoisted(() => ({
@@ -17,7 +17,6 @@ vi.mock("@/lib/supabase", () => ({
 
 import { fetchOpportunities } from "./opportunities";
 
-/** opportunities.select().limit()가 result를 resolve하는 mock 클라이언트를 만든다. */
 function makeClient(result: { data: unknown; error: unknown }) {
   const limit = vi.fn().mockResolvedValue(result);
   const select = vi.fn(() => ({ limit }));
@@ -25,69 +24,29 @@ function makeClient(result: { data: unknown; error: unknown }) {
   return { from };
 }
 
-const ROW: OpportunityRow = {
-  id: "op-1",
-  source: "seoul_culture",
-  category: "culture",
-  external_id: null,
-  title: "망원동 동네 전시",
-  summary: "망원동 갤러리에서 열리는 소규모 전시",
-  cost_krw: 0,
-  difficulty: 0.2,
-  dong_name: "망원동",
-  lat: 37.5556,
-  lng: 126.9019,
-  cta_url: null,
-  deadline: null,
-  source_label: null,
-  time_start_hour: 18,
-  time_end_hour: 21,
-};
+beforeEach(() => {
+  state.client = null;
+});
 
-describe("fetchOpportunities", () => {
-  beforeEach(() => {
+describe("fetchOpportunities (web 래퍼)", () => {
+  it("supabase 클라이언트가 없으면 unconfigured를 core로부터 그대로 위임받는다", async () => {
     state.client = null;
-  });
-
-  it("데이터가 1건 이상이면 ok 상태로 매핑된 데이터를 반환한다", async () => {
-    state.client = makeClient({ data: [ROW], error: null });
 
     const result = await fetchOpportunities();
 
-    expect(result.status).toBe("ok");
-    expect(result.data).toHaveLength(1);
-    expect(result.data[0]).toMatchObject({
-      id: "op-1",
-      title: "망원동 동네 전시",
-      categoryLabel: "동네 문화·공연",
-      costLabel: "무료",
-    });
+    expect(result).toEqual({ data: [], status: "unconfigured" });
   });
 
-  it("조회는 성공했지만 0건이면 empty 상태를 반환한다", async () => {
-    state.client = makeClient({ data: [], error: null });
+  it("이 앱의 supabase 클라이언트를 core.fetchOpportunities에 그대로 주입한다", async () => {
+    const client = makeClient({ data: [], error: null });
+    state.client = client;
 
     const result = await fetchOpportunities();
 
+    expect(client.from).toHaveBeenCalledWith("opportunities");
     expect(result.status).toBe("empty");
-    expect(result.data).toEqual([]);
   });
 
-  it("조회 실패(query error)면 error 상태를 반환한다", async () => {
-    state.client = makeClient({ data: null, error: { message: "boom" } });
-
-    const result = await fetchOpportunities();
-
-    expect(result.status).toBe("error");
-    expect(result.data).toEqual([]);
-  });
-
-  it("Supabase 클라이언트가 없으면(env 미설정) unconfigured 상태를 반환한다", async () => {
-    state.client = null;
-
-    const result = await fetchOpportunities();
-
-    expect(result.status).toBe("unconfigured");
-    expect(result.data).toEqual([]);
-  });
+  // 레거시 값 필터링·rowToMock 변환 등 쿼리/변환 시나리오는 core로 승격됐다(M-008) —
+  // 커버리지는 packages/core/src/catalog.test.ts에 있다. 여기 래퍼 테스트는 위임만 검증한다.
 });

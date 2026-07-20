@@ -67,7 +67,7 @@ export async function pullSavedFromServer(userId: string): Promise<string[]> {
     .from("saved_opportunities")
     .select("opportunity_id")
     .eq("user_id", userId);
-  return (data ?? []).map((r) => r.opportunity_id as string);
+  return (data ?? []).map((r) => r.opportunity_id);
 }
 
 /**
@@ -96,12 +96,15 @@ export function initAuthListener(): () => void {
   // 초기 세션.
   void supabase.auth.getSession().then(({ data }) => {
     const u = data.session?.user;
-    void applySession(u?.id ?? null, u?.user_metadata?.name as string | undefined);
+    // user_metadata는 GoTrue의 Record<string, any> — DB 스키마 제네릭이 커버하지 못하므로 런타임 체크.
+    const name = u?.user_metadata?.name;
+    void applySession(u?.id ?? null, typeof name === "string" ? name : undefined);
   });
 
   const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
     const u = session?.user;
-    void applySession(u?.id ?? null, u?.user_metadata?.name as string | undefined);
+    const name = u?.user_metadata?.name;
+    void applySession(u?.id ?? null, typeof name === "string" ? name : undefined);
   });
 
   return () => sub.subscription.unsubscribe();

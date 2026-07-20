@@ -135,7 +135,7 @@ backlog:
   - id: M-008
     title: "opportunities/catalog/useEnsureCatalog를 packages/core로 승격(web·mobile 복제 제거)"
     priority: medium
-    status: todo
+    status: doing
     scope: [packages/core, apps/web, apps/mobile]
     done_when:
       - "MockOpportunity·rowToMock·NEIGHBORHOOD_POINTS·CatalogStatus/CatalogResult가 packages/core(예: catalog.ts)로 이동·export된다"
@@ -150,7 +150,7 @@ backlog:
   - id: M-009
     title: "useAppStore를 createAppStore 팩토리로 core 승격(저장 동기화 단일 소유)"
     priority: medium
-    status: todo
+    status: doing
     scope: [packages/core, apps/web, apps/mobile]
     done_when:
       - "core에 createAppStore({ storage, supabase }) 팩토리 추가, state 형태·setter·toggleSaved 서버동기화(upsert/delete)·isSaved를 단일 소유한다"
@@ -164,7 +164,7 @@ backlog:
   - id: M-010
     title: "Edge ingest 순수 파서 단일화 + fetch/파싱/필터 테스트 도입"
     priority: medium
-    status: todo
+    status: doing
     scope: [packages/core, supabase/functions/ingest]
     done_when:
       - "parseFeeKrw/parseHour/toIsoDate/hashKey를 core util 단일 소스로 두고(core 내부 3중 hashKey 복제 제거) Edge가 Deno에서 해당 모듈을 import해 재구현을 제거한다"
@@ -180,7 +180,7 @@ backlog:
   - id: M-011
     title: "Supabase 클라이언트 Database 제네릭 주입 + 경계 캐스팅 제거"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web, apps/mobile, supabase]
     done_when:
       - "supabase gen types typescript로 Database 타입을 생성해 createClient<Database>()로 주입한다"
@@ -194,7 +194,7 @@ backlog:
   - id: M-012
     title: "타입 안전성 하드닝: 진단 답변 유니온 검증 + pickTop 제네릭"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web, apps/mobile, packages/core]
     done_when:
       - "진단 옵션 값을 유니온으로 좁혀 저장하거나(as const+satisfies) saveAnswers 직전 isDiagnosisComplete로 검증하고, final[0] undefined 가드로 interests:[undefined] 생성을 막는다"
