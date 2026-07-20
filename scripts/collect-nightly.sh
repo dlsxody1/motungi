@@ -139,4 +139,15 @@ pr_url=$(gh pr create --draft --base "$BASE_BRANCH" --head "$COLLECT_BRANCH" \
 
 🤖 collect-nightly.sh")
 log "draft PR: $pr_url"
+
+# ── 수거한 밤의 기존 개별 PR을 닫는다 (봇이 밤마다 연 중복 draft) ──────────────
+# 안 닫으면 "개별 N개 + 통합 1개"가 공존하고, 개별들은 서로 같은 base라 충돌 더미가 된다.
+# 내용은 방금 통합 PR에 담겼으므로 코멘트 남기고 close.
+for date in "${DATES[@]}"; do
+  pr_num=$(gh pr list --state open --head "nightly/$date" --json number --jq '.[0].number' 2>/dev/null || true)
+  [ -n "$pr_num" ] || continue
+  gh pr close "$pr_num" --comment "이 밤의 산출물은 통합 수거 PR $pr_url 로 충돌 해소·검증까지 마쳐 합쳐졌습니다. 개별 draft는 같은 base에서 갈라져 서로 충돌하므로 중복으로 닫습니다." >/dev/null 2>&1 \
+    && log "  개별 PR #$pr_num (nightly/$date) close"
+done
+
 log "완료."
