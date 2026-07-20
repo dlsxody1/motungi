@@ -131,3 +131,8 @@
 .corner-spinner {
   animation: corner-spin 0.9s linear infinite;
 }
+@media (prefers-reduced-motion: reduce) {
+  .corner-spinner {
+    animation: none;
+  }
+}

@@ -42,7 +42,11 @@ export default function LoadingPage() {
   }, [router, answers, anchors, setResults, setCatalog]);
 
   const Body = (
-    <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex flex-1 flex-col items-center justify-center px-8 text-center"
+    >
       <div className="corner-spinner size-11 rounded-full border-[3px] border-tint border-t-primary md:size-14 md:border-4" />
       <h1 className="mt-7 text-[20px] font-extrabold leading-snug text-ink md:mt-9 md:text-[26px]">
         {dongName} 기회를
