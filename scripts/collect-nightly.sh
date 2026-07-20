@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 #
+# ⚠ LEGACY (2026-07-20~): 밤 routine이 dev에 직접 커밋하는 트렁크 모델로 전환돼(트리거 갱신됨,
+#   docs/nightly/PIPELINE.md) 평상시엔 nightly/* 브랜치가 더 이상 생기지 않는다. 이 스크립트는
+#   밤이 옛 브랜치 모델로 "회귀"했을 때의 일회성 수거 폴백으로만 남겨둔다. 아침 확인은
+#   scripts/nightly-status.sh(cron)가 담당한다.
+#
 # collect-nightly.sh — 밀린 야간(nightly/YYYY-MM-DD) 브랜치를 하나의 통합 브랜치로
 # 순차 수거하고, 매 단계 검증한 뒤 draft PR을 연다.
 #
