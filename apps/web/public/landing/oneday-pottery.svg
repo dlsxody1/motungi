@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" fill="none">
+  <defs>
+    <linearGradient id="potbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#efe7f4"/>
+      <stop offset="1" stop-color="#e3d6ee"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#potbg)"/>
+  <!-- table -->
+  <path d="M0 430 L800 430 L800 600 L0 600 Z" fill="#c9b48f"/>
+  <path d="M0 430 L800 430 L800 448 L0 448 Z" fill="#b89e78"/>
+  <!-- wheel -->
+  <ellipse cx="400" cy="450" rx="150" ry="34" fill="#7a5c3e"/>
+  <ellipse cx="400" cy="440" rx="150" ry="34" fill="#8a6a48"/>
+  <!-- clay vessel -->
+  <path d="M352 440 Q340 380 360 350 Q348 330 372 320 L428 320 Q452 330 440 350 Q460 380 448 440 Z" fill="#b5623f"/>
+  <path d="M360 350 Q400 366 440 350" stroke="#8a4428" stroke-width="4" fill="none" opacity="0.5"/>
+  <ellipse cx="400" cy="320" rx="34" ry="10" fill="#9a4f30"/>
+  <ellipse cx="400" cy="320" rx="24" ry="6" fill="#7a3a22"/>
+  <!-- hands -->
+  <g fill="#e8b98f">
+    <ellipse cx="356" cy="372" rx="26" ry="18" transform="rotate(-24 356 372)"/>
+    <ellipse cx="444" cy="372" rx="26" ry="18" transform="rotate(24 444 372)"/>
+  </g>
+  <!-- spinning motion arcs -->
+  <g stroke="#6e4e9c" stroke-width="3" fill="none" opacity="0.4">
+    <path d="M250 452 q10 -20 30 -26"/>
+    <path d="M550 452 q-10 -20 -30 -26"/>
+  </g>
+  <!-- finished pieces on shelf -->
+  <g fill="#c98a5a">
+    <path d="M120 200 q-8 -34 12 -50 l40 0 q20 16 12 50 Z"/>
+    <path d="M640 210 q-6 -28 10 -42 l32 0 q16 14 10 42 Z" fill="#9a6a48"/>
+  </g>
+  <rect x="90" y="200" width="140" height="6" fill="#8a6a48"/>
+  <rect x="610" y="210" width="110" height="6" fill="#8a6a48"/>
+</svg>

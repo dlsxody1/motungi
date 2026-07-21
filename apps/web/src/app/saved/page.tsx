@@ -53,7 +53,7 @@ export default function SavedPage() {
                 </span>
               </div>
 
-              <div className="mt-4 flex items-center gap-3 rounded-xl bg-tint/60 p-4">
+              <div className="mt-4 flex items-center gap-3 rounded-xl border border-line-alt bg-surface p-4 shadow-card">
                 <div className="flex-1">
                   <p className="text-[15px] font-bold text-ink">
                     이번 주 동네 다시 보기
@@ -173,7 +173,7 @@ export default function SavedPage() {
               </div>
 
               {/* 재진단 배너 */}
-              <div className="mt-6 flex items-center gap-4 rounded-[18px] bg-tint/60 p-6">
+              <div className="mt-6 flex items-center gap-4 rounded-[18px] border border-line-alt bg-surface p-6 shadow-web">
                 <div className="flex-1">
                   <p className="text-[17px] font-bold text-ink">
                     이번 주 동네 다시 보기

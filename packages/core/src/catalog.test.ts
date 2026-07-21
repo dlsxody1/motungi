@@ -32,6 +32,7 @@ type FakeClient = {
   select: ReturnType<typeof vi.fn>;
   or: ReturnType<typeof vi.fn>;
   in: ReturnType<typeof vi.fn>;
+  not: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
   limit: ReturnType<typeof vi.fn>;
 };
@@ -49,15 +50,17 @@ function makeClient(result: { data: unknown; error: unknown }): FakeClient {
   const chain: {
     or: ReturnType<typeof vi.fn>;
     in: ReturnType<typeof vi.fn>;
+    not: ReturnType<typeof vi.fn>;
     order: ReturnType<typeof vi.fn>;
     limit: typeof limit;
-  } = { or: vi.fn(), in: vi.fn(), order: vi.fn(), limit };
+  } = { or: vi.fn(), in: vi.fn(), not: vi.fn(), order: vi.fn(), limit };
   chain.or.mockReturnValue(chain);
   chain.in.mockReturnValue(chain);
+  chain.not.mockReturnValue(chain);
   chain.order.mockReturnValue(chain);
   const select = vi.fn(() => chain);
   const from = vi.fn(() => ({ select }));
-  return { from, select, or: chain.or, in: chain.in, order: chain.order, limit };
+  return { from, select, or: chain.or, in: chain.in, not: chain.not, order: chain.order, limit };
 }
 
 function asClient(fake: FakeClient): SupabaseClientLike {
@@ -290,9 +293,10 @@ describe("fetchOpportunities — Supabase 쿼리 계약", () => {
     expect(selectedCols).toContain("time_start_hour");
     expect(selectedCols).toContain("time_end_hour");
     expect(client.limit).toHaveBeenCalledWith(200);
-    // 하위호환: 옵션 없으면 마감/카테고리 필터를 걸지 않는다.
+    // 하위호환: 옵션 없으면 마감/카테고리/이미지 필터를 걸지 않는다.
     expect(client.or).not.toHaveBeenCalled();
     expect(client.in).not.toHaveBeenCalled();
+    expect(client.not).not.toHaveBeenCalled();
     // 정렬은 항상 마감 임박순.
     expect(client.order).toHaveBeenCalledWith("deadline", { ascending: true, nullsFirst: false });
   });
@@ -327,6 +331,17 @@ describe("fetchOpportunities — Supabase 쿼리 계약", () => {
     await fetchOpportunities(asClient(client), { limit: 30 });
 
     expect(client.limit).toHaveBeenCalledWith(30);
+  });
+
+  it("withImageOnly를 주면 image_url is not null 필터를 서버에 위임한다", async () => {
+    const client = makeClient({
+      data: [makeRow({ category: "culture", image_url: "https://x/y.jpg" })],
+      error: null,
+    });
+
+    await fetchOpportunities(asClient(client), { withImageOnly: true });
+
+    expect(client.not).toHaveBeenCalledWith("image_url", "is", null);
   });
 });
 

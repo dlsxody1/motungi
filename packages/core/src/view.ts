@@ -27,14 +27,33 @@ export interface OpportunityRow {
   time_end_hour: number | null;
 }
 
+/**
+ * HTML 엔티티 디코드. 공공데이터(서울시 문화행사·한눈에보는문화정보) 제목/요약엔
+ * `&amp;lt;동물의 세계&amp;gt;`처럼 **이중 이스케이프**된 엔티티가 그대로 저장돼 있다.
+ * 적재 어댑터가 정규화하지 않으므로 표시용 변환(rowToOpportunity) 시점에 걷어낸다.
+ * 2패스(`&amp;lt;` → `&lt;` → `<`)로 이중까지 처리하며, 순수 텍스트엔 무영향(멱등).
+ */
+export function decodeHtmlEntities(s: string): string {
+  const once = (t: string) =>
+    t
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#0*39;/g, "'")
+      .replace(/&#x0*27;/gi, "'")
+      .replace(/&nbsp;/g, " ");
+  return once(once(s));
+}
+
 /** DB row → core Opportunity (camelCase). 스코어링 입력 형태. */
 export function rowToOpportunity(r: OpportunityRow): Opportunity {
   return {
     id: r.id,
     source: r.source,
     category: r.category,
-    title: r.title,
-    summary: r.summary,
+    title: decodeHtmlEntities(r.title),
+    summary: decodeHtmlEntities(r.summary),
     costKrw: r.cost_krw ?? undefined,
     difficulty: r.difficulty ?? undefined,
     location: {

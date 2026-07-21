@@ -40,7 +40,8 @@ function OpportunityInner() {
   const router = useRouter();
   const id = useSearchParams().get("id");
   const catalog = useAppStore((s) => s.catalog);
-  // 요청 id 우선, 없으면 카탈로그 첫 항목. 카탈로그 자체가 비면 not-found.
+  const catalogStatus = useAppStore((s) => s.catalogStatus);
+  // 요청 id 우선, 없으면 카탈로그 첫 항목.
   const o = catalog.find((x) => x.id === id) ?? catalog[0];
 
   const savedIds = useAppStore((s) => s.savedIds);
@@ -50,21 +51,27 @@ function OpportunityInner() {
   const homeDong = useAppStore((s) => s.anchors.home?.dongName);
 
   if (!o) {
+    // 카탈로그가 아직 안 불러와진 상태(idle)면 "없음"이 아니라 로딩이다.
+    // 카드에서 바로 진입하면 이 순간을 지나 데이터가 채워진다 → 스피너를 보여준다.
+    const loading = catalogStatus === "idle";
+    const body = loading ? (
+      <OpportunityLoading />
+    ) : (
+      <OpportunityNotFound onExplore={() => router.push("/explore")} />
+    );
     return (
       <>
         <div className="md:hidden">
           <MobileScreen>
             <div className="flex flex-1 flex-col bg-bg">
               <SafeTop />
-              <OpportunityNotFound onExplore={() => router.push("/explore")} />
+              {body}
               <SafeBottom />
             </div>
           </MobileScreen>
         </div>
         <DesktopShell active="report">
-          <div className="flex min-h-[60vh] flex-col">
-            <OpportunityNotFound onExplore={() => router.push("/explore")} />
-          </div>
+          <div className="flex min-h-[60vh] flex-col">{body}</div>
         </DesktopShell>
       </>
     );
@@ -387,6 +394,16 @@ function OpportunityInner() {
         </WebContainer>
       </DesktopShell>
     </>
+  );
+}
+
+/** 카탈로그를 아직 불러오는 중(카드에서 직접 진입 등)일 때의 로딩 화면. */
+function OpportunityLoading() {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center px-8 text-center" aria-live="polite" aria-busy="true">
+      <div className="corner-spinner size-11 rounded-full border-[3px] border-tint border-t-primary md:size-14 md:border-4" />
+      <p className="mt-5 text-[14px] font-medium text-muted md:text-[15px]">활동을 불러오는 중…</p>
+    </div>
   );
 }
 

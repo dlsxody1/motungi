@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" fill="none">
+  <defs>
+    <linearGradient id="flbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6ece0"/>
+      <stop offset="1" stop-color="#efe1cf"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#flbg)"/>
+  <!-- picnic blanket stall -->
+  <rect x="120" y="380" width="560" height="150" rx="10" fill="#e0d3bd"/>
+  <g stroke="#cbb99a" stroke-width="3">
+    <path d="M120 420 H680"/><path d="M120 460 H680"/><path d="M120 500 H680"/>
+    <path d="M240 380 V530"/><path d="M400 380 V530"/><path d="M560 380 V530"/>
+  </g>
+  <!-- goods -->
+  <g>
+    <rect x="150" y="392" width="60" height="46" rx="6" fill="#e25067"/>
+    <circle cx="300" cy="410" r="24" fill="#6e4e9c"/>
+    <rect x="430" y="392" width="52" height="52" rx="26" fill="#1e6e64"/>
+    <path d="M580 440 l24 -50 24 50 Z" fill="#f2a06a"/>
+    <rect x="170" y="470" width="50" height="40" rx="6" fill="#d8b24a"/>
+    <circle cx="330" cy="490" r="20" fill="#c94f3a"/>
+    <rect x="450" y="466" width="46" height="46" rx="8" fill="#5a8ac9"/>
+  </g>
+  <!-- price tags -->
+  <g fill="#fff" stroke="#b0344e" stroke-width="2">
+    <path d="M250 360 l24 0 0 20 -12 12 -12 -12 Z"/>
+  </g>
+  <!-- seller behind stall -->
+  <g fill="#3a2a1e" opacity="0.75">
+    <circle cx="400" cy="300" r="34"/>
+    <path d="M356 336 q44 -22 88 0 l0 44 -88 0 Z"/>
+  </g>
+  <!-- canopy -->
+  <path d="M80 240 L720 240 L680 300 L120 300 Z" fill="#f2a06a"/>
+  <g fill="#e25067">
+    <path d="M80 240 L200 240 L180 270 L100 270 Z"/>
+    <path d="M320 240 L440 240 L420 270 L340 270 Z"/>
+    <path d="M560 240 L680 240 L660 270 L580 270 Z"/>
+  </g>
+</svg>

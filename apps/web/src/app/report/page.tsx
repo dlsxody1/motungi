@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/bottom-nav";
 import {
   BookmarkIcon,
+  ChevronLeftIcon,
   LocationIcon,
   RefreshIcon,
   ShareIcon,
@@ -70,6 +71,17 @@ export default function ReportPage() {
         <MobileScreen>
           <div className="flex flex-1 flex-col bg-bg">
             <SafeTop />
+            {/* 상단 바 — 뒤로가기 + 화면 제목 */}
+            <div className="flex items-center gap-1 px-3 pt-1">
+              <button
+                onClick={() => router.back()}
+                aria-label="뒤로 가기"
+                className="tap-safe -ml-1 flex size-11 items-center justify-center text-ink"
+              >
+                <ChevronLeftIcon size={24} />
+              </button>
+              <span className="text-[16px] font-bold text-ink">동네 리포트</span>
+            </div>
             <div className="flex flex-1 flex-col overflow-y-auto px-5 pb-4">
               <div className="flex items-start justify-between pt-1">
                 <div>

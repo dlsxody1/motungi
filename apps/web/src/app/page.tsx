@@ -1,30 +1,36 @@
 import Link from "next/link";
 import { Logo, SafeBottom, SafeTop } from "@/components/ui";
+import { HeroCarousel } from "@/components/hero-carousel";
 import { DesktopShell } from "@/components/web-shell";
 import { WebLanding } from "@/components/web-landing";
+import { fetchOpportunities } from "@/data/opportunities";
 
 /**
  * A1 · 홈 / 온보딩 — 반응형.
  *  - 모바일: 선셋 그라데이션 히어로(앱 온보딩과 동일)
  *  - 데스크탑(md:+): 피그마 웹 랜딩(히어로 2단 + 밸류프롭 + 스텝 + 카테고리)
  */
-export default function Home() {
+export default async function Home() {
+  // 히어로 캐러셀용 실제 활동(썸네일 있는 것) — 서버에서 소량만 당겨 온다. 실패/빈결과는 빈 배열.
+  const { data: heroPicks } = await fetchOpportunities({ withImageOnly: true, limit: 12 });
+
   return (
     <>
-      {/* 모바일 히어로 */}
-      <div className="flex min-h-dvh justify-center bg-surface-alt/60 md:hidden">
-        <main className="flex min-h-dvh w-full max-w-[420px] flex-col">
-          <div
-            className="relative flex flex-1 flex-col overflow-hidden text-white"
-            style={{
-              background: "linear-gradient(160deg, #e25067 0%, #e05f67 42%, #f2a06a 100%)",
-            }}
-          >
+      {/* 모바일 히어로 — 그라데이션이 화면 폭을 꽉 채운다(좌우 흰 여백 없음) */}
+      <div className="md:hidden">
+        <main
+          className="relative flex min-h-dvh flex-col overflow-hidden text-white"
+          style={{
+            background: "linear-gradient(160deg, #e25067 0%, #e05f67 42%, #f2a06a 100%)",
+          }}
+        >
+          <div className="flex flex-1 flex-col">
             <SafeTop />
-            <div className="flex flex-1 flex-col px-6 pb-4 pt-6">
-              <Logo onDark size={30} />
+            <div className="mx-auto flex w-full max-w-[480px] flex-1 flex-col px-6 pb-4 pt-6">
+              {/* 브랜드 로고(앱 아이콘 + 워드마크) — 공용 Logo로 통일 */}
+              <Logo onDark size={34} />
 
-              <div className="mt-12">
+              <div className="mt-9">
                 <h1 className="text-[34px] font-extrabold leading-[1.18] tracking-[-0.02em]">
                   퇴근하고
                   <br />
@@ -36,20 +42,14 @@ export default function Home() {
                 </p>
               </div>
 
-              <ul className="mt-auto space-y-4 border-t border-white/20 pt-7">
-                {[
-                  { k: "마찰 제로", v: "진단 60초면 끝나요" },
-                  { k: "원픽", v: "수백 개 대신 딱 1~3개만" },
-                  { k: "하이퍼로컬", v: "내 동네 기준으로 추천돼요" },
-                ].map((t) => (
-                  <li key={t.k} className="flex items-baseline gap-3">
-                    <span className="w-[74px] shrink-0 text-[14px] font-bold text-white">{t.k}</span>
-                    <span className="text-[14px] text-white/85">{t.v}</span>
-                  </li>
-                ))}
-              </ul>
+              {/* 실 활동 캐러셀 — 앵커 동네 기준(1.5초 자동 전환·탭하면 활동 상세) */}
+              {heroPicks.length >= 4 && (
+                <div className="mt-7">
+                  <HeroCarousel items={heroPicks} />
+                </div>
+              )}
 
-              <div className="space-y-3 pt-7">
+              <div className="mt-auto space-y-3 pt-8">
                 <Link
                   href="/location"
                   className="tap-safe flex h-[52px] w-full items-center justify-center rounded-xl bg-white text-[16px] font-bold text-primary-deep active:scale-[0.99]"
@@ -68,10 +68,9 @@ export default function Home() {
           </div>
         </main>
       </div>
-
       {/* 데스크탑 랜딩 */}
       <DesktopShell active="home" variant="marketing">
-        <WebLanding />
+        <WebLanding heroPicks={heroPicks} />
       </DesktopShell>
     </>
   );

@@ -117,6 +117,8 @@ export interface FetchOpportunitiesOptions {
   today?: string;
   /** 조회 상한. 미지정 시 200. report는 소량, explore는 다량으로 구분해 넘긴다. */
   limit?: number;
+  /** 대표 이미지(image_url)가 있는 활동만. 랜딩 캐러셀처럼 썸네일이 필수인 곳에서 서버에 위임. */
+  withImageOnly?: boolean;
 }
 
 /**
@@ -140,6 +142,8 @@ export async function fetchOpportunities(
   if (options.today) query = query.or(`deadline.is.null,deadline.gte.${options.today}`);
   // 관심 카테고리로 좁힌다(주어질 때만).
   if (options.categories?.length) query = query.in("category", options.categories);
+  // 썸네일 필수 화면(랜딩 캐러셀)은 이미지 있는 행만 서버에서 거른다.
+  if (options.withImageOnly) query = query.not("image_url", "is", null);
   // 마감 임박순(가까운 것 먼저), 상시(null)는 뒤로. 상한까지만.
   const { data, error } = await query
     .order("deadline", { ascending: true, nullsFirst: false })

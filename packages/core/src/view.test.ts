@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DiagnosisAnswers } from "./diagnosis";
 import type { Opportunity } from "./types";
 import {
+  decodeHtmlEntities,
   diagnosisSummaryChips,
   displayNameOf,
   ENERGY_LABEL,
@@ -136,6 +137,18 @@ describe("diagnosisSummaryChips — side_job 수입 톤(M-006)", () => {
 });
 
 // M-007: DB row → Opportunity 변환의 부분 필드 분기(좌표/시간대는 쌍이 다 있어야 생성).
+describe("decodeHtmlEntities", () => {
+  it("단일·이중 이스케이프를 모두 원문으로 되돌린다", () => {
+    expect(decodeHtmlEntities("&lt;a&gt;")).toBe("<a>");
+    expect(decodeHtmlEntities("&amp;lt;a&amp;gt;")).toBe("<a>");
+    expect(decodeHtmlEntities("A &amp;amp; B")).toBe("A & B");
+  });
+  it("순수 텍스트엔 무영향(멱등)", () => {
+    expect(decodeHtmlEntities("동물의 세계 展")).toBe("동물의 세계 展");
+    expect(decodeHtmlEntities("")).toBe("");
+  });
+});
+
 describe("rowToOpportunity — 부분 필드", () => {
   function row(over: Partial<OpportunityRow> = {}): OpportunityRow {
     return {
@@ -159,6 +172,17 @@ describe("rowToOpportunity — 부분 필드", () => {
       ...over,
     };
   }
+
+  it("title·summary의 이중 이스케이프 엔티티를 디코드한다(#3)", () => {
+    const o = rowToOpportunity(
+      row({
+        title: "쥬세뻬 비탈레 원화전 &amp;lt;동물의 세계&amp;gt;",
+        summary: "&amp;quot;몬도 아니말레&amp;quot; 展",
+      }),
+    );
+    expect(o.title).toBe("쥬세뻬 비탈레 원화전 <동물의 세계>");
+    expect(o.summary).toBe('"몬도 아니말레" 展');
+  });
 
   it("lat만/lng만 있으면 point는 undefined(둘 다 있어야 좌표)", () => {
     expect(rowToOpportunity(row({ lat: 37.5 })).location?.point).toBeUndefined();

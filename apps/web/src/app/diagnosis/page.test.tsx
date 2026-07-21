@@ -47,7 +47,7 @@ describe("DiagnosisPage 키보드 포커스 (모바일, Q1)", () => {
       mobile.getByRole("button", { name: /먹거리·마켓/ }),
       mobile.getByRole("button", { name: /가벼운 부업/ }),
     ];
-    const submitButton = mobile.getByRole("button", { name: "결과 보기" });
+    const submitButton = mobile.getByRole("button", { name: "다음" });
 
     // 선택 전에는 제출 버튼이 disabled → 탭 순서에서 제외된다.
     expect(submitButton).toBeDisabled();
@@ -67,7 +67,7 @@ describe("DiagnosisPage 키보드 포커스 (모바일, Q1)", () => {
     const mobile = within(screen.getByTestId("diagnosis-mobile"));
 
     const cultureButton = mobile.getByRole("button", { name: /문화·공연/ });
-    const submitButton = mobile.getByRole("button", { name: "결과 보기" });
+    const submitButton = mobile.getByRole("button", { name: "다음" });
 
     expect(submitButton).toBeDisabled();
     cultureButton.focus();
@@ -85,7 +85,7 @@ describe("DiagnosisPage 키보드 포커스 (모바일, Q1)", () => {
     const mobile = within(screen.getByTestId("diagnosis-mobile"));
 
     const activeButton = mobile.getByRole("button", { name: /운동·산책/ });
-    const submitButton = mobile.getByRole("button", { name: "결과 보기" });
+    const submitButton = mobile.getByRole("button", { name: "다음" });
 
     expect(submitButton).toBeDisabled();
     activeButton.focus();
@@ -112,10 +112,10 @@ describe("DiagnosisPage 전체 진단 플로우", () => {
     render(<DiagnosisPage />);
     const mobile = within(screen.getByTestId("diagnosis-mobile"));
 
-    // Q1: 관심사 선택 (수동 진행 — "결과 보기" 클릭 필요)
+    // Q1: 관심사 선택 (수동 진행 — 마지막 아니므로 "다음" 클릭)
     expect(mobile.getByText("Q1. 관심사")).toBeInTheDocument();
     await user.click(mobile.getByRole("button", { name: /문화·공연/ }));
-    await user.click(mobile.getByRole("button", { name: "결과 보기" }));
+    await user.click(mobile.getByRole("button", { name: "다음" }));
 
     // Q2: 시간대 선택 → 260ms 뒤 자동으로 Q3 로 진행
     expect(await mobile.findByText("Q2. 시간대")).toBeInTheDocument();
@@ -128,7 +128,7 @@ describe("DiagnosisPage 전체 진단 플로우", () => {
       { timeout: 1000 },
     );
 
-    // Q3: 에너지 선택 후 결과 보기 → 저장 콜백 + 라우터 이동
+    // Q3(마지막): 에너지 선택 후 "결과 보기" → 저장 콜백 + 라우터 이동
     await user.click(mobile.getByRole("button", { name: /보통/ }));
     await user.click(mobile.getByRole("button", { name: "결과 보기" }));
 

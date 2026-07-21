@@ -181,22 +181,17 @@ describe("Card", () => {
 });
 
 describe("Logo", () => {
-  it("모/모퉁이 텍스트를 렌더한다", () => {
+  it("앱 아이콘 이미지 + '모퉁이' 워드마크를 렌더한다('Corner' 없음)", () => {
     render(<Logo />);
-    expect(screen.getByText("모")).toBeInTheDocument();
-    expect(screen.getByText(/모퉁이/)).toBeInTheDocument();
+    const icon = screen.getByAltText("모퉁이");
+    expect(icon).toBeInTheDocument();
+    expect(screen.getByText("모퉁이")).toBeInTheDocument();
+    expect(screen.queryByText(/Corner/)).not.toBeInTheDocument();
   });
 
-  it("size prop을 아이콘 인라인 스타일 픽셀로 반영한다", () => {
+  it("size prop을 아이콘 픽셀 크기로 반영한다", () => {
     render(<Logo size={40} />);
-    const mark = screen.getByText("모");
-    expect(mark).toHaveStyle({ width: "40px", height: "40px" });
-  });
-
-  it("onDark=true면 아이콘 배경색이 반전된다", () => {
-    render(<Logo onDark />);
-    // onDark일 때 아이콘 배경은 흰색
-    expect(screen.getByText("모")).toHaveStyle({ background: "#ffffff" });
+    expect(screen.getByAltText("모퉁이")).toHaveStyle({ width: "40px", height: "40px" });
   });
 });
 

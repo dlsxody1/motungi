@@ -5,7 +5,7 @@
  */
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { BookmarkIcon, ChevronDownIcon, LocationIcon, SearchIcon } from "./icons";
+import { BookmarkIcon, ChevronDownIcon, LocationIcon } from "./icons";
 
 /* ────────────────────────────────────────────────────────────
  * 로고 (그라데이션 마크 + 워드마크)
@@ -40,11 +40,11 @@ export function WebLogo({
         </svg>
       </span>
       <span
-        className={`text-[20px] font-extrabold tracking-[-0.01em] ${
+        className={`font-wordmark text-[23px] leading-none tracking-[0.01em] ${
           onDark ? "text-white" : "text-ink-dark"
         }`}
       >
-        모퉁이 <span className="text-[15px] font-semibold opacity-70">Corner</span>
+        모퉁이
       </span>
     </Link>
   );
@@ -101,9 +101,6 @@ export function TopNav({
 
       {variant === "marketing" ? (
         <div className="flex items-center gap-5">
-          <button className="grid size-8 place-items-center text-nav-link" aria-label="검색">
-            <SearchIcon size={22} />
-          </button>
           <Link href="/report" className="text-[15px] font-semibold text-nav-link hover:text-ink-dark">
             로그인
           </Link>
