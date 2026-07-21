@@ -45,8 +45,15 @@ export default function ReportPage() {
   const onePick = list[0];
 
   // 데이터가 없으면(로드 실패/빈결과/아직 안 불러옴) 원픽을 그릴 수 없다 → 상태 화면.
+  const isError = catalogStatus === "error" || catalogStatus === "unconfigured";
   if (!onePick) {
-    return <ReportEmpty status={catalogStatus} onRetry={() => router.push("/loading")} onExplore={() => router.push("/explore")} />;
+    return (
+      <ReportEmpty
+        status={catalogStatus}
+        onRetry={() => router.push(isError ? "/loading" : "/diagnosis")}
+        onExplore={() => router.push("/explore")}
+      />
+    );
   }
 
   const related = list.slice(1);
@@ -146,7 +153,7 @@ export default function ReportPage() {
                 </div>
                 <div className="px-5 pb-5">
                   <span className="tap-safe flex h-[50px] w-full items-center justify-center rounded-xl bg-primary text-[16px] font-bold text-white">
-                    자세히 보고 시작하기
+                    자세히 보기
                   </span>
                 </div>
               </button>
@@ -303,7 +310,7 @@ export default function ReportPage() {
                         onClick={() => openDetail(onePick.id)}
                         className="flex h-12 flex-1 items-center justify-center rounded-xl bg-primary text-[15px] font-bold text-white hover:bg-primary-deep"
                       >
-                        자세히
+                        자세히 보기
                       </button>
                     </div>
                   </div>

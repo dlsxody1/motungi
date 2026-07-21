@@ -31,7 +31,7 @@ const QUESTIONS: Question[] = [
     options: [
       { value: "weekday_evening", title: "평일 저녁", desc: "퇴근 후 2~3시간" },
       { value: "weekend", title: "주말", desc: "토·일 오전/오후" },
-      { value: "flexible", title: "유연하게", desc: "그때그때 가능한 시간" },
+      { value: "flexible", title: "유동적", desc: "그때그때 가능한 시간" },
     ],
   },
   {

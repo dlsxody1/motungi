@@ -212,9 +212,25 @@ function OpportunityInner() {
                 </>
               )}
 
+              {/* 왜 맞을까요 */}
+              <div className="mt-5 rounded-xl bg-surface p-4 shadow-card">
+                <p className="flex items-center gap-2 text-[15px] font-bold text-ink">
+                  <InsightsIcon size={18} className="text-primary" />
+                  왜 {displayName}님께 맞을까요?
+                </p>
+                <ul className="mt-3 space-y-2.5">
+                  {why.map((w) => (
+                    <li key={w} className="flex items-start gap-2 text-[13px] leading-relaxed text-label">
+                      <CheckCircleIcon size={16} className="mt-0.5 shrink-0 text-primary" />
+                      {w}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
               <p className="mt-6 rounded-lg bg-surface-alt px-3.5 py-3 text-[12px] leading-relaxed text-muted">
-                자세히 보기를 누르면 주최·출처 채널로 이동해요. 모퉁이는 공공·제휴 정보를
-                모아 소개할 뿐, 예약·주최 당사자가 아니에요.
+                보러 가기를 누르면 주최·출처 채널로 이동해요. 모퉁이는 공공·제휴 정보를 모아
+                소개할 뿐, 예약·주최 당사자가 아니에요.
               </p>
             </div>
 
@@ -345,8 +361,8 @@ function OpportunityInner() {
               <div className="flex items-start gap-2.5 rounded-xl bg-info-bg px-4.5 py-4">
                 <InfoIcon size={18} className="mt-0.5 shrink-0 text-muted" />
                 <p className="text-[13px] leading-relaxed text-muted">
-                  자세히 보기를 누르면 주최·출처 채널로 이동해요. 모퉁이는 공공·제휴 정보를
-                  모아 소개할 뿐, 예약·주최 당사자가 아니에요.
+                  보러 가기를 누르면 주최·출처 채널로 이동해요. 모퉁이는 공공·제휴 정보를 모아
+                  소개할 뿐, 예약·주최 당사자가 아니에요.
                 </p>
               </div>
             </div>
