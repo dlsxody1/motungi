@@ -86,7 +86,7 @@ describe("ExplorePage", () => {
 
 /**
  * M-005: catalog는 matchScore 0으로 적재되므로, 진단 답변이 있을 때만
- * 재스코어링해 매칭 %를 표시·정렬하고, 진단 전에는 매칭 UI를 숨긴다.
+ * 재스코어링해 추천순으로 정렬한다. 매칭 %는 화면에 표시하지 않는다.
  */
 const FOOD: MockOpportunity = {
   ...ONE_PICK,
@@ -114,21 +114,25 @@ function seedDiagnosed(catalog: MockOpportunity[]) {
 describe("ExplorePage 매칭 랭킹 (M-005)", () => {
   afterEach(cleanup);
 
-  it("진단 전(answers=null): 매칭 % 뱃지·'매칭순 정렬' 라벨을 숨긴다", () => {
-    seed("ok", [ONE_PICK]); // matchScore 92 픽스처가 있어도 표시 안 됨
+  it("진단 전(answers=null): '추천순' 라벨·★ 원픽을 숨긴다", () => {
+    seed("ok", [ONE_PICK]);
     render(<ExplorePage />);
-    expect(screen.queryByText(/매칭 \d+%/)).not.toBeInTheDocument();
-    expect(screen.queryByText("매칭순 정렬")).not.toBeInTheDocument();
+    expect(screen.queryByText("추천순")).not.toBeInTheDocument();
     expect(screen.queryByText("★ 원픽")).not.toBeInTheDocument();
   });
 
-  it("진단 후: 매칭 % 표시 + '매칭순 정렬' 라벨 + 점수순(관심사 우선) 정렬", () => {
+  it("진단 여부와 무관하게 매칭 % 뱃지는 표시하지 않는다", () => {
+    seedDiagnosed([FOOD, ONE_PICK]); // matchScore 픽스처가 있어도 화면엔 안 뜸
+    render(<ExplorePage />);
+    expect(screen.queryByText(/매칭 \d+%/)).not.toBeInTheDocument();
+  });
+
+  it("진단 후: '추천순' 라벨 + 점수순(관심사 우선) 정렬", () => {
     // 입력 순서는 food 먼저지만, culture가 관심사에 있어 재스코어링 후 앞서야 한다.
     seedDiagnosed([FOOD, ONE_PICK]);
     render(<ExplorePage />);
 
-    expect(screen.getAllByText(/매칭 \d+%/).length).toBeGreaterThan(0);
-    expect(screen.getByText("매칭순 정렬")).toBeInTheDocument();
+    expect(screen.getByText("추천순")).toBeInTheDocument();
 
     // 데스크탑 첫 카드(★ 원픽)가 culture 항목이어야 한다.
     const pick = screen.getByText("★ 원픽");

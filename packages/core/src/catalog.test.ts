@@ -27,20 +27,37 @@ import type { OpportunityCategory } from "./types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchOpportunities, rowToMock } from "./catalog";
 
-type FakeClient = { from: ReturnType<typeof vi.fn>; select: ReturnType<typeof vi.fn>; limit: ReturnType<typeof vi.fn> };
+type FakeClient = {
+  from: ReturnType<typeof vi.fn>;
+  select: ReturnType<typeof vi.fn>;
+  or: ReturnType<typeof vi.fn>;
+  in: ReturnType<typeof vi.fn>;
+  order: ReturnType<typeof vi.fn>;
+  limit: ReturnType<typeof vi.fn>;
+};
 type SupabaseClientLike = import("@supabase/supabase-js").SupabaseClient;
 
 /**
- * opportunities.select().limit()가 result를 resolve하는 fake SupabaseClient.
- * from/select/limit 호출 인자를 vi.fn으로 기록해 쿼리 계약(테이블명·컬럼·limit)을 검증할 수 있다.
- * fetchOpportunities는 client.from(...).select(...).limit(...)만 사용하므로
+ * opportunities 조회 체인 fake SupabaseClient.
+ * fetchOpportunities는 client.from(...).select(...)[.or(...)][.in(...)].order(...).limit(...) 순으로 쓰므로
+ * or/in/order는 자기 자신(체인)을 반환하고, limit이 result를 resolve한다.
+ * 호출 인자를 vi.fn으로 기록해 쿼리 계약(필터·정렬·상한)을 검증할 수 있다.
  * 실제 SupabaseClient 타입 전체를 구현할 필요는 없다 — 호출부에서만 as unknown으로 캐스팅한다.
  */
 function makeClient(result: { data: unknown; error: unknown }): FakeClient {
   const limit = vi.fn().mockResolvedValue(result);
-  const select = vi.fn(() => ({ limit }));
+  const chain: {
+    or: ReturnType<typeof vi.fn>;
+    in: ReturnType<typeof vi.fn>;
+    order: ReturnType<typeof vi.fn>;
+    limit: typeof limit;
+  } = { or: vi.fn(), in: vi.fn(), order: vi.fn(), limit };
+  chain.or.mockReturnValue(chain);
+  chain.in.mockReturnValue(chain);
+  chain.order.mockReturnValue(chain);
+  const select = vi.fn(() => chain);
   const from = vi.fn(() => ({ select }));
-  return { from, select, limit };
+  return { from, select, or: chain.or, in: chain.in, order: chain.order, limit };
 }
 
 function asClient(fake: FakeClient): SupabaseClientLike {
@@ -60,6 +77,7 @@ const ROW: OpportunityRow = {
   lat: 37.5556,
   lng: 126.9019,
   cta_url: "https://example.com/jazz",
+  image_url: null,
   deadline: "2026-08-01",
   source_label: "서울문화포털",
   time_start_hour: 19,
@@ -80,6 +98,7 @@ function makeRow(over: Partial<OpportunityRow> & { category: OpportunityCategory
     lat: null,
     lng: null,
     cta_url: null,
+    image_url: null,
     deadline: null,
     source_label: null,
     time_start_hour: null,
@@ -258,7 +277,7 @@ describe("rowToMock — meta 칩(buildMeta) 파생", () => {
 });
 
 describe("fetchOpportunities — Supabase 쿼리 계약", () => {
-  it("opportunities 테이블을 최대 200건, 지정 컬럼으로 조회한다", async () => {
+  it("무옵션이면 기존 동작: 상한 200·지정 컬럼(image_url 포함)·필터 없음", async () => {
     const client = makeClient({ data: [makeRow({ category: "culture" })], error: null });
 
     await fetchOpportunities(asClient(client));
@@ -267,9 +286,47 @@ describe("fetchOpportunities — Supabase 쿼리 계약", () => {
     const selectedCols = client.select.mock.calls[0]?.[0] as string;
     expect(selectedCols).toContain("id");
     expect(selectedCols).toContain("cost_krw");
+    expect(selectedCols).toContain("image_url");
     expect(selectedCols).toContain("time_start_hour");
     expect(selectedCols).toContain("time_end_hour");
     expect(client.limit).toHaveBeenCalledWith(200);
+    // 하위호환: 옵션 없으면 마감/카테고리 필터를 걸지 않는다.
+    expect(client.or).not.toHaveBeenCalled();
+    expect(client.in).not.toHaveBeenCalled();
+    // 정렬은 항상 마감 임박순.
+    expect(client.order).toHaveBeenCalledWith("deadline", { ascending: true, nullsFirst: false });
+  });
+
+  it("today를 주면 마감 유효(null 또는 today 이후)만 서버에서 거른다", async () => {
+    const client = makeClient({ data: [makeRow({ category: "culture" })], error: null });
+
+    await fetchOpportunities(asClient(client), { today: "2026-07-20" });
+
+    expect(client.or).toHaveBeenCalledWith("deadline.is.null,deadline.gte.2026-07-20");
+  });
+
+  it("categories를 주면 category in 필터를 건다", async () => {
+    const client = makeClient({ data: [makeRow({ category: "culture" })], error: null });
+
+    await fetchOpportunities(asClient(client), { categories: ["culture", "active"] });
+
+    expect(client.in).toHaveBeenCalledWith("category", ["culture", "active"]);
+  });
+
+  it("빈 categories 배열은 필터를 걸지 않는다", async () => {
+    const client = makeClient({ data: [makeRow({ category: "culture" })], error: null });
+
+    await fetchOpportunities(asClient(client), { categories: [] });
+
+    expect(client.in).not.toHaveBeenCalled();
+  });
+
+  it("limit를 주면 그 상한으로 조회한다", async () => {
+    const client = makeClient({ data: [makeRow({ category: "culture" })], error: null });
+
+    await fetchOpportunities(asClient(client), { limit: 30 });
+
+    expect(client.limit).toHaveBeenCalledWith(30);
   });
 });
 
@@ -362,13 +419,21 @@ describe("rowToMock 함수 직접 호출 (fetchOpportunities 경유 없이)", ()
   });
 });
 
-describe("NEIGHBORHOOD_POINTS", () => {
-  it("주요 동네 좌표를 노출한다", async () => {
-    const { NEIGHBORHOOD_POINTS } = await import("./catalog");
-    expect(NEIGHBORHOOD_POINTS["망원동"]).toEqual({ lat: 37.5556, lng: 126.9019 });
-    expect(Object.keys(NEIGHBORHOOD_POINTS)).toEqual(
+describe("POPULAR_NEIGHBORHOODS", () => {
+  it("인기 동네를 좌표와 함께 노출한다", async () => {
+    const { POPULAR_NEIGHBORHOODS, DEFAULT_NEIGHBORHOOD } = await import("./catalog");
+    const mangwon = POPULAR_NEIGHBORHOODS.find((n) => n.dongName === "망원동");
+    expect(mangwon?.point).toEqual({ lat: 37.5556, lng: 126.9019 });
+    // 각 항목은 앵커 주입에 바로 쓸 수 있는 좌표를 가진다.
+    for (const n of POPULAR_NEIGHBORHOODS) {
+      expect(typeof n.point.lat).toBe("number");
+      expect(typeof n.point.lng).toBe("number");
+    }
+    expect(POPULAR_NEIGHBORHOODS.map((n) => n.dongName)).toEqual(
       expect.arrayContaining(["망원동", "성수동", "연남동", "판교동", "합정동"]),
     );
+    // 기본 선택은 목록의 첫 동네.
+    expect(DEFAULT_NEIGHBORHOOD).toBe(POPULAR_NEIGHBORHOODS[0]);
   });
 });
 

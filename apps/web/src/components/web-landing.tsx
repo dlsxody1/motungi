@@ -121,7 +121,7 @@ export function WebLanding() {
                 <span className="rounded-md bg-primary px-2 py-1 text-[11px] font-bold text-white">
                   오늘의 원픽 · 동네 문화
                 </span>
-                <span className="text-[13px] font-bold text-primary">매칭 94%</span>
+                <span className="text-[13px] font-bold text-primary">도보 15분</span>
               </div>
               <h3 className="mt-3 break-keep text-[21px] font-extrabold leading-[1.35] tracking-[-0.01em] text-ink">
                 퇴근길 20분, 망원 한강 야간 재즈 소품 공연
@@ -198,7 +198,7 @@ export function WebLanding() {
                     <SparkIcon size={15} />
                     오늘의 원픽
                   </span>
-                  <span className="text-[12px] font-bold text-primary">매칭 94%</span>
+                  <span className="text-[12px] font-bold text-primary">도보 15분</span>
                 </div>
                 <p className="mt-2.5 text-[17px] font-bold leading-[1.4] tracking-[-0.01em] text-ink">
                   퇴근길 20분, 망원 한강 야간 재즈 소품 공연

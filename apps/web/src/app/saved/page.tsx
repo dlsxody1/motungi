@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/bottom-nav";
-import { BookmarkIcon, LocationIcon, SavingsIcon, UserIcon } from "@/components/icons";
+import { BookmarkIcon, LocationIcon, UserIcon } from "@/components/icons";
+import { Thumbnail } from "@/components/thumbnail";
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
@@ -182,13 +183,7 @@ export default function SavedPage() {
                     className="wcard-hover flex flex-col rounded-[18px] bg-surface p-5 text-left shadow-web"
                   >
                     <div className="flex items-start justify-between">
-                      <span
-                        className={`grid size-10 place-items-center rounded-xl ${
-                          s.tone === "mint" ? "bg-mint-tint text-mint" : "bg-tint text-primary"
-                        }`}
-                      >
-                        <SavingsIcon size={20} />
-                      </span>
+                      <Thumbnail src={s.imageUrl} tone={s.tone === "mint" ? "mint" : "brand"} sizeClass="size-12" />
                       <span
                         role="button"
                         tabIndex={0}

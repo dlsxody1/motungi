@@ -63,6 +63,7 @@ export function normalizeSeoulCulture(raw: RawSeoulCulture): Opportunity | null 
     location: { dongName: raw.GUNAME, point },
     timeWindow: startHour != null ? { startHour, endHour: Math.min(startHour + 2, 24) } : undefined,
     ctaUrl: raw.ORG_LINK || undefined,
+    imageUrl: raw.MAIN_IMG?.trim() || undefined,
     deadline: toIsoDate(raw.END_DATE),
     sourceLabel: "서울시 문화행사",
   };

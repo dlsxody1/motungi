@@ -8,19 +8,23 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   CheckCircleIcon,
+  CompassIcon,
   ExternalLinkIcon,
-  FireIcon,
   InfoIcon,
   InsightsIcon,
   LocationIcon,
-  SavingsIcon,
   ShareIcon,
 } from "@/components/icons";
 import { MobileScreen, SafeBottom, SafeTop, Tag } from "@/components/ui";
+import { NaverMapSDK } from "@/components/naver-map-sdk";
+import { VenueMap } from "@/components/venue-map";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { CATEGORY_LABEL, displayNameOf, whyReasons } from "@motungi/core";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
+import { shareContent } from "@/lib/kakao";
 import { useAppStore } from "@/store/useAppStore";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://motungi.app";
 
 /** A6 · 기회 상세 — 반응형. useSearchParams는 Suspense 경계 필요. */
 export default function OpportunityPage() {
@@ -73,16 +77,16 @@ function OpportunityInner() {
   const hasLink = !!o.ctaUrl && o.ctaUrl !== "#";
 
   const onShare = () => {
-    const shareData = { title: o.title, text: `${o.title}\n모퉁이에서 발견한 우리 동네 활동` };
-    if (navigator.share) {
-      navigator.share(shareData).catch(() => {});
-    } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(shareData.text).catch(() => {});
-    }
+    void shareContent({
+      title: o.title,
+      description: "모퉁이에서 발견한 우리 동네 활동",
+      url: `${SITE_URL}/opportunity?id=${o.id}`,
+    });
   };
 
   return (
     <>
+      <NaverMapSDK />
       {/* ── 모바일 ── */}
       <div className="md:hidden">
         <MobileScreen>
@@ -138,6 +142,18 @@ function OpportunityInner() {
                   </div>
                 ))}
               </div>
+
+              {o.location?.point && (
+                <div className="mt-5">
+                  <h2 className="mb-2.5 text-[15px] font-bold text-ink">위치</h2>
+                  <VenueMap
+                    lat={o.location.point.lat}
+                    lng={o.location.point.lng}
+                    title={o.title}
+                    placeName={o.summary}
+                  />
+                </div>
+              )}
 
               {o.steps && o.steps.length > 0 && (
                 <>
@@ -220,9 +236,6 @@ function OpportunityInner() {
                   <LocationIcon size={16} className="text-primary" />
                   {o.location?.dongName ?? "우리 동네"}
                 </span>
-                <span className="flex items-center gap-1 font-semibold text-primary">
-                  <FireIcon size={15} /> 매칭 {o.matchScore}%
-                </span>
               </div>
 
               {/* 왜 맞을까요 */}
@@ -258,6 +271,20 @@ function OpportunityInner() {
                       </li>
                     ))}
                   </ol>
+                </>
+              )}
+
+              {o.location?.point && (
+                <>
+                  <h2 className="mb-3 mt-8 text-[19px] font-bold text-ink">위치</h2>
+                  <div className="mb-6">
+                    <VenueMap
+                      lat={o.location.point.lat}
+                      lng={o.location.point.lng}
+                      title={o.title}
+                      placeName={o.summary}
+                    />
+                  </div>
                 </>
               )}
 
@@ -347,7 +374,7 @@ function OpportunityInner() {
                 className="flex items-center gap-3 rounded-2xl bg-mint-tint p-4.5"
               >
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface text-mint">
-                  <SavingsIcon size={22} />
+                  <CompassIcon size={22} />
                 </span>
                 <div className="flex-1">
                   <p className="text-[13px] font-semibold text-mint">이어서 하기 좋아요</p>

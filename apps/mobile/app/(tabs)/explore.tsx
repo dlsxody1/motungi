@@ -32,10 +32,8 @@ export default function ExploreScreen() {
   const catalogStatus = useAppStore((s) => s.catalogStatus);
   const answers = useAppStore((s) => s.answers);
   const anchors = useAppStore((s) => s.anchors);
-  // 진단 완료 시에만 매칭 랭킹 활성화. 진단 전에는 카탈로그 원본(매칭 % 미표기).
-  const matchActive = answers != null;
-  // 진단 답변이 있으면 전체를 재스코어링해 matchScore를 채우고 매칭 내림차순 정렬한다
-  // (catalog의 matchScore는 0 고정이므로). 서버 실데이터만 사용(목업 폴백 없음).
+  // 진단 답변이 있으면 전체를 재스코어링해 추천 순으로 정렬한다(매칭 %는 표시하지 않음).
+  // 서버 실데이터만 사용(목업 폴백 없음).
   const source = useMemo(
     () =>
       answers
@@ -129,7 +127,7 @@ export default function ExploreScreen() {
               <Text style={[styles.cost, { color: o.tone === "mint" ? C.mint : C.primary }]}>
                 {o.costLabel}
               </Text>
-              {matchActive && <Text style={styles.match}>매칭 {o.matchScore}%</Text>}
+              <Text style={styles.match}>자세히 →</Text>
             </View>
           </Pressable>
         ))}

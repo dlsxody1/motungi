@@ -15,8 +15,8 @@ export default function ReportScreen() {
   const catalogStatus = useAppStore((s) => s.catalogStatus);
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
 
-  // 스코어링 결과 우선, 없으면 카탈로그 상위 3개.
-  const list = results.length > 0 ? results : catalog.slice(0, 3);
+  // 스코어링 결과 우선, 없으면 카탈로그 상위 6개. 원픽1 + 함께 최대5.
+  const list = results.length > 0 ? results : catalog.slice(0, 6);
   const onePick = list[0];
   const related = list.slice(1);
 
@@ -72,9 +72,8 @@ export default function ReportScreen() {
 
       <Pressable style={styles.hero} onPress={() => openDetail(onePick.id)}>
         <View style={styles.heroBody}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Tag label={onePick.categoryLabel} />
-            <Text style={styles.match}>매칭 {onePick.matchScore}%</Text>
           </View>
           <Text style={styles.heroTitle}>{onePick.title}</Text>
           <Text style={styles.heroSummary}>{onePick.summary}</Text>
@@ -98,7 +97,12 @@ export default function ReportScreen() {
 
       {/* 함께 보면 좋아요 */}
       {related.length > 0 && (
-        <Txt preset="headline" style={{ marginTop: 24, marginBottom: 4 }}>함께 보면 좋아요</Txt>
+        <View style={styles.relHeader}>
+          <Txt preset="headline">함께 보면 좋아요</Txt>
+          <Pressable hitSlop={8} onPress={() => router.push("/explore")}>
+            <Text style={styles.relMoreLink}>더 찾아보기 →</Text>
+          </Pressable>
+        </View>
       )}
       <View>
         {related.map((o, i) => (
@@ -166,7 +170,6 @@ const styles = StyleSheet.create({
     ...cardShadow,
   },
   heroBody: { backgroundColor: "rgba(251,232,236,0.5)", padding: 20 },
-  match: { fontSize: 13, fontWeight: "700", color: C.primary },
   heroTitle: { marginTop: 12, fontSize: 21, lineHeight: 28, fontWeight: "800", color: C.ink },
   heroSummary: { marginTop: 10, fontSize: 14, lineHeight: 22, color: C.label },
   costBox: {
@@ -184,6 +187,14 @@ const styles = StyleSheet.create({
   costNote: { textAlign: "right", fontSize: 12, lineHeight: 16, color: C.muted },
   heroCta: { height: 50, borderRadius: R.lg, backgroundColor: C.primary, alignItems: "center", justifyContent: "center" },
   heroCtaLabel: { fontSize: 16, fontWeight: "700", color: C.white },
+  relHeader: {
+    marginTop: 24,
+    marginBottom: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  relMoreLink: { fontSize: 13, fontWeight: "600", color: C.primary },
   relItem: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 16 },
   relBorder: { borderTopWidth: 1, borderTopColor: C.lineAlt },
   relCat: { fontSize: 12, fontWeight: "700" },

@@ -31,6 +31,12 @@ describe("normalizeCultureInfo", () => {
     expect(o.location?.point).toEqual({ lat: 36.6357, lng: 127.429 });
     expect(o.deadline).toBe("2026-07-31");
     expect(o.sourceLabel).toContain("문화정보");
+    expect(o.imageUrl).toBe(RAW.thumbnail);
+  });
+
+  it("썸네일 없으면 imageUrl 생략", () => {
+    expect(normalizeCultureInfo({ ...RAW, thumbnail: "" })!.imageUrl).toBeUndefined();
+    expect(normalizeCultureInfo({ ...RAW, thumbnail: undefined })!.imageUrl).toBeUndefined();
   });
 
   it("좌표 없으면 point 생략", () => {

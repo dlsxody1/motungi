@@ -145,7 +145,27 @@ Deno.serve(async (req) => {
   ]);
 
   const total = results.reduce((s, r) => s + r.upserted, 0);
-  return new Response(JSON.stringify({ ok: true, total, results }, null, 2), {
+
+  // 마감 지난 활동 정리: 새로 적재한 뒤 오래된 것을 치운다. 상시(deadline null)·미래 마감은
+  // 보존 — deadline이 있고 오늘보다 과거인 것만 삭제. 각 소스 실패와 무관하게 항상 실행.
+  const today = new Date().toISOString().slice(0, 10);
+  let purged = 0;
+  try {
+    const { count } = await supabase
+      .from("opportunities")
+      .delete({ count: "exact" })
+      .not("deadline", "is", null)
+      .lt("deadline", today);
+    purged = count ?? 0;
+  } catch (e) {
+    // 삭제 실패는 적재 성공을 무효화하지 않는다 — 응답에 표기만.
+    return new Response(
+      JSON.stringify({ ok: true, total, purged: 0, purgeError: String(e), results }, null, 2),
+      { headers: { "content-type": "application/json" } },
+    );
+  }
+
+  return new Response(JSON.stringify({ ok: true, total, purged, results }, null, 2), {
     headers: { "content-type": "application/json" },
   });
 });

@@ -26,3 +26,29 @@ export async function reverseGeocode(
     return null;
   }
 }
+
+/** 동네 검색 결과 한 건 (웹 오리진의 /api/neighborhoods 응답). */
+export interface NeighborhoodSearchResult {
+  admCode: string;
+  dongName: string;
+  sigungu: string;
+  lat: number;
+  lng: number;
+}
+
+/**
+ * 행정동 이름 부분일치 검색. 웹과 동일 엔드포인트를 오리진 경유로 호출.
+ * 오리진 미설정·실패·빈 검색어면 빈 배열.
+ */
+export async function searchNeighborhoods(q: string): Promise<NeighborhoodSearchResult[]> {
+  const query = q.trim();
+  if (!query || !WEB_ORIGIN) return [];
+  try {
+    const res = await fetch(`${WEB_ORIGIN}/api/neighborhoods?q=${encodeURIComponent(query)}`);
+    if (!res.ok) return [];
+    const data = (await res.json()) as { items?: NeighborhoodSearchResult[] };
+    return data.items ?? [];
+  } catch {
+    return [];
+  }
+}

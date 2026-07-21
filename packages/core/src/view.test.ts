@@ -151,6 +151,7 @@ describe("rowToOpportunity — 부분 필드", () => {
       lat: null,
       lng: null,
       cta_url: null,
+      image_url: null,
       deadline: null,
       source_label: null,
       time_start_hour: null,

@@ -19,7 +19,11 @@ import { fetchOpportunities } from "./opportunities";
 
 function makeClient(result: { data: unknown; error: unknown }) {
   const limit = vi.fn().mockResolvedValue(result);
-  const select = vi.fn(() => ({ limit }));
+  const chain: Record<string, unknown> = { limit };
+  chain.or = vi.fn(() => chain);
+  chain.in = vi.fn(() => chain);
+  chain.order = vi.fn(() => chain);
+  const select = vi.fn(() => chain);
   const from = vi.fn(() => ({ select }));
   return { from };
 }
@@ -45,5 +49,17 @@ describe("fetchOpportunities (mobile 래퍼)", () => {
 
     expect(client.from).toHaveBeenCalledWith("opportunities");
     expect(result.status).toBe("empty");
+  });
+
+  it("today(마감 필터 기준일)를 자동 주입한다 — 지난 이벤트가 서버에서 걸러진다", async () => {
+    const client = makeClient({ data: [], error: null });
+    state.client = client;
+    const chain = client.from().select();
+
+    await fetchOpportunities();
+
+    // .or이 deadline.is.null,deadline.gte.<오늘> 형태로 호출됐는지.
+    const orArg = (chain.or as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+    expect(orArg).toMatch(/^deadline\.is\.null,deadline\.gte\.\d{4}-\d{2}-\d{2}$/);
   });
 });

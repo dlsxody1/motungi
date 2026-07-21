@@ -13,21 +13,24 @@ export default function LoadingPage() {
   const answers = useAppStore((s) => s.answers);
   const anchors = useAppStore((s) => s.anchors);
   const setResults = useAppStore((s) => s.setResults);
-  const setCatalog = useAppStore((s) => s.setCatalog);
   const dongName = anchors.home?.dongName ?? "우리 동네";
 
   useEffect(() => {
     let cancelled = false;
-    // Supabase 실데이터를 받아 진단 답변으로 스코어링 → 상위 3개 저장.
+    // 리포트용으로 관심 카테고리만·소량 받아 진단 답변으로 스코어링 → 원픽+함께(최대 6) 저장.
+    // 넓은 카탈로그(탐색용)는 여기서 채우지 않는다 — explore가 useEnsureCatalog로 별도 로드.
     void (async () => {
-      const { data: candidates, status } = await fetchOpportunities();
+      const { data: candidates } = await fetchOpportunities({
+        categories: answers?.interests,
+        limit: 30,
+      });
       if (cancelled) return;
-      setCatalog(candidates, status); // 탐색/상세/보관함이 참조할 전체 카탈로그 + 상태
+      // pickTop은 slice(0, topN)이라 후보가 적으면 그만큼만 — "나온 만큼" 렌더.
       const ranked = answers
-        ? pickTop(candidates, answers, anchors, 3).map((r) => {
+        ? pickTop(candidates, answers, anchors, 6).map((r) => {
             return { ...r.opportunity, matchScore: Math.round(r.score * 100) };
           })
-        : candidates.slice(0, 3);
+        : candidates.slice(0, 6);
       setResults(ranked);
     })();
 
@@ -39,7 +42,7 @@ export default function LoadingPage() {
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [router, answers, anchors, setResults, setCatalog]);
+  }, [router, answers, anchors, setResults]);
 
   const Body = (
     <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
