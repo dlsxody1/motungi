@@ -160,3 +160,46 @@ export async function fetchOpportunities(
   if (rows.length === 0) return { data: [], status: "empty" };
   return { data: rows.map(rowToMock), status: "ok" };
 }
+
+/** 단건 조회 결과. 상세 페이지는 카탈로그 전량이 아니라 이 형태로 1건만 받는다. */
+export interface OpportunityResult {
+  /** 조회된 활동. 없으면 null(존재하지 않거나 레거시 값이라 걸러짐). */
+  data: MockOpportunity | null;
+  /**
+   * - ok: 1건 정상 로드
+   * - empty: 해당 id가 없음(또는 레거시 값이라 걸러짐)
+   * - error: 조회 실패(네트워크/서버)
+   * - unconfigured: Supabase 환경변수 미설정
+   */
+  status: CatalogStatus;
+}
+
+/**
+ * id로 활동 1건만 읽어온다. 상세 페이지가 카탈로그 전량(수백 건)을 받아 클라에서
+ * .find()로 1건을 고르던 낭비를 없앤다 — 조회·전송을 그 1건으로 좁힌다.
+ *
+ * 마감(deadline) 필터는 걸지 않는다: 이미 마감됐더라도 그 상세를 직접 열었으면
+ * 보여줘야 한다(공유 링크·저장 목록에서 지난 활동 진입 등). 목록 조회와 달리 여기선
+ * "지난 것 숨김"이 오히려 혼란이다.
+ *
+ * @param client Supabase 클라이언트. null이면 쿼리 없이 unconfigured 반환.
+ * @param id 활동 id(opportunities.id).
+ */
+export async function fetchOpportunityById(
+  client: SupabaseClient | null,
+  id: string,
+): Promise<OpportunityResult> {
+  if (!client) return { data: null, status: "unconfigured" };
+  const { data, error } = await client
+    .from("opportunities")
+    .select(CATALOG_COLUMNS)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) return { data: null, status: "error" };
+  if (!data) return { data: null, status: "empty" };
+  // 목록 조회와 동일한 레거시 값 가드 — 앱이 모르는 category/source면 없는 것으로 취급.
+  if (!isOpportunityCategory(data.category) || !isSourceKind(data.source)) {
+    return { data: null, status: "empty" };
+  }
+  return { data: rowToMock(data as OpportunityRow), status: "ok" };
+}

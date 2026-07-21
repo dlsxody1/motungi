@@ -25,7 +25,7 @@
 import type { OpportunityRow } from "./view";
 import type { OpportunityCategory } from "./types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchOpportunities, rowToMock } from "./catalog";
+import { fetchOpportunities, fetchOpportunityById, rowToMock } from "./catalog";
 
 type FakeClient = {
   from: ReturnType<typeof vi.fn>;
@@ -259,7 +259,7 @@ describe("rowToMock — meta 칩(buildMeta) 파생", () => {
       makeRow({ category: "culture", time_start_hour: 18, time_end_hour: 21, difficulty: 0.8 }),
     );
     expect(card.meta).toEqual([
-      { label: "시간대", value: "18시" },
+      { label: "시간대", value: "18–21시" },
       { label: "강도", value: "높음" },
     ]);
   });
@@ -402,7 +402,7 @@ describe("rowToMock — ok 경로 통합 스냅샷 (core 변환 camelCase 확인
     expect(card.tone).toBe("brand");
     expect(card.matchScore).toBe(0);
     expect(card.meta).toEqual([
-      { label: "시간대", value: "19시" },
+      { label: "시간대", value: "19–21시" },
       { label: "강도", value: "낮음" },
     ]);
     // core 변환(rowToOpportunity)이 실제로 적용됐는지(camelCase).
@@ -449,6 +449,56 @@ describe("POPULAR_NEIGHBORHOODS", () => {
     );
     // 기본 선택은 목록의 첫 동네.
     expect(DEFAULT_NEIGHBORHOOD).toBe(POPULAR_NEIGHBORHOODS[0]);
+  });
+});
+
+/**
+ * 단건 조회 체인 fake — client.from(...).select(...).eq(...).maybeSingle() 순.
+ * eq는 체인을 반환하고 maybeSingle이 result를 resolve한다. 호출 인자를 기록해
+ * "id로 필터·마감필터 없음" 계약을 검증한다.
+ */
+function makeSingleClient(result: { data: unknown; error: unknown }) {
+  const maybeSingle = vi.fn().mockResolvedValue(result);
+  const eq = vi.fn(() => ({ maybeSingle }));
+  const select = vi.fn(() => ({ eq }));
+  const from = vi.fn(() => ({ select }));
+  return { from, select, eq, maybeSingle };
+}
+
+describe("fetchOpportunityById", () => {
+  it("client가 null이면 쿼리 없이 unconfigured", async () => {
+    const r = await fetchOpportunityById(null, "op-1");
+    expect(r).toEqual({ data: null, status: "unconfigured" });
+  });
+
+  it("id로 딱 1건만 조회한다(마감 필터 없음)", async () => {
+    const client = makeSingleClient({ data: ROW, error: null });
+    const r = await fetchOpportunityById(asClient(client as unknown as FakeClient), "op-1");
+    expect(client.from).toHaveBeenCalledWith("opportunities");
+    expect(client.eq).toHaveBeenCalledWith("id", "op-1");
+    expect(client.maybeSingle).toHaveBeenCalledTimes(1);
+    expect(r.status).toBe("ok");
+    expect(r.data?.id).toBe("op-1");
+    expect(r.data?.title).toBe("망원동 재즈 공연");
+  });
+
+  it("없는 id면 empty", async () => {
+    const client = makeSingleClient({ data: null, error: null });
+    const r = await fetchOpportunityById(asClient(client as unknown as FakeClient), "nope");
+    expect(r).toEqual({ data: null, status: "empty" });
+  });
+
+  it("조회 에러면 error", async () => {
+    const client = makeSingleClient({ data: null, error: { message: "boom" } });
+    const r = await fetchOpportunityById(asClient(client as unknown as FakeClient), "op-1");
+    expect(r).toEqual({ data: null, status: "error" });
+  });
+
+  it("레거시 category/source 값이면 걸러 empty로", async () => {
+    const legacy = { ...ROW, category: "legacy_x" };
+    const client = makeSingleClient({ data: legacy, error: null });
+    const r = await fetchOpportunityById(asClient(client as unknown as FakeClient), "op-1");
+    expect(r).toEqual({ data: null, status: "empty" });
   });
 });
 

@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import type { DiagnosisAnswers } from "./diagnosis";
 import type { Opportunity } from "./types";
 import {
+  buildMeta,
+  deadlineLabel,
   decodeHtmlEntities,
   diagnosisSummaryChips,
   displayNameOf,
   ENERGY_LABEL,
   type OpportunityRow,
   rowToOpportunity,
+  timeRangeLabel,
   TIMESLOT_LABEL,
   whyReasons,
 } from "./view";
@@ -213,5 +216,52 @@ describe("rowToOpportunity — 부분 필드", () => {
     expect(o.costKrw).toBeUndefined();
     expect(o.difficulty).toBeUndefined();
     expect(o.location?.dongName).toBeUndefined();
+  });
+});
+
+describe("timeRangeLabel", () => {
+  it("timeWindow 없으면 null", () => {
+    expect(timeRangeLabel(undefined)).toBeNull();
+  });
+
+  it("시작=종료면 단일 시각 '14시'", () => {
+    expect(timeRangeLabel({ startHour: 14, endHour: 14 })).toBe("14시");
+  });
+
+  it("시작≠종료면 범위 '14–16시'", () => {
+    expect(timeRangeLabel({ startHour: 14, endHour: 16 })).toBe("14–16시");
+  });
+});
+
+describe("buildMeta — 시간대는 범위로", () => {
+  it("timeWindow가 범위면 '시간대: 14–16시'", () => {
+    const meta = buildMeta(opp({ timeWindow: { startHour: 14, endHour: 16 } }));
+    expect(meta).toContainEqual({ label: "시간대", value: "14–16시" });
+  });
+});
+
+describe("deadlineLabel", () => {
+  it("deadline 없으면 null", () => {
+    expect(deadlineLabel(undefined, "2026-07-21")).toBeNull();
+  });
+
+  it("미래 마감이면 D-day 양수·past=false·한글 날짜", () => {
+    expect(deadlineLabel("2026-07-24", "2026-07-21")).toEqual({
+      date: "7월 24일",
+      dday: 3,
+      past: false,
+    });
+  });
+
+  it("오늘 마감이면 D-day 0", () => {
+    expect(deadlineLabel("2026-07-21", "2026-07-21")).toMatchObject({ dday: 0, past: false });
+  });
+
+  it("지난 마감이면 past=true·음수 D-day", () => {
+    expect(deadlineLabel("2026-07-19", "2026-07-21")).toMatchObject({ dday: -2, past: true });
+  });
+
+  it("타임존 무관하게 UTC 자정 기준 일수차만 센다(월경계)", () => {
+    expect(deadlineLabel("2026-08-01", "2026-07-31")).toMatchObject({ dday: 1, date: "8월 1일" });
   });
 });
