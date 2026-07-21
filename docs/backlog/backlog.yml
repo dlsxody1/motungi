@@ -250,7 +250,7 @@ backlog:
   - id: M-015
     title: "웹/모바일 패리티 정합: 라우팅·누락 섹션·마이크로카피 통일"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web, apps/mobile, packages/core]
     done_when:
       - "웹 report ReportEmpty onRetry를 isError로 분기(오류→/loading, 미진단→/diagnosis)해 모바일과 일치시킨다"
@@ -262,6 +262,17 @@ backlog:
       parity finding 6건 통합: report 빈화면 라우팅(medium)·onboarding 보조 CTA(low)·opportunity why
       섹션 웹 모바일 누락(medium)·disclaimer 버튼명(low)·onePick CTA 카피(low)·진단 Q2 옵션 카피(low). 기능
       결함(라우팅·누락)과 카피 불일치를 한 패리티 밤으로 묶되 대부분 소규모 diff.
+      [2026-07-21 야간 파이프라인 완료] web report/page.tsx ReportEmpty onRetry를 isError 기준
+      분기(에러→/loading, 미진단→/diagnosis)로 수정하고 report/page.test.tsx에 두 분기 테스트 추가.
+      mobile app/index.tsx 온보딩 보조 CTA를 /location 중복에서 /report+라벨 '로그인 없이 바로
+      시작'으로 수정. web opportunity/page.tsx 모바일(md:hidden) 레이아웃에 기존 why 변수 재사용한
+      whyReasons 카드 추가, 모바일·데스크탑 disclaimer 문구를 '보러 가기를 누르면...'으로 통일. 원픽
+      CTA 라벨 2곳을 '자세히 보기'로 통일. 진단 Q2 weekend desc를 web·mobile 모두 '토·일 오전/오후'로,
+      flexible title을 '유동적'으로 통일. core 변경 없음(카피가 페이지 로컬 리터럴이라 승격 불필요,
+      architect 판단). core 207/mobile 14/web 114(신규 2 포함) 통과, 4패키지 typecheck 클린, web
+      build 20/20 라우트 성공. done_when 5개 항목 모두 충족 확인. mobile RN 렌더 테스트 부재는 별도
+      M-017로 분리 유지. 커밋 4409846, dev 직접 커밋(트렁크 모델, PR 없음). status는 사람의 최종 리뷰
+      전까지 doing으로 둠(done 승격은 사람 담당).
   - id: M-016
     title: "seoul_jobs/sports_facility 어댑터 잔재 정리: address 버그·미러 통일·미배선 게이팅"
     priority: low
