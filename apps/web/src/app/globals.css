@@ -51,6 +51,8 @@
   --font-sans: "Pretendard Variable", Pretendard, -apple-system,
     BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
+  /* 워드마크 전용 — 로고 '모퉁이'에만. next/font(Jua) 변수 → font-wordmark 유틸리티. */
+  --font-wordmark: var(--font-wordmark-jua, "Jua"), var(--font-sans);
 
   /* ── 그림자 ── */
   --shadow-card: 0 1px 2px rgba(46, 42, 36, 0.04),
@@ -131,3 +133,9 @@
 .corner-spinner {
   animation: corner-spin 0.9s linear infinite;
 }
+@media (prefers-reduced-motion: reduce) {
+  .corner-spinner {
+    animation: none;
+  }
+}
+

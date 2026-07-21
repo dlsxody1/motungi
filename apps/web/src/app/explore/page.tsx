@@ -249,10 +249,10 @@ export default function ExplorePage() {
                   type="checkbox"
                   checked={easyOnly}
                   onChange={(e) => setEasyOnly(e.target.checked)}
-                  className="sr-only"
+                  className="peer sr-only"
                 />
                 <span
-                  className={`grid size-5 place-items-center rounded-[6px] ${
+                  className={`grid size-5 place-items-center rounded-[6px] peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 ${
                     easyOnly ? "bg-primary text-white" : "border-[1.5px] border-line"
                   }`}
                 >

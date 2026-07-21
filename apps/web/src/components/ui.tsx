@@ -3,6 +3,7 @@
  * 모바일-퍼스트 반응형: 폰에선 화면을 꽉 채우고, 넓은 화면에선 앱 폭(420px)으로
  * 가운데 정렬해 앱과 동일한 레이아웃을 유지한다.
  */
+import Image from "next/image";
 import type { ButtonHTMLAttributes, ElementType, ReactNode } from "react";
 
 /* ────────────────────────────────────────────────────────────
@@ -204,22 +205,20 @@ export function InfoBox({
 export function Logo({ size = 28, onDark = false }: { size?: number; onDark?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2">
+      <Image
+        src="/brand/app-icon-128-rounded.png"
+        alt="모퉁이"
+        width={size}
+        height={size}
+        className="rounded-[8px] shadow-sm"
+        style={{ width: size, height: size }}
+        priority
+      />
       <span
-        className="grid place-items-center rounded-[8px] font-black"
-        style={{
-          width: size,
-          height: size,
-          background: onDark ? "#ffffff" : "#e25067",
-          color: onDark ? "#e25067" : "#ffffff",
-          fontSize: size * 0.5,
-        }}
+        className={`font-extrabold tracking-tight ${onDark ? "text-white" : "text-ink"}`}
+        style={{ fontSize: Math.round(size * 0.56) }}
       >
-        모
-      </span>
-      <span
-        className={`text-[17px] font-extrabold tracking-tight ${onDark ? "text-white" : "text-ink"}`}
-      >
-        모퉁이 <span className="font-semibold opacity-70">Corner</span>
+        모퉁이
       </span>
     </span>
   );

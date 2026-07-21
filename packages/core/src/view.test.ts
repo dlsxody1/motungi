@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import type { DiagnosisAnswers } from "./diagnosis";
 import type { Opportunity } from "./types";
 import {
+  buildMeta,
+  deadlineLabel,
+  decodeHtmlEntities,
   diagnosisSummaryChips,
   displayNameOf,
   ENERGY_LABEL,
   type OpportunityRow,
   rowToOpportunity,
+  timeRangeLabel,
   TIMESLOT_LABEL,
   whyReasons,
 } from "./view";
@@ -136,6 +140,18 @@ describe("diagnosisSummaryChips — side_job 수입 톤(M-006)", () => {
 });
 
 // M-007: DB row → Opportunity 변환의 부분 필드 분기(좌표/시간대는 쌍이 다 있어야 생성).
+describe("decodeHtmlEntities", () => {
+  it("단일·이중 이스케이프를 모두 원문으로 되돌린다", () => {
+    expect(decodeHtmlEntities("&lt;a&gt;")).toBe("<a>");
+    expect(decodeHtmlEntities("&amp;lt;a&amp;gt;")).toBe("<a>");
+    expect(decodeHtmlEntities("A &amp;amp; B")).toBe("A & B");
+  });
+  it("순수 텍스트엔 무영향(멱등)", () => {
+    expect(decodeHtmlEntities("동물의 세계 展")).toBe("동물의 세계 展");
+    expect(decodeHtmlEntities("")).toBe("");
+  });
+});
+
 describe("rowToOpportunity — 부분 필드", () => {
   function row(over: Partial<OpportunityRow> = {}): OpportunityRow {
     return {
@@ -159,6 +175,17 @@ describe("rowToOpportunity — 부분 필드", () => {
       ...over,
     };
   }
+
+  it("title·summary의 이중 이스케이프 엔티티를 디코드한다(#3)", () => {
+    const o = rowToOpportunity(
+      row({
+        title: "쥬세뻬 비탈레 원화전 &amp;lt;동물의 세계&amp;gt;",
+        summary: "&amp;quot;몬도 아니말레&amp;quot; 展",
+      }),
+    );
+    expect(o.title).toBe("쥬세뻬 비탈레 원화전 <동물의 세계>");
+    expect(o.summary).toBe('"몬도 아니말레" 展');
+  });
 
   it("lat만/lng만 있으면 point는 undefined(둘 다 있어야 좌표)", () => {
     expect(rowToOpportunity(row({ lat: 37.5 })).location?.point).toBeUndefined();
@@ -189,5 +216,52 @@ describe("rowToOpportunity — 부분 필드", () => {
     expect(o.costKrw).toBeUndefined();
     expect(o.difficulty).toBeUndefined();
     expect(o.location?.dongName).toBeUndefined();
+  });
+});
+
+describe("timeRangeLabel", () => {
+  it("timeWindow 없으면 null", () => {
+    expect(timeRangeLabel(undefined)).toBeNull();
+  });
+
+  it("시작=종료면 단일 시각 '14시'", () => {
+    expect(timeRangeLabel({ startHour: 14, endHour: 14 })).toBe("14시");
+  });
+
+  it("시작≠종료면 범위 '14–16시'", () => {
+    expect(timeRangeLabel({ startHour: 14, endHour: 16 })).toBe("14–16시");
+  });
+});
+
+describe("buildMeta — 시간대는 범위로", () => {
+  it("timeWindow가 범위면 '시간대: 14–16시'", () => {
+    const meta = buildMeta(opp({ timeWindow: { startHour: 14, endHour: 16 } }));
+    expect(meta).toContainEqual({ label: "시간대", value: "14–16시" });
+  });
+});
+
+describe("deadlineLabel", () => {
+  it("deadline 없으면 null", () => {
+    expect(deadlineLabel(undefined, "2026-07-21")).toBeNull();
+  });
+
+  it("미래 마감이면 D-day 양수·past=false·한글 날짜", () => {
+    expect(deadlineLabel("2026-07-24", "2026-07-21")).toEqual({
+      date: "7월 24일",
+      dday: 3,
+      past: false,
+    });
+  });
+
+  it("오늘 마감이면 D-day 0", () => {
+    expect(deadlineLabel("2026-07-21", "2026-07-21")).toMatchObject({ dday: 0, past: false });
+  });
+
+  it("지난 마감이면 past=true·음수 D-day", () => {
+    expect(deadlineLabel("2026-07-19", "2026-07-21")).toMatchObject({ dday: -2, past: true });
+  });
+
+  it("타임존 무관하게 UTC 자정 기준 일수차만 센다(월경계)", () => {
+    expect(deadlineLabel("2026-08-01", "2026-07-31")).toMatchObject({ dday: 1, date: "8월 1일" });
   });
 });

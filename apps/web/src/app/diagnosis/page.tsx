@@ -100,7 +100,11 @@ export default function DiagnosisPage() {
           <div className="flex flex-1 flex-col bg-bg">
             <SafeTop />
             <div className="flex items-center gap-3 px-6 py-2">
-              <button onClick={goBack} aria-label="뒤로가기" className="tap-safe -ml-2 flex w-9 text-ink">
+              <button
+                onClick={goBack}
+                aria-label="뒤로가기"
+                className="tap-safe -ml-2 flex h-9 w-9 items-center justify-center text-ink"
+              >
                 <ChevronLeftIcon size={22} />
               </button>
               <div className="h-[6px] flex-1 overflow-hidden rounded-full bg-line-alt">
@@ -165,7 +169,7 @@ export default function DiagnosisPage() {
                   disabled={!selected}
                   className="tap-safe mb-3 flex h-[52px] w-full items-center justify-center rounded-xl bg-primary text-[16px] font-bold text-white disabled:opacity-40"
                 >
-                  결과 보기
+                  {step === total - 1 ? "결과 보기" : "다음"}
                 </button>
               )}
             </div>

@@ -4,7 +4,7 @@
  * web·mobile이 동일하게 import 해서 mock과 서버 데이터를 같은 형태로 렌더한다.
  */
 import type { DiagnosisAnswers, Energy, TimeSlot } from "./diagnosis";
-import type { Opportunity, OpportunityCategory, SourceKind } from "./types";
+import type { Opportunity, OpportunityCategory, SourceKind, TimeWindow } from "./types";
 
 /** opportunities 테이블 row (snake_case). Supabase select 결과. */
 export interface OpportunityRow {
@@ -27,14 +27,33 @@ export interface OpportunityRow {
   time_end_hour: number | null;
 }
 
+/**
+ * HTML 엔티티 디코드. 공공데이터(서울시 문화행사·한눈에보는문화정보) 제목/요약엔
+ * `&amp;lt;동물의 세계&amp;gt;`처럼 **이중 이스케이프**된 엔티티가 그대로 저장돼 있다.
+ * 적재 어댑터가 정규화하지 않으므로 표시용 변환(rowToOpportunity) 시점에 걷어낸다.
+ * 2패스(`&amp;lt;` → `&lt;` → `<`)로 이중까지 처리하며, 순수 텍스트엔 무영향(멱등).
+ */
+export function decodeHtmlEntities(s: string): string {
+  const once = (t: string) =>
+    t
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#0*39;/g, "'")
+      .replace(/&#x0*27;/gi, "'")
+      .replace(/&nbsp;/g, " ");
+  return once(once(s));
+}
+
 /** DB row → core Opportunity (camelCase). 스코어링 입력 형태. */
 export function rowToOpportunity(r: OpportunityRow): Opportunity {
   return {
     id: r.id,
     source: r.source,
     category: r.category,
-    title: r.title,
-    summary: r.summary,
+    title: decodeHtmlEntities(r.title),
+    summary: decodeHtmlEntities(r.summary),
     costKrw: r.cost_krw ?? undefined,
     difficulty: r.difficulty ?? undefined,
     location: {
@@ -100,11 +119,44 @@ export function costHeading(category: OpportunityCategory): string {
   return category === "side_job" ? "예상 수입" : "참가비";
 }
 
+/**
+ * 시간대 표시 문자열. 시작=종료면 "14시", 다르면 범위 "14–16시".
+ * timeWindow가 없으면 null(호출부에서 렌더 생략).
+ */
+export function timeRangeLabel(tw: TimeWindow | undefined): string | null {
+  if (!tw) return null;
+  if (tw.endHour === tw.startHour) return `${tw.startHour}시`;
+  return `${tw.startHour}–${tw.endHour}시`;
+}
+
+/**
+ * 마감 표시. deadline(ISO date, YYYY-MM-DD)과 기준일 today로 D-day를 계산한다.
+ * - null: 마감 없음(상시) → null 반환(호출부에서 "상시" 등으로 처리 or 생략)
+ * - today > deadline: 마감 지남 → { text, dday: 음수, past: true }
+ * - 그 외: { text: "7월 24일", dday: 남은일수, past: false }
+ * core 순수성상 현재 시각을 내부에서 읽지 않으므로 today를 주입받는다.
+ */
+export function deadlineLabel(
+  deadline: string | undefined,
+  today: string,
+): { date: string; dday: number; past: boolean } | null {
+  if (!deadline) return null;
+  // 로컬 타임존 영향을 피해 UTC 자정 기준으로 일수 차만 센다.
+  const d = Date.parse(`${deadline}T00:00:00Z`);
+  const t = Date.parse(`${today}T00:00:00Z`);
+  if (Number.isNaN(d) || Number.isNaN(t)) return null;
+  const dday = Math.round((d - t) / 86_400_000);
+  const [, mm, dd] = deadline.split("-");
+  const date = mm && dd ? `${Number(mm)}월 ${Number(dd)}일` : deadline;
+  return { date, dday, past: dday < 0 };
+}
+
 /** 상세 메타 칩(시간대·난이도). 있는 것만. */
 export function buildMeta(opp: Opportunity): { label: string; value: string }[] {
   const meta: { label: string; value: string }[] = [];
-  if (opp.timeWindow) {
-    meta.push({ label: "시간대", value: `${opp.timeWindow.startHour}시` });
+  const time = timeRangeLabel(opp.timeWindow);
+  if (time) {
+    meta.push({ label: "시간대", value: time });
   }
   if (opp.difficulty != null) {
     const level = opp.difficulty <= 0.33 ? "낮음" : opp.difficulty <= 0.66 ? "보통" : "높음";

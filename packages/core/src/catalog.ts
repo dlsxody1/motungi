@@ -117,6 +117,8 @@ export interface FetchOpportunitiesOptions {
   today?: string;
   /** 조회 상한. 미지정 시 200. report는 소량, explore는 다량으로 구분해 넘긴다. */
   limit?: number;
+  /** 대표 이미지(image_url)가 있는 활동만. 랜딩 캐러셀처럼 썸네일이 필수인 곳에서 서버에 위임. */
+  withImageOnly?: boolean;
 }
 
 /**
@@ -140,6 +142,8 @@ export async function fetchOpportunities(
   if (options.today) query = query.or(`deadline.is.null,deadline.gte.${options.today}`);
   // 관심 카테고리로 좁힌다(주어질 때만).
   if (options.categories?.length) query = query.in("category", options.categories);
+  // 썸네일 필수 화면(랜딩 캐러셀)은 이미지 있는 행만 서버에서 거른다.
+  if (options.withImageOnly) query = query.not("image_url", "is", null);
   // 마감 임박순(가까운 것 먼저), 상시(null)는 뒤로. 상한까지만.
   const { data, error } = await query
     .order("deadline", { ascending: true, nullsFirst: false })
@@ -155,4 +159,47 @@ export async function fetchOpportunities(
   // status==="ok"는 항상 1건 이상 렌더 가능한 데이터를 의미하는 계약(위 CatalogStatus 주석)을 지킨다.
   if (rows.length === 0) return { data: [], status: "empty" };
   return { data: rows.map(rowToMock), status: "ok" };
+}
+
+/** 단건 조회 결과. 상세 페이지는 카탈로그 전량이 아니라 이 형태로 1건만 받는다. */
+export interface OpportunityResult {
+  /** 조회된 활동. 없으면 null(존재하지 않거나 레거시 값이라 걸러짐). */
+  data: MockOpportunity | null;
+  /**
+   * - ok: 1건 정상 로드
+   * - empty: 해당 id가 없음(또는 레거시 값이라 걸러짐)
+   * - error: 조회 실패(네트워크/서버)
+   * - unconfigured: Supabase 환경변수 미설정
+   */
+  status: CatalogStatus;
+}
+
+/**
+ * id로 활동 1건만 읽어온다. 상세 페이지가 카탈로그 전량(수백 건)을 받아 클라에서
+ * .find()로 1건을 고르던 낭비를 없앤다 — 조회·전송을 그 1건으로 좁힌다.
+ *
+ * 마감(deadline) 필터는 걸지 않는다: 이미 마감됐더라도 그 상세를 직접 열었으면
+ * 보여줘야 한다(공유 링크·저장 목록에서 지난 활동 진입 등). 목록 조회와 달리 여기선
+ * "지난 것 숨김"이 오히려 혼란이다.
+ *
+ * @param client Supabase 클라이언트. null이면 쿼리 없이 unconfigured 반환.
+ * @param id 활동 id(opportunities.id).
+ */
+export async function fetchOpportunityById(
+  client: SupabaseClient | null,
+  id: string,
+): Promise<OpportunityResult> {
+  if (!client) return { data: null, status: "unconfigured" };
+  const { data, error } = await client
+    .from("opportunities")
+    .select(CATALOG_COLUMNS)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) return { data: null, status: "error" };
+  if (!data) return { data: null, status: "empty" };
+  // 목록 조회와 동일한 레거시 값 가드 — 앱이 모르는 category/source면 없는 것으로 취급.
+  if (!isOpportunityCategory(data.category) || !isSourceKind(data.source)) {
+    return { data: null, status: "empty" };
+  }
+  return { data: rowToMock(data as OpportunityRow), status: "ok" };
 }

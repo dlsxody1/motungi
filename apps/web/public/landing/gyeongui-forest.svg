@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" fill="none">
+  <defs>
+    <linearGradient id="fsky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cfe3c4"/>
+      <stop offset="1" stop-color="#eef2e0"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#fsky)"/>
+  <!-- soft sun -->
+  <circle cx="620" cy="150" r="80" fill="#fdf3d0" opacity="0.8"/>
+  <!-- back tree line -->
+  <g fill="#8fb87a" opacity="0.7">
+    <ellipse cx="120" cy="240" rx="110" ry="130"/>
+    <ellipse cx="320" cy="210" rx="130" ry="150"/>
+    <ellipse cx="560" cy="240" rx="120" ry="140"/>
+    <ellipse cx="740" cy="230" rx="110" ry="140"/>
+  </g>
+  <!-- ground -->
+  <path d="M0 420 Q400 380 800 420 L800 600 L0 600 Z" fill="#6f9a55"/>
+  <!-- path -->
+  <path d="M330 600 Q380 480 400 420 Q420 480 470 600 Z" fill="#d8c9a8"/>
+  <path d="M395 600 L400 430 L405 600 Z" fill="#c4b48e" opacity="0.5"/>
+  <!-- front trees -->
+  <g>
+    <rect x="150" y="300" width="20" height="160" fill="#6b4a30"/>
+    <ellipse cx="160" cy="270" rx="80" ry="95" fill="#5c9a4a"/>
+    <rect x="620" y="290" width="22" height="180" fill="#6b4a30"/>
+    <ellipse cx="631" cy="255" rx="90" ry="105" fill="#4f8a42"/>
+  </g>
+  <!-- runner -->
+  <g fill="#e25067">
+    <circle cx="400" cy="470" r="16"/>
+    <path d="M392 486 q8 -6 16 0 l-4 40 -8 0 Z"/>
+    <path d="M396 520 l-14 30 8 4 14 -28 Z"/>
+    <path d="M404 520 l14 26 -8 6 -14 -26 Z"/>
+  </g>
+  <!-- bench -->
+  <g fill="#8a6a48">
+    <rect x="520" y="440" width="90" height="10" rx="3"/>
+    <rect x="524" y="450" width="8" height="24"/><rect x="598" y="450" width="8" height="24"/>
+  </g>
+</svg>

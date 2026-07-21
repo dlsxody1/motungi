@@ -224,7 +224,7 @@ backlog:
   - id: M-014
     title: "a11y: 구조·모션·확대 결함 수정(중첩 인터랙티브·포커스·live region·viewport)"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web]
     done_when:
       - "saved 카드의 <button> 안 role=button 중첩을 제거해 상세 이동과 저장 토글을 형제로 분리하고 토글에 aria-label을 부여한다"
@@ -236,6 +236,17 @@ backlog:
       a11y finding 4건 통합(구조/CSS 변경 성격): saved 중첩 인터랙티브(medium)·explore 체크박스
       포커스(medium)·loading live region+reduced-motion(medium)·viewport 확대차단
       WCAG1.4.4(medium). 속성 추가만으로 안 되고 DOM/스타일 변경이 필요해 M-013과 분리.
+      [2026-07-20 야간 파이프라인] saved/page.tsx의 <button> 안 role=button 중첩을 형제
+      <button> 2개(상세 보기 aria-label / 저장 취소 토글 aria-pressed)로 분리(opportunity/page.tsx
+      선례 패턴 따름). explore/page.tsx sr-only 체크박스에 peer + peer-focus-visible:ring 추가로
+      키보드 포커스 시각화. loading/page.tsx 공유 Body에 role="status" aria-live="polite" 추가.
+      globals.css에 prefers-reduced-motion 시 .corner-spinner 애니메이션 정지 추가. saved·loading
+      테스트 신규, explore 테스트 확장. web typecheck 클린, 92/92 테스트 통과, build 19/19 라우트 성공,
+      axe 위반 0(saved·loading). done_when 4번째 항목(layout.tsx viewport maximumScale 제거)은
+      코드 수정 없이 검증만 함 — dev@232ac4f 시점에 이미 maximumScale이 unset이고 WCAG 1.4.4 주석까지
+      달려 있어 오늘 밤 이전부터 충족돼 있었음(M-001과 동일한 backlog staleness 패턴). layout.tsx는
+      diff 없음. explore 페이지는 axe 스캔이 여전히 없음(기존 공백, 이번 밤이 만든 것 아님) — 후속 과제로
+      남김. 커밋 ae1aed9, dev 직접 커밋(트렁크 모델, PR 없음).
   - id: M-015
     title: "웹/모바일 패리티 정합: 라우팅·누락 섹션·마이크로카피 통일"
     priority: medium

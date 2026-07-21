@@ -1,8 +1,17 @@
 import type { Metadata, Viewport } from "next";
+import { Jua } from "next/font/google";
 import type { ReactNode } from "react";
 import { AuthBoot } from "@/components/auth-boot";
 import { KakaoSDK } from "@/components/kakao-sdk";
 import "./globals.css";
+
+/* 워드마크 전용 귀여운 둥근고딕 — 로고 '모퉁이'에만 쓴다(본문은 Pretendard 유지). */
+const jua = Jua({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-wordmark-jua",
+});
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://motungi.app";
 const TITLE = "모퉁이 Corner";
@@ -36,6 +45,11 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  // 브랜드 앱 아이콘(둥근 사각) — 파비콘 · 홈스크린 아이콘.
+  icons: {
+    icon: "/brand/app-icon-128-rounded.png",
+    apple: "/brand/app-icon-128-rounded.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -50,7 +64,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={jua.variable}>
       <head>
         {/* Pretendard — 본문 한글 웹폰트 (CDN) */}
         <link

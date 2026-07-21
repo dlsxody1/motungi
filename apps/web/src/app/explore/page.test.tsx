@@ -160,3 +160,19 @@ describe("ExplorePage a11y (M-013)", () => {
     expect(screen.getAllByRole("button", { pressed: true }).length).toBeGreaterThan(0);
   });
 });
+
+describe("ExplorePage 난이도 체크박스 포커스 링 (M-014)", () => {
+  afterEach(cleanup);
+
+  it("sr-only 체크박스는 peer 클래스를 갖고, 장식용 형제 span은 peer-focus-visible 링 클래스를 갖는다", () => {
+    seed("ok", [ONE_PICK]);
+    render(<ExplorePage />);
+
+    const checkbox = screen.getByRole("checkbox", { name: "낮음만 보기 (방전형 추천)" });
+    expect(checkbox).toHaveClass("peer");
+
+    const decorativeSpan = checkbox.nextElementSibling;
+    expect(decorativeSpan).not.toBeNull();
+    expect(decorativeSpan!.className).toMatch(/peer-focus-visible/);
+  });
+});

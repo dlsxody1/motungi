@@ -25,7 +25,6 @@ describe("WebLogo", () => {
     render(<WebLogo />);
     const link = screen.getByRole("link");
     expect(link).toHaveAttribute("href", "/");
-    expect(within(link).getByText("Corner")).toBeInTheDocument();
     expect(within(link).getByText(/모퉁이/)).toBeInTheDocument();
   });
 
@@ -126,9 +125,9 @@ describe("TopNav — variant='app' (기본)", () => {
 });
 
 describe("TopNav — variant='marketing'", () => {
-  it("검색 버튼 · 로그인 · 시작하기 CTA를 렌더하고 앱 액션은 없다", () => {
+  it("로그인 · 시작하기 CTA를 렌더하고 앱 액션은 없다", () => {
     render(<TopNav variant="marketing" />);
-    expect(screen.getByRole("button", { name: "검색" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "검색" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "로그인" })).toHaveAttribute("href", "/report");
     expect(screen.getByRole("link", { name: "시작하기" })).toHaveAttribute("href", "/location");
     expect(screen.queryByRole("link", { name: "동네 변경" })).not.toBeInTheDocument();
