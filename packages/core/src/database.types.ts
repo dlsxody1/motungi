@@ -69,6 +69,7 @@ export interface Database {
           dong_name: string | null;
           geom: PostgisGeographyPoint | null;
           cta_url: string | null;
+          image_url: string | null;
           deadline: string | null; // date (ISO)
           source_label: string | null;
           fetched_at: string; // timestamptz (ISO)
@@ -91,6 +92,7 @@ export interface Database {
           dong_name?: string | null;
           geom?: PostgisGeographyPoint | null;
           cta_url?: string | null;
+          image_url?: string | null;
           deadline?: string | null;
           source_label?: string | null;
           fetched_at?: string;
@@ -113,6 +115,7 @@ export interface Database {
           dong_name?: string | null;
           geom?: PostgisGeographyPoint | null;
           cta_url?: string | null;
+          image_url?: string | null;
           deadline?: string | null;
           source_label?: string | null;
           fetched_at?: string;
@@ -167,6 +170,38 @@ export interface Database {
           user_id?: string;
           opportunity_id?: string;
           saved_at?: string;
+        };
+      };
+      neighborhoods: {
+        Row: {
+          adm_code: string;
+          sido: string;
+          sigungu: string;
+          dong_name: string;
+          lat: number;
+          lng: number;
+          coord_level: string; // 'seed' | 'sigungu' | 'dong'
+          geom: PostgisGeographyPoint | null;
+        };
+        Insert: {
+          adm_code: string;
+          sido: string;
+          sigungu: string;
+          dong_name: string;
+          lat: number;
+          lng: number;
+          coord_level?: string;
+          geom?: PostgisGeographyPoint | null;
+        };
+        Update: {
+          adm_code?: string;
+          sido?: string;
+          sigungu?: string;
+          dong_name?: string;
+          lat?: number;
+          lng?: number;
+          coord_level?: string;
+          geom?: PostgisGeographyPoint | null;
         };
       };
     };

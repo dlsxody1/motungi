@@ -46,6 +46,7 @@ export function normalizeCultureInfo(raw: RawCultureInfo): Opportunity | null {
     summary: [raw.sigungu, raw.place, raw.realmName].filter(Boolean).join(" · ") || title,
     // 요금 정보 없음 — 미상(무료로 단정하지 않음).
     location: { dongName, point: parsePoint(raw.gpsY, raw.gpsX) },
+    imageUrl: raw.thumbnail?.trim() || undefined,
     deadline: toIsoDate(raw.endDate),
     sourceLabel: "한눈에보는문화정보",
   };

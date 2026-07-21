@@ -86,12 +86,12 @@ export function Chip({
       style={[
         styles.chip,
         active
-          ? { borderColor: C.primary, backgroundColor: "rgba(226,80,103,0.08)" }
+          ? { borderColor: C.primary, backgroundColor: C.primary }
           : { borderColor: C.line, backgroundColor: C.surface },
       ]}
     >
       {leading}
-      <Text style={[styles.chipLabel, { color: active ? C.primary : C.label }]}>{label}</Text>
+      <Text style={[styles.chipLabel, { color: active ? C.white : C.label }]}>{label}</Text>
     </Pressable>
   );
 }

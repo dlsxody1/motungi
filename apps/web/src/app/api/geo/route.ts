@@ -8,8 +8,10 @@
  */
 import { NextResponse } from "next/server";
 
+// 신형 NAVER Cloud Platform Maps 도메인. 구형 naveropenapi.apigw.ntruss.com은
+// 이 앱 자격증명에서 401/210(Permission Denied)로 막힌다.
 const NAVER_ENDPOINT =
-  "https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc";
+  "https://maps.apigw.ntruss.com/map-reversegeocode/v2/gc";
 
 /** .env에 우발적 공백/따옴표가 섞여도 안전하도록 정리. */
 function clean(v?: string): string | undefined {

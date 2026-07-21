@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 // globals:false 설정이라 자동 cleanup이 등록되지 않는다 → 렌더 누적 방지를 위해 수동 정리.
 afterEach(() => cleanup());
-import { Button, Card, Chip, Logo, MobileScreen, SafeBottom, SafeTop, Tag, Txt, text } from "./ui";
+import { Button, Card, Chip, InfoBox, Logo, MobileScreen, SafeBottom, SafeTop, Tag, Txt, text } from "./ui";
 
 describe("Txt", () => {
   it("기본값: p 태그 + body1 프리셋 클래스를 적용한다", () => {
@@ -110,11 +110,14 @@ describe("Chip", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it("active=true면 강조 스타일을 적용한다", () => {
+  it("active=true면 솔리드 브랜드 레드로 채운다(디자인 시스템)", () => {
     render(<Chip active>선택됨</Chip>);
     const chip = screen.getByRole("button", { name: "선택됨" });
     expect(chip.className).toContain("border-primary");
-    expect(chip.className).toContain("text-primary");
+    expect(chip.className).toContain("bg-primary");
+    expect(chip.className).toContain("text-white");
+    // 옛 흐린 8% 틴트가 아니어야 한다.
+    expect(chip.className).not.toContain("bg-primary/8");
   });
 
   // a11y (M-013): 선택 상태를 aria-pressed로 노출
@@ -123,6 +126,26 @@ describe("Chip", () => {
     expect(screen.getByRole("button", { name: "문화", pressed: true })).toBeInTheDocument();
     rerender(<Chip>문화</Chip>);
     expect(screen.getByRole("button", { name: "문화", pressed: false })).toBeInTheDocument();
+  });
+});
+
+describe("InfoBox", () => {
+  it("흰 배경 + 통일 border/shadow, 아이콘·children을 렌더한다", () => {
+    render(<InfoBox icon={<svg data-testid="ico" />}>안내 문구</InfoBox>);
+    const text = screen.getByText("안내 문구");
+    // 박스 자체(children의 부모의 부모)가 흰 배경·border·shadow-card를 갖는다.
+    const box = text.parentElement!;
+    expect(box.className).toContain("bg-surface");
+    expect(box.className).toContain("border-line-alt");
+    expect(box.className).toContain("shadow-card");
+    // 핑크 틴트 배경이 아니어야 한다(요청 4).
+    expect(box.className).not.toContain("bg-tint");
+    expect(screen.getByTestId("ico")).toBeInTheDocument();
+  });
+
+  it("icon 없이도 children만 렌더한다", () => {
+    render(<InfoBox>내용만</InfoBox>);
+    expect(screen.getByText("내용만")).toBeInTheDocument();
   });
 });
 

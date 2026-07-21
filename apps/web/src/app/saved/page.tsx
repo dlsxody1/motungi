@@ -6,9 +6,9 @@ import { BottomNav } from "@/components/bottom-nav";
 import {
   BookmarkIcon,
   LocationIcon,
-  SavingsIcon,
   UserIcon,
 } from "@/components/icons";
+import { Thumbnail } from "@/components/thumbnail";
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
@@ -225,15 +225,11 @@ export default function SavedPage() {
                         aria-label={`${s.title} 상세 보기`}
                         className="flex flex-1 flex-col text-left"
                       >
-                        <span
-                          className={`grid size-10 place-items-center rounded-xl ${
-                            s.tone === "mint"
-                              ? "bg-mint-tint text-mint"
-                              : "bg-tint text-primary"
-                          }`}
-                        >
-                          <SavingsIcon size={20} />
-                        </span>
+                        <Thumbnail
+                          src={s.imageUrl}
+                          tone={s.tone === "mint" ? "mint" : "brand"}
+                          sizeClass="size-12"
+                        />
                         <p
                           className={`mt-3 text-[12px] font-bold ${s.tone === "mint" ? "text-mint" : "text-primary"}`}
                         >

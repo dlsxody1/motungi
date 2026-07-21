@@ -3,7 +3,7 @@
 import type { OpportunityCategory } from "@motungi/core";
 import { scoreAll, TIMESLOT_LABEL } from "@motungi/core";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BottomNav } from "@/components/bottom-nav";
 import {
   BookmarkIcon,
@@ -13,6 +13,7 @@ import {
   LocationIcon,
   SearchIcon,
 } from "@/components/icons";
+import { Thumbnail } from "@/components/thumbnail";
 import { Chip, MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
@@ -68,6 +69,15 @@ export default function ExplorePage() {
       return true;
     });
   }, [filter, query, source, easyOnly]);
+
+  // 점진 렌더: 초기 STEP개만, "더보기"로 +STEP. 필터/검색이 바뀌면 처음부터.
+  const STEP = 30;
+  const [visibleCount, setVisibleCount] = useState(STEP);
+  useEffect(() => {
+    setVisibleCount(STEP);
+  }, [filter, query, easyOnly]);
+  const visible = useMemo(() => list.slice(0, visibleCount), [list, visibleCount]);
+  const hasMore = visibleCount < list.length;
 
   // 활성 필터 칩(실제 상태 파생). 선택 없으면 미표시.
   const activeChips: { key: string; label: string; clear: () => void }[] = [];
@@ -141,7 +151,7 @@ export default function ExplorePage() {
                 </p>
               )}
               <div className="mt-2 divide-y divide-line-alt">
-                {list.map((o) => (
+                {visible.map((o) => (
                   <button
                     key={o.id}
                     onClick={() => openDetail(o.id)}
@@ -158,11 +168,19 @@ export default function ExplorePage() {
                       <p className={`text-[15px] font-extrabold ${o.tone === "mint" ? "text-mint" : "text-primary"}`}>
                         {o.costLabel}
                       </p>
-                      {matchActive && <p className="text-[12px] text-muted">매칭 {o.matchScore}%</p>}
+                      <p className="text-[12px] text-muted">자세히 →</p>
                     </div>
                   </button>
                 ))}
               </div>
+              {hasMore && (
+                <button
+                  onClick={() => setVisibleCount((n) => n + STEP)}
+                  className="tap-safe mt-4 h-11 w-full rounded-xl border border-line bg-surface text-[14px] font-semibold text-label"
+                >
+                  더보기 ({list.length - visibleCount}개 남음)
+                </button>
+              )}
             </div>
             <BottomNav active="explore" />
             <SafeBottom />
@@ -194,7 +212,7 @@ export default function ExplorePage() {
               </div>
               {matchActive && (
                 <span className="flex h-11 items-center gap-1.5 rounded-[11px] border border-line bg-surface px-4 text-[14px] font-semibold text-muted">
-                  매칭순 정렬
+                  추천순
                 </span>
               )}
             </div>
@@ -280,16 +298,25 @@ export default function ExplorePage() {
                 </p>
               )}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {list.map((o, i) => {
+                {visible.map((o, i) => {
                   const pick = matchActive && i === 0;
                   return (
                     <button
                       key={o.id}
                       onClick={() => openDetail(o.id)}
-                      className={`wcard-hover flex flex-col rounded-[18px] bg-surface p-5 text-left shadow-web ${
+                      className={`wcard-hover flex flex-col overflow-hidden rounded-[18px] bg-surface text-left shadow-web ${
                         pick ? "border-[1.5px] border-primary/35" : ""
                       }`}
                     >
+                      {o.imageUrl && (
+                        <Thumbnail
+                          src={o.imageUrl}
+                          tone={o.tone === "mint" ? "mint" : "brand"}
+                          rounded="rounded-none"
+                          sizeClass="h-32 w-full"
+                        />
+                      )}
+                      <div className="flex flex-1 flex-col p-5">
                       <div className="flex items-start justify-between">
                         <span
                           className={`rounded-md px-2 py-1 text-[11px] font-bold ${
@@ -317,14 +344,23 @@ export default function ExplorePage() {
                         <p className={`text-[18px] font-extrabold ${o.tone === "mint" ? "text-mint" : "text-primary"}`}>
                           {o.costLabel}
                         </p>
-                        {matchActive && (
-                          <p className="text-[13px] font-semibold text-muted">매칭 {o.matchScore}%</p>
-                        )}
+                        <p className="text-[13px] font-semibold text-muted">자세히 →</p>
+                      </div>
                       </div>
                     </button>
                   );
                 })}
               </div>
+              {hasMore && (
+                <div className="mt-6 flex justify-center">
+                  <button
+                    onClick={() => setVisibleCount((n) => n + STEP)}
+                    className="tap-safe h-11 rounded-xl border border-line bg-surface px-6 text-[14px] font-semibold text-label hover:border-faint"
+                  >
+                    더보기 ({list.length - visibleCount}개 남음)
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </WebContainer>

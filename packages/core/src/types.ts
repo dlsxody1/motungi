@@ -80,6 +80,8 @@ export interface Opportunity {
   timeWindow?: TimeWindow;
   /** 제휴/외부 상세 연결 URL */
   ctaUrl?: string;
+  /** 대표 이미지(썸네일) URL. 원본 제공 소스(문화행사·문화정보)만 채워짐 */
+  imageUrl?: string;
   /** 마감일(있으면 D-day 계산) */
   deadline?: string; // ISO date
   /** 데이터 출처·갱신일 (신뢰 표기, §8) */

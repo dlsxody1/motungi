@@ -4,7 +4,7 @@ import { draftToAnswers } from "@motungi/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CheckCircleIcon, CheckIcon, ChevronLeftIcon, CloseIcon, ShieldIcon, TimerIcon } from "@/components/icons";
+import { CheckCircleIcon, CheckIcon, ChevronLeftIcon, CloseIcon, TimerIcon } from "@/components/icons";
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { WebLogo } from "@/components/web-shell";
 import { useAppStore } from "@/store/useAppStore";
@@ -200,7 +200,7 @@ export default function DiagnosisPage() {
 
         <div className="mx-auto flex w-full max-w-[1280px] flex-1 gap-14 px-16 pb-15 pt-13">
           {/* 스텝 레일 */}
-          <aside className="w-[264px] shrink-0">
+          <aside className="w-[264px] shrink-0 self-start rounded-2xl bg-surface p-6 shadow-web">
             <p className="text-[13px] font-extrabold tracking-[0.06em] text-primary">
               STEP {step + 1} / {total}
             </p>
@@ -244,13 +244,6 @@ export default function DiagnosisPage() {
                 );
               })}
             </div>
-
-            <div className="mt-5 flex items-start gap-2.5 rounded-[14px] bg-info-bg p-4">
-              <ShieldIcon size={18} className="mt-0.5 shrink-0 text-muted" />
-              <p className="text-[12px] leading-relaxed text-muted">
-                답변은 추천에만 쓰이고 저장 전까지 기기에만 있어요.
-              </p>
-            </div>
           </aside>
 
           {/* 질문 영역 */}
@@ -269,7 +262,7 @@ export default function DiagnosisPage() {
                     key={o.value}
                     onClick={() => pick(o.value, o.soon)}
                     disabled={o.soon}
-                    className={`relative flex items-start gap-3.5 rounded-2xl border p-[22px] text-left transition-all ${
+                    className={`relative flex items-center gap-3.5 rounded-2xl border p-[22px] text-left transition-all ${
                       o.soon
                         ? "cursor-not-allowed border-transparent bg-surface-alt/70"
                         : on
@@ -277,13 +270,6 @@ export default function DiagnosisPage() {
                           : "border-[1.5px] border-transparent bg-surface hover:border-line"
                     }`}
                   >
-                    <span
-                      className={`grid size-[52px] shrink-0 place-items-center rounded-[14px] text-[18px] font-extrabold ${
-                        on ? "bg-tint text-primary" : "bg-tile text-muted"
-                      }`}
-                    >
-                      {o.title.slice(0, 1)}
-                    </span>
                     <span className="flex-1">
                       <span className={`block text-[17px] font-bold ${o.soon ? "text-faint" : "text-ink"}`}>
                         {o.title}

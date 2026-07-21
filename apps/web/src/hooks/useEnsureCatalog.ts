@@ -18,7 +18,8 @@ export function useEnsureCatalog() {
     if (catalogStatus !== "idle") return;
     let cancelled = false;
     void (async () => {
-      const { data, status } = await fetchOpportunities();
+      // 탐색용 넓은 로드(전 카테고리). today는 래퍼가 자동 주입 → 마감 지난 활동은 제외된다.
+      const { data, status } = await fetchOpportunities({ limit: 300 });
       if (!cancelled) setCatalog(data, status);
     })();
     return () => {

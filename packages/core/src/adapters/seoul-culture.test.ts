@@ -36,6 +36,12 @@ describe("normalizeSeoulCulture", () => {
     expect(o.deadline).toBe("2026-10-28");
     expect(o.timeWindow?.startHour).toBe(11);
     expect(o.sourceLabel).toContain("서울시 문화행사");
+    expect(o.imageUrl).toBe(RAW.MAIN_IMG);
+  });
+
+  it("대표 이미지 없으면 imageUrl 생략", () => {
+    expect(normalizeSeoulCulture({ ...RAW, MAIN_IMG: "" })!.imageUrl).toBeUndefined();
+    expect(normalizeSeoulCulture({ ...RAW, MAIN_IMG: undefined })!.imageUrl).toBeUndefined();
   });
 
   it("무료 행사는 costKrw=0", () => {

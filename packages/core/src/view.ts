@@ -20,6 +20,7 @@ export interface OpportunityRow {
   lat: number | null;
   lng: number | null;
   cta_url: string | null;
+  image_url: string | null;
   deadline: string | null;
   source_label: string | null;
   time_start_hour: number | null;
@@ -45,6 +46,7 @@ export function rowToOpportunity(r: OpportunityRow): Opportunity {
         ? { startHour: r.time_start_hour, endHour: r.time_end_hour }
         : undefined,
     ctaUrl: r.cta_url ?? undefined,
+    imageUrl: r.image_url ?? undefined,
     deadline: r.deadline ?? undefined,
     sourceLabel: r.source_label ?? undefined,
   };

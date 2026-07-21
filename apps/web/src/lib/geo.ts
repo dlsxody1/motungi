@@ -22,3 +22,34 @@ export async function reverseGeocode(
     return null;
   }
 }
+
+/**
+ * 동네 검색 결과 한 건 (/api/neighborhoods 응답). 좌표를 함께 실어와 앵커에 바로 주입 가능.
+ */
+export interface NeighborhoodSearchResult {
+  admCode: string;
+  dongName: string;
+  sigungu: string;
+  lat: number;
+  lng: number;
+}
+
+/**
+ * 행정동 이름 부분일치 검색 (/api/neighborhoods 경유). 실패/빈 검색어면 빈 배열.
+ * signal로 이전 요청 취소 가능(타입어헤드 경합 방지).
+ */
+export async function searchNeighborhoods(
+  q: string,
+  signal?: AbortSignal,
+): Promise<NeighborhoodSearchResult[]> {
+  const query = q.trim();
+  if (!query) return [];
+  try {
+    const res = await fetch(`/api/neighborhoods?q=${encodeURIComponent(query)}`, { signal });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { items?: NeighborhoodSearchResult[] };
+    return data.items ?? [];
+  } catch {
+    return [];
+  }
+}

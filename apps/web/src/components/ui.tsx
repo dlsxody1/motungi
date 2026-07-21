@@ -127,7 +127,7 @@ export function Chip({
       aria-pressed={active}
       className={`inline-flex h-[34px] items-center gap-1 rounded-pill border px-3.5 text-[13px] font-semibold transition-colors ${
         active
-          ? "border-primary bg-primary/8 text-primary"
+          ? "border-primary bg-primary text-white"
           : "border-line bg-surface text-label hover:border-faint"
       } ${className}`}
       {...rest}
@@ -171,6 +171,30 @@ export function Card({
 }) {
   return (
     <div className={`rounded-xl bg-surface shadow-card ${className}`}>{children}</div>
+  );
+}
+
+/**
+ * 정보/확인 박스 — 흰 배경 + 통일된 border/shadow. 포인트 컬러는 아이콘에만 절제해서 쓴다.
+ * 선택 확인·안내처럼 "상태를 알려주는" 한 줄 박스에 사용(핑크 틴트 배경 대신 이걸로 통일).
+ * icon의 색은 호출부가 className으로 지정(기본 뉴트럴). 강조가 필요하면 text-mint 권장 — 빨강은 지양.
+ */
+export function InfoBox({
+  icon,
+  children,
+  className = "",
+}: {
+  icon?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-2.5 rounded-xl border border-line-alt bg-surface px-4 py-3 shadow-card ${className}`}
+    >
+      {icon != null && <span className="shrink-0 text-mint">{icon}</span>}
+      <span className="min-w-0 flex-1 text-[14px] text-label">{children}</span>
+    </div>
   );
 }
 

@@ -5,17 +5,26 @@ import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/bottom-nav";
 import {
   BookmarkIcon,
-  FireIcon,
   LocationIcon,
   RefreshIcon,
-  SavingsIcon,
   ShareIcon,
 } from "@/components/icons";
+import { Thumbnail } from "@/components/thumbnail";
 import { MobileScreen, SafeBottom, SafeTop, Tag } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { diagnosisSummaryChips, displayNameOf } from "@motungi/core";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
+import { shareContent } from "@/lib/kakao";
 import { useAppStore } from "@/store/useAppStore";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://motungi.app";
+
+/** ISO 마감일 → "~11/28까지" 라벨. 파싱 실패 시 null(칩 숨김). */
+function formatDeadline(iso: string): string | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return `~${d.getMonth() + 1}/${d.getDate()}까지`;
+}
 
 /** A5 · 동네 리포트 (원픽 히어로) — 반응형 */
 export default function ReportPage() {
@@ -30,8 +39,8 @@ export default function ReportPage() {
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
 
-  // 스코어링 결과 우선, 없으면 카탈로그 상위 3개(진단 전 직접 진입).
-  const list = results.length > 0 ? results : catalog.slice(0, 3);
+  // 스코어링 결과 우선, 없으면 카탈로그 상위 6개(진단 전 직접 진입). 원픽1 + 함께 최대5.
+  const list = results.length > 0 ? results : catalog.slice(0, 6);
   const onePick = list[0];
 
   // 데이터가 없으면(로드 실패/빈결과/아직 안 불러옴) 원픽을 그릴 수 없다 → 상태 화면.
@@ -43,12 +52,15 @@ export default function ReportPage() {
   const displayName = displayNameOf(user);
   const summaryChips = diagnosisSummaryChips(answers, onePick);
   const onePickSaved = savedIds.includes(onePick.id);
+  const deadlineLabel = onePick.deadline ? formatDeadline(onePick.deadline) : null;
 
   const openDetail = (id: string) => router.push(`/opportunity?id=${id}`);
   const onShare = () => {
-    const data = { title: onePick.title, text: `${onePick.title}\n모퉁이에서 발견한 우리 동네 활동` };
-    if (navigator.share) navigator.share(data).catch(() => {});
-    else if (navigator.clipboard) navigator.clipboard.writeText(data.text).catch(() => {});
+    void shareContent({
+      title: onePick.title,
+      description: "모퉁이에서 발견한 우리 동네 활동",
+      url: `${SITE_URL}/opportunity?id=${onePick.id}`,
+    });
   };
 
   return (
@@ -82,17 +94,30 @@ export default function ReportPage() {
                 onClick={() => openDetail(onePick.id)}
                 className="block w-full overflow-hidden rounded-2xl bg-surface text-left shadow-card ring-1 ring-primary/25"
               >
+                {onePick.imageUrl && (
+                  <Thumbnail
+                    src={onePick.imageUrl}
+                    tone={onePick.tone === "mint" ? "mint" : "purple"}
+                    rounded="rounded-none"
+                    sizeClass="h-40 w-full"
+                  />
+                )}
                 <div className="bg-tint/50 p-5">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Tag>{onePick.categoryLabel}</Tag>
-                    <span className="text-[13px] font-bold text-primary">
-                      매칭 {onePick.matchScore}%
-                    </span>
+                    {deadlineLabel && (
+                      <span className="rounded-md bg-info-bg px-2 py-0.5 text-[11px] font-semibold text-muted">
+                        {deadlineLabel}
+                      </span>
+                    )}
                   </div>
                   <h2 className="mt-3 text-[21px] font-extrabold leading-snug tracking-[-0.01em] text-ink">
                     {onePick.title}
                   </h2>
-                  <p className="mt-2.5 text-[14px] leading-relaxed text-label">{onePick.summary}</p>
+                  <p className="mt-2.5 flex items-center gap-1.5 text-[14px] text-label">
+                    <LocationIcon size={15} className="shrink-0 text-primary" />
+                    {onePick.summary}
+                  </p>
                   <div className="mt-4 flex items-end justify-between rounded-xl bg-tint px-4 py-3">
                     <div>
                       <p className="text-[12px] font-semibold text-primary-deep">{onePick.costHeading}</p>
@@ -115,7 +140,15 @@ export default function ReportPage() {
               </button>
 
               {related.length > 0 && (
-                <p className="mb-1 mt-6 text-[14px] font-semibold text-label">함께 보면 좋아요</p>
+                <div className="mb-1 mt-6 flex items-center justify-between">
+                  <p className="text-[14px] font-semibold text-label">함께 보면 좋아요</p>
+                  <Link
+                    href="/explore"
+                    className="text-[13px] font-semibold text-primary hover:text-primary-deep"
+                  >
+                    더 찾아보기 →
+                  </Link>
+                </div>
               )}
               <div className="divide-y divide-line-alt">
                 {related.map((o) => (
@@ -193,19 +226,32 @@ export default function ReportPage() {
             <div>
               {/* 원픽 히어로 카드 */}
               <div className="overflow-hidden rounded-[22px] border-[1.5px] border-primary/40 bg-surface shadow-web-pick">
+                {onePick.imageUrl && (
+                  <Thumbnail
+                    src={onePick.imageUrl}
+                    tone={onePick.tone === "mint" ? "mint" : "purple"}
+                    rounded="rounded-none"
+                    sizeClass="h-52 w-full"
+                  />
+                )}
                 <div className="flex flex-col gap-6 p-7 md:flex-row">
                   {/* 좌 */}
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Tag>{onePick.categoryLabel}</Tag>
-                      <span className="flex items-center gap-1 text-[13px] font-bold text-primary">
-                        <FireIcon size={15} /> 매칭 {onePick.matchScore}%
-                      </span>
+                      {deadlineLabel && (
+                        <span className="rounded-md bg-info-bg px-2 py-1 text-[12px] font-semibold text-muted">
+                          {deadlineLabel}
+                        </span>
+                      )}
                     </div>
                     <h2 className="mt-3 text-[27px] font-extrabold leading-[1.32] tracking-[-0.01em] text-ink">
                       {onePick.title}
                     </h2>
-                    <p className="mt-3 text-[15px] leading-relaxed text-label">{onePick.summary}</p>
+                    <p className="mt-3 flex items-center gap-1.5 text-[14px] text-muted">
+                      <LocationIcon size={16} className="shrink-0 text-primary" />
+                      {onePick.summary}
+                    </p>
                     <div className="mt-5 grid grid-cols-3 gap-2.5">
                       {onePick.meta.map((m) => (
                         <div key={m.label} className="rounded-xl bg-bg px-3 py-3 text-center">
@@ -253,7 +299,15 @@ export default function ReportPage() {
               </div>
 
               {/* 함께 보면 좋아요 */}
-              <p className="mb-3 mt-7 text-[16px] font-bold text-ink">함께 보면 좋아요</p>
+              <div className="mb-3 mt-7 flex items-center justify-between">
+                <p className="text-[16px] font-bold text-ink">함께 보면 좋아요</p>
+                <Link
+                  href="/explore"
+                  className="text-[14px] font-semibold text-primary hover:text-primary-deep"
+                >
+                  더 찾아보기 →
+                </Link>
+              </div>
               <div className="space-y-3">
                 {related.map((o) => (
                   <button
@@ -261,13 +315,7 @@ export default function ReportPage() {
                     onClick={() => openDetail(o.id)}
                     className="wcard-hover flex w-full items-center gap-4 rounded-[18px] bg-surface p-5 text-left shadow-web"
                   >
-                    <span
-                      className={`grid size-11 shrink-0 place-items-center rounded-xl ${
-                        o.tone === "mint" ? "bg-mint-tint text-mint" : "bg-purple-tint text-purple"
-                      }`}
-                    >
-                      <SavingsIcon size={22} />
-                    </span>
+                    <Thumbnail src={o.imageUrl} tone={o.tone === "mint" ? "mint" : "purple"} sizeClass="size-14" />
                     <div className="flex-1">
                       <p className={`text-[12px] font-bold ${o.tone === "mint" ? "text-mint" : "text-purple"}`}>
                         {o.categoryLabel}
@@ -279,7 +327,7 @@ export default function ReportPage() {
                       <p className={`text-[17px] font-extrabold ${o.tone === "mint" ? "text-mint" : "text-purple"}`}>
                         {o.costLabel}
                       </p>
-                      <p className="text-[12px] text-muted">매칭 {o.matchScore}%</p>
+                      <p className="text-[12px] text-muted">자세히 →</p>
                     </div>
                   </button>
                 ))}

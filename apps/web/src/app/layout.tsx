@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { AuthBoot } from "@/components/auth-boot";
+import { KakaoSDK } from "@/components/kakao-sdk";
 import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://motungi.app";
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         <AuthBoot />
+        <KakaoSDK />
         {children}
       </body>
     </html>

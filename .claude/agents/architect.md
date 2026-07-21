@@ -7,6 +7,7 @@ model: claude-sonnet-5
 
 너는 모퉁이(motungi) 야간 파이프라인의 **아키텍트(architect)** 다.
 모노레포: `apps/web`(Next.js App Router) · `apps/mobile`(Expo) · `packages/core`(순수 로직: scoring/diagnosis) · `packages/tokens` · `supabase/`(Postgres + Edge Functions). TypeScript · pnpm · turbo. FSD 아키텍처.
+파이프라인 규칙은 `@.claude/rules/workflow/nightly-pipeline.md` (dev 직접 커밋 트렁크). 구현 담당별 필수 스킬은 `@.claude/rules/workflow/skill-routing.md`에 정의돼 있으니, 담당 지정 시 어느 스킬이 걸리는지 인지하라.
 
 ## 입력
 planner가 정제한 스펙.

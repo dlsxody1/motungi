@@ -7,7 +7,7 @@
  * 함수만 두고, 실제 클라이언트 생성/설정은 각 앱(web/mobile)의 책임으로 남긴다.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { GeoPoint, Opportunity } from "./types";
+import type { GeoPoint, Opportunity, OpportunityCategory } from "./types";
 import { isOpportunityCategory, isSourceKind } from "./database.types";
 import {
   buildMeta,
@@ -20,14 +20,30 @@ import {
   type OpportunityRow,
 } from "./view";
 
-/** 동네 → 대표 좌표. 위치 앵커(집) 좌표 주입에 사용(행정동 API 전까지 근사값). */
-export const NEIGHBORHOOD_POINTS: Record<string, GeoPoint> = {
-  망원동: { lat: 37.5556, lng: 126.9019 },
-  성수동: { lat: 37.5445, lng: 127.0559 },
-  연남동: { lat: 37.5638, lng: 126.9256 },
-  판교동: { lat: 37.3948, lng: 127.1112 },
-  합정동: { lat: 37.5495, lng: 126.9138 },
-};
+/** 동네 선택 결과 — 검색·칩·현재위치 어디서 왔든 이 형태로 앵커에 주입한다. */
+export interface NeighborhoodPick {
+  admCode?: string;
+  dongName: string;
+  /** 시·구 표기(배너용, 예: "서울 마포구"). */
+  region?: string;
+  point: GeoPoint;
+}
+
+/**
+ * 인기/추천 동네 — 검색어가 비었을 때 보여주는 기본 칩 목록이자 기본 선택.
+ * 전체 행정동은 neighborhoods 테이블(+ /api/neighborhoods 검색)에서 오고, 이건 진입 UX용 소수.
+ * (판교는 서울 밖이지만 초기 데모 동네로 유지.)
+ */
+export const POPULAR_NEIGHBORHOODS: NeighborhoodPick[] = [
+  { dongName: "망원동", region: "서울 마포구", point: { lat: 37.5556, lng: 126.9019 } },
+  { dongName: "성수동", region: "서울 성동구", point: { lat: 37.5445, lng: 127.0559 } },
+  { dongName: "연남동", region: "서울 마포구", point: { lat: 37.5638, lng: 126.9256 } },
+  { dongName: "판교동", region: "경기 성남시 분당구", point: { lat: 37.3948, lng: 127.1112 } },
+  { dongName: "합정동", region: "서울 마포구", point: { lat: 37.5495, lng: 126.9138 } },
+];
+
+/** 기본 선택 동네(진입 시). */
+export const DEFAULT_NEIGHBORHOOD: NeighborhoodPick = POPULAR_NEIGHBORHOODS[0]!;
 
 /**
  * 화면 표시용 활동 카드 — core Opportunity + 파생 표시 필드.
@@ -83,21 +99,51 @@ export interface CatalogResult {
   status: CatalogStatus;
 }
 
+/** fetchOpportunities 조회 컬럼(전량 select 아님 — 화면이 바인딩하는 필드만). */
+const CATALOG_COLUMNS =
+  "id,source,category,external_id,title,summary,cost_krw,difficulty,dong_name,lat,lng,cta_url,image_url,deadline,source_label,time_start_hour,time_end_hour";
+
+/** 조회 상한 기본값(옵션 미지정 시). */
+const DEFAULT_LIMIT = 200;
+
+export interface FetchOpportunitiesOptions {
+  /** 관심 카테고리 화이트리스트. 없으면 카테고리 필터 없음. */
+  categories?: OpportunityCategory[];
+  /**
+   * "오늘"(YYYY-MM-DD). 주어지면 마감이 지난 활동을 서버에서 제외한다
+   * (deadline is null 또는 deadline >= today). core 순수성상 함수 내부에서
+   * 현재 시각을 읽지 않으므로 호출부(앱 래퍼)가 주입한다.
+   */
+  today?: string;
+  /** 조회 상한. 미지정 시 200. report는 소량, explore는 다량으로 구분해 넘긴다. */
+  limit?: number;
+}
+
 /**
  * Supabase에서 활동 후보를 읽어온다. 목업 폴백 없음 — 실패/빈결과는 상태로 반환한다.
  * data는 스코어링(pickTop)에 그대로 넣을 수 있는 형태.
  *
+ * 무옵션 호출은 기존과 동일(무필터·상한 200). 옵션으로 카테고리·마감유효 필터와
+ * 상한을 서버에 위임해, "전량 받아 클라에서 버리는" 낭비를 없앤다.
+ *
  * @param client Supabase 클라이언트. 환경변수 미설정 등으로 앱단에서 생성하지 못했으면
  *   null을 넘긴다 — 이 경우 쿼리 시도 없이 unconfigured를 반환한다.
+ * @param options 카테고리·오늘(마감 필터)·상한. 생략 시 기존 동작.
  */
-export async function fetchOpportunities(client: SupabaseClient | null): Promise<CatalogResult> {
+export async function fetchOpportunities(
+  client: SupabaseClient | null,
+  options: FetchOpportunitiesOptions = {},
+): Promise<CatalogResult> {
   if (!client) return { data: [], status: "unconfigured" };
-  const { data, error } = await client
-    .from("opportunities")
-    .select(
-      "id,source,category,external_id,title,summary,cost_krw,difficulty,dong_name,lat,lng,cta_url,deadline,source_label,time_start_hour,time_end_hour",
-    )
-    .limit(200);
+  let query = client.from("opportunities").select(CATALOG_COLUMNS);
+  // 마감 지난 활동 제외: deadline이 null(상시)이거나 today 이후인 것만.
+  if (options.today) query = query.or(`deadline.is.null,deadline.gte.${options.today}`);
+  // 관심 카테고리로 좁힌다(주어질 때만).
+  if (options.categories?.length) query = query.in("category", options.categories);
+  // 마감 임박순(가까운 것 먼저), 상시(null)는 뒤로. 상한까지만.
+  const { data, error } = await query
+    .order("deadline", { ascending: true, nullsFirst: false })
+    .limit(options.limit ?? DEFAULT_LIMIT);
   if (error) return { data: [], status: "error" };
   if (!data || data.length === 0) return { data: [], status: "empty" };
   // DB의 category/source enum에는 앱이 모르는 레거시 값이 남아있을 수 있다(§database.types.ts) —

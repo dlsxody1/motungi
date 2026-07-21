@@ -23,6 +23,7 @@ export interface OppRow {
   lat: number | null;
   lng: number | null;
   cta_url: string | null;
+  image_url: string | null;
   deadline: string | null;
   source_label: string;
   time_start_hour: number | null;
@@ -50,6 +51,7 @@ export function mapSeoulCulture(raw: Record<string, string>): OppRow | null {
     lat: point?.lat ?? null,
     lng: point?.lng ?? null,
     cta_url: raw.ORG_LINK || null,
+    image_url: raw.MAIN_IMG?.trim() || null,
     deadline: toIsoDate(raw.END_DATE) ?? null,
     source_label: "서울시 문화행사",
     time_start_hour: startHour ?? null,
@@ -76,6 +78,7 @@ export function mapCultureInfo(raw: Record<string, string>): OppRow | null {
     lat: point?.lat ?? null,
     lng: point?.lng ?? null,
     cta_url: null,
+    image_url: raw.thumbnail?.trim() || null,
     deadline: toIsoDate(raw.endDate) ?? null,
     source_label: "한눈에보는문화정보",
     time_start_hour: null,
@@ -109,6 +112,7 @@ export function mapTrail(raw: Record<string, string>): OppRow | null {
     lat: null,
     lng: null,
     cta_url: raw.gpxpath || null,
+    image_url: null,
     deadline: null,
     source_label: "두루누비",
     time_start_hour: null,
@@ -141,6 +145,7 @@ export function mapSportsFacility(raw: Record<string, string>): OppRow | null {
     lat: point?.lat ?? null,
     lng: point?.lng ?? null,
     cta_url: raw.HMPG_URL?.trim() || null,
+    image_url: null,
     deadline: null,
     source_label: "공공체육시설",
     time_start_hour: null,
@@ -180,6 +185,7 @@ export function mapSeoulJob(raw: Record<string, string>): OppRow | null {
     lat: null,
     lng: null,
     cta_url: null,
+    image_url: null,
     deadline: toIsoDate(raw.RCEPT_CLOS) ?? null,
     source_label: "서울시 일자리플러스센터",
     time_start_hour: startHour ?? null,
