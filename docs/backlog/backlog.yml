@@ -294,7 +294,7 @@ backlog:
   - id: M-017
     title: "RN 모바일 화면 렌더 테스트 도입(report·diagnosis 스모크)"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/mobile]
     done_when:
       - "vitest.config.ts resolve.alias에 react-native→react-native-web를 추가하고 expo-router를 vi.mock으로 우회한다"
