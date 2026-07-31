@@ -9,8 +9,8 @@ import {
 } from "@/data/opportunities";
 import { type NeighborhoodSearchResult, reverseGeocode, searchNeighborhoods } from "@/lib/geo";
 import { useAppStore } from "@/store/useAppStore";
-import { Button, Chip, Screen, Txt } from "@/ui/components";
-import { CheckCircle, ChevronLeft, ChevronRight, Location, Search } from "@/ui/icons";
+import { Button, Chip, FlowHeader, Screen, Txt } from "@/ui/components";
+import { CheckCircle, ChevronRight, Location, Search } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
 
 function itemToPick(it: NeighborhoodSearchResult): NeighborhoodPick {
@@ -105,14 +105,11 @@ export default function LocationScreen() {
 
   return (
     <Screen>
+      <FlowHeader title="동네 설정" />
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 16 }}
         keyboardShouldPersistTaps="handled"
       >
-        <Pressable onPress={() => router.back()} style={styles.back} hitSlop={8}>
-          <ChevronLeft size={24} />
-        </Pressable>
-
         <Txt preset="h1" style={{ marginTop: 8 }}>
           어느 동네 기준으로{"\n"}찾아드릴까요?
         </Txt>
@@ -218,7 +215,6 @@ export default function LocationScreen() {
 }
 
 const styles = StyleSheet.create({
-  back: { width: 44, height: 44, justifyContent: "center", marginLeft: -8 },
   locCard: {
     marginTop: 24,
     flexDirection: "row",

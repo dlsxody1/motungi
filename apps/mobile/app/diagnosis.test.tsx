@@ -43,7 +43,8 @@ describe("DiagnosisScreen", () => {
     expect(screen.getByText("먹거리·마켓")).toBeInTheDocument();
     expect(screen.getByText("가벼운 부업")).toBeInTheDocument();
 
-    const cta = screen.getByText("결과 보기").closest("[aria-disabled]");
+    // Q1은 마지막 문항이 아니므로 CTA는 "다음" (마지막 문항에서만 "결과 보기")
+    const cta = screen.getByText("다음").closest("[aria-disabled]");
     expect(cta).not.toBeNull();
     expect(cta).toHaveAttribute("aria-disabled", "true");
 

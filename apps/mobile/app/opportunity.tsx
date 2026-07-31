@@ -3,8 +3,8 @@ import { Linking, Pressable, ScrollView, Share as RNShare, StyleSheet, Text, Vie
 import { displayNameOf, whyReasons } from "@motungi/core";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
-import { Button, Screen, Tag } from "@/ui/components";
-import { Bookmark, CheckCircle, ChevronLeft, ExternalLink, Location, Share } from "@/ui/icons";
+import { Button, FlowHeader, Screen, Tag } from "@/ui/components";
+import { Bookmark, CheckCircle, ExternalLink, Location, Share } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
 
 /** A6 · 기회 상세 */
@@ -24,11 +24,7 @@ export default function OpportunityScreen() {
   if (!o) {
     return (
       <Screen>
-        <View style={styles.topbar}>
-          <Pressable onPress={() => router.back()} hitSlop={8} style={styles.iconBtn}>
-            <ChevronLeft size={24} />
-          </Pressable>
-        </View>
+        <FlowHeader />
         <View style={styles.notFound}>
           <Text style={styles.nfTitle}>활동을 찾을 수 없어요</Text>
           <Text style={styles.nfDesc}>
@@ -54,15 +50,13 @@ export default function OpportunityScreen() {
 
   return (
     <Screen>
-      {/* 상단 바 */}
-      <View style={styles.topbar}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.iconBtn}>
-          <ChevronLeft size={24} />
-        </Pressable>
-        <Pressable hitSlop={8} style={styles.iconBtn} onPress={onShare}>
-          <Share size={22} />
-        </Pressable>
-      </View>
+      <FlowHeader
+        right={
+          <Pressable hitSlop={8} style={styles.iconBtn} onPress={onShare} accessibilityLabel="공유">
+            <Share size={22} />
+          </Pressable>
+        }
+      />
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}>
         <Tag label={o.categoryLabel} />
@@ -155,8 +149,7 @@ export default function OpportunityScreen() {
 }
 
 const styles = StyleSheet.create({
-  topbar: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 4 },
-  iconBtn: { width: 44, height: 44, justifyContent: "center" },
+  iconBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
   nfTitle: { fontSize: 20, fontWeight: "800", color: C.ink, textAlign: "center" },
   nfDesc: { marginTop: 8, fontSize: 14, lineHeight: 21, color: C.muted, textAlign: "center", maxWidth: 320 },
