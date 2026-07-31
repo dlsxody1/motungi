@@ -99,6 +99,16 @@
   }
 }
 
+/* native select 화살표를 죽이고(appearance-none) faint 색 chevron을 오른쪽 패딩 안에 그린다.
+   기본 select은 화살표가 테두리에 붙어 좌우 패딩이 비대칭으로 보이는 문제를 해결. */
+.select-chevron {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23807970' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.25rem;
+}
+
 /* ────────────────────────────────────────────────────────────
  * 스크롤 인뷰 리빌 — 랜딩 섹션이 뷰포트에 들어올 때 부드럽게 등장.
  * 근거(motion motivated): 콘텐츠를 순서대로 드러내 "이렇게 골라준다"는
