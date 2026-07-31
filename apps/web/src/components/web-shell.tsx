@@ -5,7 +5,6 @@
  */
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { BookmarkIcon } from "./icons";
 import { NeighborhoodMenu } from "./neighborhood-menu";
 
 /* ────────────────────────────────────────────────────────────
@@ -54,7 +53,7 @@ export function WebLogo({
 /* ────────────────────────────────────────────────────────────
  * 상단 네비게이션 (스티키)
  *  - variant "marketing": 검색 · 로그인 · 시작하기 CTA (랜딩)
- *  - variant "app":        동네 pill · 북마크 · 아바타 (앱 내부)
+ *  - variant "app":        동네 pill · 로그인/아바타 (앱 내부)
  * ──────────────────────────────────────────────────────────── */
 type NavKey = "home" | "explore" | "report" | "saved" | "my";
 
@@ -101,7 +100,7 @@ export function TopNav({
 
       {variant === "marketing" ? (
         <div className="flex items-center gap-5">
-          <Link href="/report" className="text-[15px] font-semibold text-nav-link hover:text-ink-dark">
+          <Link href="/my" className="text-[15px] font-semibold text-nav-link hover:text-ink-dark">
             로그인
           </Link>
           <Link
@@ -117,9 +116,8 @@ export function TopNav({
             dongLabel={dongLabel}
             triggerClassName="flex items-center gap-1.5 rounded-pill border border-line bg-surface px-3.5 py-2 text-[13px] font-semibold text-label shadow-card"
           />
-          <Link href="/saved" className="grid size-8 place-items-center text-nav-link" aria-label="보관함">
-            <BookmarkIcon size={22} />
-          </Link>
+          {/* 보관함 입구는 좌측 내비의 "보관함" 하나로 충분하다 — 같은 /saved로 가는
+              북마크 아이콘을 헤더에 또 두지 않는다(입구 중복). */}
           {userName ? (
             <Link
               href="/my"
