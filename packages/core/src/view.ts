@@ -71,6 +71,20 @@ export function rowToOpportunity(r: OpportunityRow): Opportunity {
   };
 }
 
+/**
+ * dong_name 정규화 → 구(區) 라벨. 지역 필터·그룹핑용 표시 로직(저장 스키마 아님).
+ * 적재 소스가 표기를 통일하지 않아 같은 구가 "종로구"와 "서울 종로구"로 분열돼 있다.
+ * - null/빈값 → null (호출부에서 "지역 미상"으로 살려둔다. 숨기지 말 것)
+ * - "서울/서울특별시/경기/인천 " 접두어를 걷어 "종로구" == "서울 종로구"로 병합
+ * - "구/시/군"으로 끝나면 그 지자체명, 접두어만 남으면(예: "서울") 그대로
+ * 멱등: normalizeGu(normalizeGu(x)) === normalizeGu(x).
+ */
+export function normalizeGu(dong: string | null | undefined): string | null {
+  const s = dong?.trim();
+  if (!s) return null;
+  return s.replace(/^(서울특별시|서울|경기도|경기|인천광역시|인천)\s+/, "").trim() || null;
+}
+
 /** 카테고리 한글 라벨 (태그용). */
 export const CATEGORY_LABEL: Record<OpportunityCategory, string> = {
   culture: "동네 문화·공연",

@@ -8,6 +8,7 @@ import {
   diagnosisSummaryChips,
   displayNameOf,
   ENERGY_LABEL,
+  normalizeGu,
   type OpportunityRow,
   rowToOpportunity,
   timeRangeLabel,
@@ -263,5 +264,32 @@ describe("deadlineLabel", () => {
 
   it("타임존 무관하게 UTC 자정 기준 일수차만 센다(월경계)", () => {
     expect(deadlineLabel("2026-08-01", "2026-07-31")).toMatchObject({ dday: 1, date: "8월 1일" });
+  });
+});
+
+describe("normalizeGu — 지역 표기 병합", () => {
+  it("null/빈값/공백은 null", () => {
+    expect(normalizeGu(null)).toBeNull();
+    expect(normalizeGu(undefined)).toBeNull();
+    expect(normalizeGu("  ")).toBeNull();
+  });
+
+  it("'서울 ' 접두어를 걷어 같은 구로 병합", () => {
+    expect(normalizeGu("종로구")).toBe("종로구");
+    expect(normalizeGu("서울 종로구")).toBe("종로구");
+    expect(normalizeGu("서울특별시 종로구")).toBe("종로구");
+  });
+
+  it("수도권 시/군은 지자체명 유지", () => {
+    expect(normalizeGu("경기 김포시")).toBe("김포시");
+    expect(normalizeGu("인천 강화군")).toBe("강화군");
+  });
+
+  it("접두어만 있으면 그대로(구 없는 행)", () => {
+    expect(normalizeGu("서울")).toBe("서울");
+  });
+
+  it("멱등 — 두 번 적용해도 동일", () => {
+    expect(normalizeGu(normalizeGu("서울 마포구"))).toBe(normalizeGu("서울 마포구"));
   });
 });
