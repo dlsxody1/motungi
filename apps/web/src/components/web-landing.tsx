@@ -54,9 +54,9 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
           }}
         />
 
-        <WebContainer className="relative flex items-center gap-14 py-[76px] pb-[88px]">
+        <WebContainer className="relative flex items-center justify-between gap-16 py-[76px] pb-[88px]">
           {/* 좌측 카피 */}
-          <div className="max-w-[560px] flex-1">
+          <div className="max-w-[620px] flex-1">
             <h1 className="text-[58px] font-extrabold leading-[1.12] tracking-[-0.035em] text-white text-balance">
               퇴근하고
               <br />
@@ -93,7 +93,7 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
           </div>
 
           {/* 우측 — 실 활동 자동 전환 캐러셀(썸네일 있는 실데이터). 없으면 기존 사진 목업 폴백 */}
-          <div className="relative hidden w-[380px] shrink-0 lg:block">
+          <div className="relative hidden w-[440px] shrink-0 lg:block">
             {showCarousel ? (
               <HeroCarousel items={heroPicks} />
             ) : (
@@ -102,7 +102,7 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
                 alt="한강 야간 재즈 공연이 열리는 저녁 강변 풍경"
                 tone="dusk"
                 priority
-                sizes="380px"
+                sizes="440px"
                 className="aspect-[3/4] rounded-[26px] shadow-[0_34px_70px_rgba(30,12,20,0.4)] ring-1 ring-white/10"
                 scrim
               >
