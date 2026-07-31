@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as navigation from "next/navigation";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -97,7 +97,7 @@ describe("DiagnosisPage 키보드 포커스 (모바일, Q1)", () => {
 });
 
 describe("DiagnosisPage 전체 진단 플로우", () => {
-  it("Q1 → Q2(자동 진행, 260ms) → Q3 완료 후 /loading 으로 이동한다", async () => {
+  it("Q1 → Q2 → Q3 완료 후 /loading 으로 이동한다", async () => {
     const push = vi.fn();
     vi.spyOn(navigation, "useRouter").mockReturnValue({
       push,
@@ -117,16 +117,12 @@ describe("DiagnosisPage 전체 진단 플로우", () => {
     await user.click(mobile.getByRole("button", { name: /문화·공연/ }));
     await user.click(mobile.getByRole("button", { name: "다음" }));
 
-    // Q2: 시간대 선택 → 260ms 뒤 자동으로 Q3 로 진행
+    // Q2: 시간대 선택 → "다음" 클릭으로 Q3 로 진행
     expect(await mobile.findByText("Q2. 시간대")).toBeInTheDocument();
     await user.click(mobile.getByRole("button", { name: /평일 저녁/ }));
+    await user.click(mobile.getByRole("button", { name: "다음" }));
 
-    await waitFor(
-      () => {
-        expect(mobile.getByText("Q3. 에너지")).toBeInTheDocument();
-      },
-      { timeout: 1000 },
-    );
+    expect(await mobile.findByText("Q3. 에너지")).toBeInTheDocument();
 
     // Q3(마지막): 에너지 선택 후 "결과 보기" → 저장 콜백 + 라우터 이동
     await user.click(mobile.getByRole("button", { name: /보통/ }));

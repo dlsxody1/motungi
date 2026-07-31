@@ -16,7 +16,6 @@ type Question = {
   short: string;
   title: string;
   hint: string;
-  auto: boolean;
   options: Option[];
 };
 
@@ -26,7 +25,6 @@ const QUESTIONS: Question[] = [
     short: "관심사",
     title: "퇴근하고 뭐 하고\n싶으세요?",
     hint: "끌리는 걸 하나 골라주세요. 그쪽부터 골라드려요.",
-    auto: false,
     options: [
       { value: "culture", title: "문화·공연", desc: "전시 · 공연 · 영화" },
       { value: "active", title: "운동·산책", desc: "러닝 · 걷기길 · 클래스" },
@@ -39,7 +37,6 @@ const QUESTIONS: Question[] = [
     short: "시간대",
     title: "주로 언제\n시간이 나세요?",
     hint: "퇴근 후·주말 중 즐기기 좋은 걸 맞춰드려요.",
-    auto: true,
     options: [
       { value: "weekday_evening", title: "평일 저녁", desc: "퇴근 후 2~3시간" },
       { value: "weekend", title: "주말", desc: "토·일 오전/오후" },
@@ -51,7 +48,6 @@ const QUESTIONS: Question[] = [
     short: "오늘 에너지",
     title: "요즘 에너지는 어떠세요?",
     hint: "무리 없는 강도로 맞춰드려요.",
-    auto: false,
     options: [
       { value: "drained", title: "방전형", desc: "가볍게 · 앉아서 쉬듯" },
       { value: "moderate", title: "보통", desc: "적당한 활동까지 OK" },
@@ -85,7 +81,6 @@ export default function DiagnosisPage() {
   const pick = (value: string, soon?: boolean) => {
     if (soon) return;
     setAnswers((a) => ({ ...a, [step]: value }));
-    if (q.auto) window.setTimeout(goNext, 260);
   };
   const goBack = () => {
     if (step === 0) router.push("/location");
@@ -159,19 +154,15 @@ export default function DiagnosisPage() {
                 })}
               </div>
 
-              <div className="mt-auto pb-6 text-center text-[13px] text-faint">
-                {q.auto ? "선택하면 다음 질문으로 넘어가요" : ""}
-              </div>
+              <div className="mt-auto pb-6" />
 
-              {!q.auto && (
-                <button
-                  onClick={goNext}
-                  disabled={!selected}
-                  className="tap-safe mb-3 flex h-[52px] w-full items-center justify-center rounded-xl bg-primary text-[16px] font-bold text-white disabled:opacity-40"
-                >
-                  {step === total - 1 ? "결과 보기" : "다음"}
-                </button>
-              )}
+              <button
+                onClick={goNext}
+                disabled={!selected}
+                className="tap-safe mb-3 flex h-[52px] w-full items-center justify-center rounded-xl bg-primary text-[16px] font-bold text-white disabled:opacity-40"
+              >
+                {step === total - 1 ? "결과 보기" : "다음"}
+              </button>
             </div>
             <SafeBottom />
           </div>
@@ -302,15 +293,12 @@ export default function DiagnosisPage() {
               <div className="flex-1" />
               <button
                 onClick={goNext}
-                disabled={!q.auto && !selected}
+                disabled={!selected}
                 className="flex h-[52px] w-[220px] items-center justify-center rounded-xl bg-primary text-[16px] font-bold text-white transition-colors hover:bg-primary-deep disabled:opacity-40"
               >
                 {step === total - 1 ? "결과 보기" : "다음"}
               </button>
             </div>
-            {q.auto && (
-              <p className="mt-4 text-center text-[13px] text-faint">선택하면 다음 질문으로 넘어가요</p>
-            )}
           </div>
         </div>
       </div>
