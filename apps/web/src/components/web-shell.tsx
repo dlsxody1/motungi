@@ -5,7 +5,8 @@
  */
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { BookmarkIcon, ChevronDownIcon, LocationIcon } from "./icons";
+import { BookmarkIcon } from "./icons";
+import { NeighborhoodMenu } from "./neighborhood-menu";
 
 /* ────────────────────────────────────────────────────────────
  * 로고 (그라데이션 마크 + 워드마크)
@@ -78,7 +79,6 @@ export function TopNav({
   userName?: string;
 }) {
   const dongLabel = dongName ?? "동네 설정";
-  const avatarChar = userName ? userName.slice(0, 1) : "게";
   return (
     <header className="sticky top-0 z-50 hidden h-[72px] items-center justify-between border-b border-line-alt bg-surface px-10 md:flex">
       <div className="flex items-center gap-9">
@@ -113,25 +113,29 @@ export function TopNav({
         </div>
       ) : (
         <div className="flex items-center gap-[18px]">
-          <Link
-            href="/location"
-            className="flex items-center gap-1.5 rounded-pill border border-primary/28 bg-tint px-3.5 py-2 text-[13px] font-semibold text-primary-deep"
-            aria-label="동네 변경"
-          >
-            <LocationIcon size={16} />
-            {dongLabel}
-            <ChevronDownIcon size={16} />
-          </Link>
+          <NeighborhoodMenu
+            dongLabel={dongLabel}
+            triggerClassName="flex items-center gap-1.5 rounded-pill border border-line bg-surface px-3.5 py-2 text-[13px] font-semibold text-label shadow-card"
+          />
           <Link href="/saved" className="grid size-8 place-items-center text-nav-link" aria-label="보관함">
             <BookmarkIcon size={22} />
           </Link>
-          <Link
-            href="/my"
-            className="grid size-9 place-items-center rounded-full bg-tint text-[13px] font-bold text-primary-deep"
-            aria-label="마이"
-          >
-            {avatarChar}
-          </Link>
+          {userName ? (
+            <Link
+              href="/my"
+              className="grid size-9 place-items-center rounded-full bg-tint text-[13px] font-bold text-primary-deep"
+              aria-label="마이"
+            >
+              {userName.slice(0, 1)}
+            </Link>
+          ) : (
+            <Link
+              href="/my"
+              className="flex h-9 items-center rounded-pill border border-line bg-surface px-4 text-[13px] font-semibold text-label shadow-card hover:border-faint"
+            >
+              로그인
+            </Link>
+          )}
         </div>
       )}
     </header>
