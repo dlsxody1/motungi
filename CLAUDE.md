@@ -24,7 +24,7 @@
 - 제품/피벗 배경: `docs/HANDOFF.md`, `docs/PIVOT-afterwork.md`, `PRODUCT.md`
 - 야간 파이프라인: `docs/nightly/PIPELINE.md` (+ 트리거 `trig_013Kmkrr…`는 repo 밖)
 - 비주얼 시스템·토큰: `DESIGN.md`
-- 백로그: `docs/backlog/backlog.yml` (사람만 이슈 추가, 밤은 status만 갱신)
+- 백로그: `docs/backlog/backlog.yml` (구현 모드 밤은 status만 갱신 / 큐 고갈 시 밤이 audit으로 이슈 자동 등재 — nightly-pipeline.md 0단계)
 
 ## 자주 쓰는 명령
 ```

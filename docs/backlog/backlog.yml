@@ -3,6 +3,10 @@
 # 밤마다 routine이 여기서 status:todo 중 priority 최상위 1개를 집는다 (동순위면 id 오름차순).
 # "제품을 발전시켜" 같은 열린 지시 금지 — 모든 야간 작업은 여기 등재된 이슈 단위로만 흐른다.
 #
+# 큐가 마르면(todo < 2) 그 밤은 구현하지 않고 audit 모드로 전환해 dev 실코드를 8축 감사하고
+# 적대검증 통과 findings를 여기에 M-NNN 이슈로 자동 등재한다. 상세는
+# .claude/rules/workflow/nightly-pipeline.md "0단계 — 백로그 게이트" 참조.
+#
 # 필드:
 #   id         고유 ID (M-NNN). 브랜치·PR·리포트에서 이 id로 추적.
 #   title      한 줄 제목
@@ -12,7 +16,8 @@
 #   done_when  수용 기준. planner가 검증 가능한 체크리스트로 확장한다.
 #   notes      배경/참고 (HANDOFF.md 근거 등)
 #
-# 새 이슈 추가는 사람이 이 파일에 손으로. 밤 에이전트는 status만 갱신한다.
+# 사람은 언제든 손으로 이슈를 추가·우선순위 조정할 수 있다. 밤 에이전트는 (a) 구현 모드에선
+# status만 갱신, (b) audit 모드(큐 고갈 시)에선 감사 findings를 새 이슈로 등재한다.
 
 backlog:
   - id: M-001
@@ -224,7 +229,7 @@ backlog:
   - id: M-014
     title: "a11y: 구조·모션·확대 결함 수정(중첩 인터랙티브·포커스·live region·viewport)"
     priority: medium
-    status: doing
+    status: done
     scope: [apps/web]
     done_when:
       - "saved 카드의 <button> 안 role=button 중첩을 제거해 상세 이동과 저장 토글을 형제로 분리하고 토글에 aria-label을 부여한다"
@@ -247,10 +252,17 @@ backlog:
       달려 있어 오늘 밤 이전부터 충족돼 있었음(M-001과 동일한 backlog staleness 패턴). layout.tsx는
       diff 없음. explore 페이지는 axe 스캔이 여전히 없음(기존 공백, 이번 밤이 만든 것 아님) — 후속 과제로
       남김. 커밋 ae1aed9, dev 직접 커밋(트렁크 모델, PR 없음).
+      [2026-07-31 완료판정] doing→done. 실코드로 5/5 재확인: saved/page.tsx:101-104·126-130(모바일)
+      및 222-256(데스크탑)이 형제 <button> 2개 + aria-label/aria-pressed, explore/page.tsx:313-316이
+      `peer sr-only` + `peer-focus-visible:ring-2 ring-offset-2`, loading/page.tsx:49-50이
+      role="status" aria-live="polite", globals.css:146-149가 prefers-reduced-motion:reduce에서
+      .corner-spinner animation:none, layout.tsx:55-58이 maximumScale 미설정(WCAG 1.4.4 주석 동반).
+      게이트는 `npx turbo run typecheck test --force` 7/7 성공 + loading/page.test.tsx의
+      'LoadingPage a11y (M-014) > axe 위반이 없다' 통과로 재실행 검증.
   - id: M-015
     title: "웹/모바일 패리티 정합: 라우팅·누락 섹션·마이크로카피 통일"
     priority: medium
-    status: doing
+    status: done
     scope: [apps/web, apps/mobile, packages/core]
     done_when:
       - "웹 report ReportEmpty onRetry를 isError로 분기(오류→/loading, 미진단→/diagnosis)해 모바일과 일치시킨다"
@@ -273,6 +285,12 @@ backlog:
       build 20/20 라우트 성공. done_when 5개 항목 모두 충족 확인. mobile RN 렌더 테스트 부재는 별도
       M-017로 분리 유지. 커밋 4409846, dev 직접 커밋(트렁크 모델, PR 없음). status는 사람의 최종 리뷰
       전까지 doing으로 둠(done 승격은 사람 담당).
+      [2026-07-31 완료판정] doing→done. 실코드로 5/5 재확인: report/page.tsx:48·53이 isError 기준
+      /loading vs /diagnosis 분기, mobile app/index.tsx:49-50이 push("/report") + '로그인 없이 바로
+      시작', opportunity/page.tsx:61의 md:hidden 블록 안 215-219에 '왜 ○○님께 맞을까요?' 카드
+      (데스크탑은 311-315), 카피는 '보러 가기' web 232·255·364·435 / mobile opportunity.tsx:124·143,
+      진단 Q2가 web diagnosis/page.tsx:42-43 == mobile diagnosis.tsx:31-32('토·일 오전/오후'·'유동적').
+      게이트는 turbo typecheck+test --force 7/7(core 212·web 114·mobile 18) 통과로 재실행 검증.
   - id: M-016
     title: "seoul_jobs/sports_facility 어댑터 잔재 정리: address 버그·미러 통일·미배선 게이팅"
     priority: low
@@ -294,7 +312,7 @@ backlog:
   - id: M-017
     title: "RN 모바일 화면 렌더 테스트 도입(report·diagnosis 스모크)"
     priority: medium
-    status: doing
+    status: done
     scope: [apps/mobile]
     done_when:
       - "vitest.config.ts resolve.alias에 react-native→react-native-web를 추가하고 expo-router를 vi.mock으로 우회한다"
@@ -304,6 +322,14 @@ backlog:
       test-gaps finding 'RN 화면 렌더 테스트 전무'(medium). web은 동일 report/diagnosis
       분기(isError·results 폴백·안내문구)를 테스트하나 mobile은 store/lib/data/hooks만 테스트해 화면 회귀를 CI가 못
       잡음. vitest.config 주석이 '별도 과제'로 미뤄둠.
+      [2026-07-31 완료판정] doing→done. 구현은 상류 커밋 349f814(status 갱신은 160bc98), 로컬 dev가
+      10커밋 뒤처져 있어 뒤늦게 ff 머지로 수령. 실코드 확인: vitest.setup.ts:18·25가 react-native-svg·
+      react-native-safe-area-context를 전역 vi.mock으로 대체(파일별 중복 mock 불필요), vitest.config.ts는
+      alias 배열 + /^react-native$/ 정확일치로 react-native-web 치환, app/(tabs)/report.test.tsx(3)·
+      app/diagnosis.test.tsx(1) 존재. `pnpm --filter @motungi/mobile test` 6파일 18테스트 통과.
+      경고: 같은 시각 로컬 워킹트리에 이 이슈의 중복 재구현(파일별 mock + vitest.setup.ts 삭제 +
+      react-native-web 핀 ~→^ 완화)이 떠 있었고 폐기함. 원인은 stale 로컬 브랜치 — 착수 전
+      `git fetch && git status -sb`로 origin/dev 대비 behind를 먼저 확인할 것.
   - id: M-018
     title: "리포 위생: 중복 SKILL 복사본·.env 백업 파일 제거"
     priority: low
@@ -340,3 +366,92 @@ backlog:
       youth_policy/normalizeYouthPolicy 제거 명시, 파이프라인 GitHub Actions→Supabase Edge Function+
       pg_cron(0007), 마이그레이션 실제명, 완료상태 반영, 수입/지원금 톤 제거(피벗 히스토리는 보존).
       .md만 변경(코드 무수정), live stale 참조 0 검증.
+  - id: M-020
+    title: "동네 전환 드롭다운 + 탐색 구(區) 단위 지역 필터·정렬"
+    priority: medium
+    status: done
+    scope: [apps/web, packages/core]
+    done_when:
+      - "core에 normalizeGu(dong_name → 구 라벨)를 추가한다: null/빈값→null, '서울/서울특별시/경기/인천' 접두어 제거로 '종로구'=='서울 종로구' 병합, 멱등(view.ts:74-84)"
+      - "scoring.ts의 distanceKm·nearestAnchorKm를 export로 승격해 UI가 거리 정렬에 재사용한다(scoring.ts:55,69) — 로직 복제 금지"
+      - "NeighborhoodMenu 컴포넌트를 신설해 TopNav 동네 pill을 /location 링크에서 드롭다운으로 교체하고, 인기 동네 선택 시 setAnchor로 집 앵커를 갱신한다(동네 검색 자체는 기존 /location 플로우에 위임)"
+      - "탐색에 지역 select(건수 상위 8개 구 + '전체 지역')와 정렬 select(추천순·거리순·마감임박순)를 추가한다. 추천순은 진단 완료 시에만, 거리순은 앵커 보유 시에만 활성(explore/page.tsx:52-81,124-133,248-257)"
+      - "core view.test.ts에 normalizeGu 케이스(접두어 병합·시/군 유지·접두어만·멱등·null) 5건을 추가한다"
+      - "typecheck·test 통과"
+    notes: >
+      사후 티켓팅 — 구현이 티켓보다 먼저 있었던 건. 2026-07-31 커밋 정리 중 워킹트리에 티켓 없는
+      변경 뭉치로 발견돼 소급 등재한다. 커밋 1d500b3(core) → c1e0088(드롭다운) → 8dd056e(필터·정렬)
+      3단으로 쪼개 커밋했다. 파일 단위로 더 쪼개면 중간 커밋이 컴파일되지 않는다
+      (web-shell.tsx:8이 neighborhood-menu를, explore/page.tsx가 core normalizeGu를 import).
+      드롭다운은 native <dialog>를 써서 top layer 렌더로 overflow:hidden 클리핑·z-index 경합과
+      ESC/백드롭 닫기를 브라우저에 위임했다(포탈 수동 구현 안 함). select 화살표 비대칭은
+      globals.css:102-110 .select-chevron 유틸로 처리. 검증: turbo typecheck+test --force 7/7
+      (core 212·web 114·mobile 18).
+  - id: M-021
+    title: "모바일 FlowHeader 추출 + 스택 플로우 3화면 적용"
+    priority: low
+    status: done
+    scope: [apps/mobile]
+    done_when:
+      - "ui/components.tsx에 FlowHeader({ title?, onBack?, right? })를 추가한다 — onBack 미지정 시 router.back() 기본값(components.tsx:44-52)"
+      - "diagnosis·location·opportunity 3화면의 인라인 ChevronLeft Pressable + 로컬 topbar/back 스타일을 FlowHeader 호출로 치환한다"
+      - "탭 화면(홈·탐색·보관함·마이)에는 FlowHeader를 넣지 않는다(하단 탭바가 내비게이션 담당)"
+      - "mobile typecheck·test 통과, app/diagnosis.test.tsx 렌더 스모크 유지"
+    notes: >
+      사후 티켓팅 — 구현 선행. 같은 뒤로가기 헤더가 3화면에 복붙돼 있어 hitSlop·marginLeft 같은
+      터치영역 값이 화면마다 미세하게 갈라지던 것을 한 곳으로 모은 것. 순수 리팩터로 화면 동작
+      변화 없음. UI 표면적이 작아 렌더 테스트는 diagnosis(M-017 스모크)만 커버한다 —
+      location·opportunity는 여전히 미커버.
+  - id: M-022
+    title: "진단 Q2 자동진행(260ms) 제거 — 전 문항 '다음' 버튼으로 통일 (web·mobile)"
+    priority: low
+    status: done
+    scope: [apps/web, apps/mobile]
+    done_when:
+      - "Question 타입에서 auto 필드를 제거하고 web diagnosis/page.tsx의 `if (q.auto) window.setTimeout(goNext, 260)`와 mobile diagnosis.tsx의 동일 분기를 삭제한다"
+      - "'선택하면 다음 질문으로 넘어가요' 보조 문구를 제거하고 모든 문항이 '다음'(마지막 문항은 '결과 보기') 버튼으로 진행되게 한다"
+      - "web·mobile 양쪽을 같은 커밋 범위에서 바꿔 진단 플로우 패리티(M-015)를 깨지 않는다"
+      - "diagnosis 테스트를 새 CTA 라벨 기준으로 갱신한다(mobile app/diagnosis.test.tsx: Q1 CTA는 '다음')"
+      - "typecheck·test 통과"
+    notes: >
+      사후 티켓팅 — 구현 선행. 260ms 자동진행은 선택 즉시 화면이 넘어가 오선택 취소가 불가능하고,
+      Q2만 규칙이 달라 사용자가 다음 문항의 진행 방식을 예측할 수 없었다(WCAG 3.2.x 일관성 취지).
+      제거로 진행 주도권을 사용자에게 되돌리고 3문항 규칙을 하나로 만든다. 상류 M-017 테스트가
+      '결과 보기'를 단언하고 있었으므로 app/diagnosis.test.tsx도 함께 갱신 — 테스트가 옛 UX에
+      고정돼 있던 케이스라 테스트 수정이 회귀 은폐가 아님을 리뷰에서 확인할 것.
+  - id: M-023
+    title: "모바일 탐색·보관함 FlatList 가상화 + 행 memo"
+    priority: low
+    status: done
+    scope: [apps/mobile]
+    done_when:
+      - "(tabs)/explore.tsx·(tabs)/saved.tsx의 목록 렌더를 ScrollView 전량 map에서 FlatList로 전환한다(explore.tsx:145, saved.tsx:95)"
+      - "행 컴포넌트를 React.memo로 감싸고(ActivityItem·SavedItem) onPress 핸들러를 useCallback으로 고정해 목록 스크롤·저장 토글 시 해당 행 외 재렌더를 막는다"
+      - "FlatList 안에 세로 ScrollView를 중첩하지 않는다 — 헤더/필터는 ListHeaderComponent로 올린다(explore.tsx:107 주석)"
+      - "행 뷰모델 타입(ActivityRow·SavedRow)을 명시해 catalog 원소와 scoreAll 결과(matchScore)를 한 타입으로 받는다"
+      - "mobile typecheck·test 통과"
+    notes: >
+      사후 티켓팅 — 구현 선행. **이 두 화면은 렌더 테스트가 0개다**(M-017 스모크는 report·diagnosis만
+      커버). 따라서 typecheck/test green은 '컴파일된다' 이상을 의미하지 않는다 — 리스트 아이템 키·
+      빈 상태·저장 토글 반영 같은 실동작 회귀는 CI가 못 잡으므로 사람이 실기기/시뮬레이터로 확인해야
+      한다. ScrollView→FlatList 전환은 렌더 트리 구조를 바꾸는 변경이라 특히 그렇다. 후속으로
+      M-017과 같은 렌더 스모크(explore: 빈/필터 결과, saved: 빈/저장 목록)를 붙일 것 — 이 이슈의
+      green을 근거로 커버리지가 생겼다고 판단하지 말 것.
+  - id: M-024
+    title: "야간 audit 게이트가 실제로 안 돎 — 클라우드 트리거 프롬프트 갱신"
+    priority: high
+    status: todo
+    scope: [클라우드 트리거 trig_013Kmkrr…(repo 밖·사람만 갱신 가능), docs/nightly]
+    done_when:
+      - "트리거 프롬프트에 nightly-pipeline.md '0단계 — 백로그 게이트'(todo<2 → audit 모드로 8축 감사 후 M-NNN 등재)를 반영한다 — repo 문서만 고치면 밤 동작은 바뀌지 않는다"
+      - "갱신 후 첫 밤에 todo가 2건 미만이면 report-only로 끝나지 않고 backlog.yml에 신규 M-NNN 이슈가 1건 이상 등재된다"
+      - "그날 야간 노트에 '감사한 축'과 '등재한 이슈 수'가 기록된다(nightly-2026-07-15.md 형식)"
+      - "트리거 갱신 일시와 반영 확인한 첫 밤 노트 경로를 이 이슈 notes에 남긴다"
+    notes: >
+      증거: 2026-07-23~07-30 야간 노트 9개(docs/nightly/nightly-2026-07-2[3-9].md, -30.md)가 전부
+      "report-only — backlog에 status:todo 이슈 없음"이고 등재 이슈 0건. repo 문서
+      (.claude/rules/workflow/nightly-pipeline.md 0단계)에는 audit 모드가 명시돼 있으므로 문서와
+      실제 밤 동작이 8일 연속 어긋난 상태다. 원인은 CLAUDE.md가 이미 경고한 그것 —
+      "밤 동작의 진짜 출처는 클라우드 트리거 프롬프트이고, repo 문서를 바꿔도 트리거를 함께
+      갱신하지 않으면 다음 밤에 반영되지 않는다". 트리거는 repo 밖이라 밤 에이전트가 스스로 고칠 수
+      없다(사람 작업). priority high — 고치지 않으면 백로그가 빌 때마다 밤이 계속 헛돈다.
