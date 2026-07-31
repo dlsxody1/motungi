@@ -440,7 +440,7 @@ backlog:
   - id: M-024
     title: "야간 audit 게이트가 실제로 안 돎 — 클라우드 트리거 프롬프트 갱신"
     priority: high
-    status: todo
+    status: doing
     scope: [클라우드 트리거 trig_013Kmkrr…(repo 밖·사람만 갱신 가능), docs/nightly]
     done_when:
       - "트리거 프롬프트에 nightly-pipeline.md '0단계 — 백로그 게이트'(todo<2 → audit 모드로 8축 감사 후 M-NNN 등재)를 반영한다 — repo 문서만 고치면 밤 동작은 바뀌지 않는다"
@@ -455,3 +455,16 @@ backlog:
       "밤 동작의 진짜 출처는 클라우드 트리거 프롬프트이고, repo 문서를 바꿔도 트리거를 함께
       갱신하지 않으면 다음 밤에 반영되지 않는다". 트리거는 repo 밖이라 밤 에이전트가 스스로 고칠 수
       없다(사람 작업). priority high — 고치지 않으면 백로그가 빌 때마다 밤이 계속 헛돈다.
+
+      [2026-07-31 진단 정정] 진짜 원인은 "트리거 미갱신"이 아니었다. 트리거에는 audit 게이트가
+      2026-07-22부터 이미 들어 있었다. 밤이 안 돈 이유는 **트리거가 "먼저 읽어라"고 지정한 repo
+      문서들이 트리거와 정반대를 말했기 때문**이다 — .claude/agents/planner.md:20 "todo가 없으면
+      그 사실만 보고하고 종료"와 CLAUDE.md의 "밤은 status만 갱신, 신규 이슈 추가 권한 없음".
+      nightly-2026-07-30.md가 이 두 곳을 근거로 명시 인용하며 조기 종료했다. 밤은 repo를 따랐다.
+
+      [2026-07-31 조치] (1) planner.md:20을 게이트와 정합하게 수정 — todo<2면 planner가 아예
+      실행되지 않고 오케스트레이터가 audit 모드로 전환. (2) docs/nightly/PIPELINE.md에 "0단계 —
+      백로그 게이트" 절과 이 실패의 회고를 추가. (3) 트리거에 PRECEDENCE 절 신설 — repo 문서가
+      트리거와 모순되면 트리거가 이기고, 모순을 야간 노트에 file:line으로 기록하게 함(재발 방지).
+      트리거 갱신 일시 2026-07-31T05:33Z, 다음 실행 2026-07-31T12:05Z.
+      확인은 내일 아침 docs/nightly/nightly-2026-07-31.md에 등재 이슈 수가 1건 이상인지로.
