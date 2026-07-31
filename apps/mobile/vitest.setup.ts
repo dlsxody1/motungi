@@ -1,6 +1,14 @@
+import { cleanup } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
+import { afterEach, vi } from "vitest";
+
+/**
+ * `globals: false`라 RTL의 자동 cleanup 훅이 등록되지 않는다 — 케이스마다 DOM이 누적돼
+ * 두 번째 케이스부터 getByText가 "multiple elements"로 터진다. 파일마다 afterEach를
+ * 반복하지 않도록 여기서 한 번만 건다.
+ */
+afterEach(cleanup);
 
 /**
  * 네이티브 전용 라이브러리 전역 목업.
