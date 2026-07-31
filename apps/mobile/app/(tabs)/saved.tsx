@@ -1,10 +1,45 @@
+import type { Opportunity } from "@motungi/core";
 import { useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { memo, useCallback } from "react";
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
 import { Txt } from "@/ui/components";
 import { Bookmark, Location, User } from "@/ui/icons";
 import { C, R } from "@/ui/theme";
+
+/** 보관함 목록 뷰 모델 — catalog 원소에 뷰 필드(categoryLabel/costLabel/tone)가 붙은 형태. */
+type SavedRow = Opportunity & { categoryLabel: string; costLabel: string; tone?: "mint" | string };
+
+/** 저장 활동 한 줄. memo로 감싸 목록 스크롤·toggle 시 해당 행 외 재렌더를 막는다. */
+const SavedItem = memo(function SavedItem({
+  item,
+  first,
+  onOpen,
+  onToggle,
+}: {
+  item: SavedRow;
+  first: boolean;
+  onOpen: (id: string) => void;
+  onToggle: (id: string) => void;
+}) {
+  const accent = item.tone === "mint" ? C.mint : C.primary;
+  return (
+    <Pressable onPress={() => onOpen(item.id)} style={[styles.item, !first && styles.itemBorder]}>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.cat, { color: accent }]}>{item.categoryLabel}</Text>
+        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.meta}>{item.location?.dongName ?? ""}</Text>
+      </View>
+      <View style={{ alignItems: "flex-end", gap: 6 }}>
+        <Text style={[styles.cost, { color: accent }]}>{item.costLabel}</Text>
+        <Pressable onPress={() => onToggle(item.id)} hitSlop={10}>
+          <Bookmark size={20} filled color={C.primary} />
+        </Pressable>
+      </View>
+    </Pressable>
+  );
+});
 
 /** A7 · 보관함 / 홈 */
 export default function SavedScreen() {
@@ -19,11 +54,13 @@ export default function SavedScreen() {
   const items = savedIds
     .map((id) => catalog.find((o) => o.id === id))
     .filter((o): o is NonNullable<typeof o> => !!o);
-  const openDetail = (id: string) => router.push({ pathname: "/opportunity", params: { id } });
+  const openDetail = useCallback(
+    (id: string) => router.push({ pathname: "/opportunity", params: { id } }),
+    [router],
+  );
 
-  return (
-    <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={styles.content}>
-      {/* 헤더 */}
+  const header = (
+    <>
       <View style={styles.header}>
         <View>
           <Txt preset="h1" style={{ fontSize: 22 }}>보관함</Txt>
@@ -37,7 +74,6 @@ export default function SavedScreen() {
         </View>
       </View>
 
-      {/* 재진단 배너 */}
       <View style={styles.banner}>
         <View style={{ flex: 1 }}>
           <Text style={styles.bannerTitle}>이번 주 동네 다시 보기</Text>
@@ -48,13 +84,24 @@ export default function SavedScreen() {
         </Pressable>
       </View>
 
-      {/* 저장한 활동 */}
       <View style={styles.savedHead}>
         <Txt preset="headline">저장한 활동</Txt>
         <Text style={styles.count}>{items.length}개</Text>
       </View>
+    </>
+  );
 
-      {items.length === 0 ? (
+  return (
+    <FlatList
+      style={{ flex: 1, backgroundColor: C.bg }}
+      contentContainerStyle={styles.content}
+      data={items}
+      keyExtractor={(s) => s.id}
+      ListHeaderComponent={header}
+      renderItem={({ item, index }) => (
+        <SavedItem item={item} first={index === 0} onOpen={openDetail} onToggle={toggleSaved} />
+      )}
+      ListEmptyComponent={
         <View style={styles.empty}>
           <Bookmark size={28} color={C.faint} />
           <Text style={styles.emptyTitle}>아직 저장한 활동이 없어요</Text>
@@ -63,34 +110,11 @@ export default function SavedScreen() {
             <Text style={styles.emptyCtaLabel}>둘러보기</Text>
           </Pressable>
         </View>
-      ) : (
-        <View>
-          {items.map((s, i) => (
-            <Pressable
-              key={s.id}
-              onPress={() => openDetail(s.id)}
-              style={[styles.item, i > 0 && styles.itemBorder]}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.cat, { color: s.tone === "mint" ? C.mint : C.primary }]}>
-                  {s.categoryLabel}
-                </Text>
-                <Text style={styles.title}>{s.title}</Text>
-                <Text style={styles.meta}>{s.location?.dongName ?? ""}</Text>
-              </View>
-              <View style={{ alignItems: "flex-end", gap: 6 }}>
-                <Text style={[styles.cost, { color: s.tone === "mint" ? C.mint : C.primary }]}>
-                  {s.costLabel}
-                </Text>
-                <Pressable onPress={() => toggleSaved(s.id)} hitSlop={10}>
-                  <Bookmark size={20} filled color={C.primary} />
-                </Pressable>
-              </View>
-            </Pressable>
-          ))}
-        </View>
-      )}
-    </ScrollView>
+      }
+      initialNumToRender={8}
+      windowSize={7}
+      removeClippedSubviews
+    />
   );
 }
 
