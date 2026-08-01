@@ -85,6 +85,16 @@ export function normalizeGu(dong: string | null | undefined): string | null {
   return s.replace(/^(서울특별시|서울|경기도|경기|인천광역시|인천)\s+/, "").trim() || null;
 }
 
+/**
+ * 행정동 번호 접미사 제거. NAVER 역지오코딩은 "역삼1동"처럼 분리동 번호가 붙은
+ * 행정동명을 주는데, 검색 결과·인기 동네 목록은 번호 없는 표기("역삼동")를 쓴다.
+ * 번호 없는 입력은 그대로 반환.
+ * 멱등: normalizeDong(normalizeDong(x)) === normalizeDong(x).
+ */
+export function normalizeDong(dong: string): string {
+  return dong.replace(/\d+동$/, "동");
+}
+
 /** 카테고리 한글 라벨 (태그용). */
 export const CATEGORY_LABEL: Record<OpportunityCategory, string> = {
   culture: "동네 문화·공연",

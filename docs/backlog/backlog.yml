@@ -717,8 +717,8 @@ backlog:
   - id: M-039
     title: "dev HEAD가 이미 typecheck·test 모두 깨져있음 — normalizeDong 미존재 함수 참조"
     priority: high
-    status: todo
-    scope: [apps/web]
+    status: doing
+    scope: [apps/web, packages/core]
     done_when:
       - "apps/web/src/app/location/page.tsx:20의 `import { normalizeDong } from \"@motungi/core\"`를 실제 존재하는 export(packages/core/src/view.ts:82 `normalizeGu`, 의미가 다르면 core에 동명 함수를 신설)로 교정해 TS2724 에러를 없앤다"
       - "page.tsx:115의 `setAnchor(\"home\", { ..., region: selected.region, ... })`가 참조하는 `region` 필드를 packages/core/src/types.ts:41-47 `Location` 인터페이스에 실제로 추가하거나(anchors에 region 정보가 필요하다면), 불필요하면 이 필드 전달을 제거해 TS2353 에러를 없앤다"

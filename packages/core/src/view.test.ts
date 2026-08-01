@@ -8,6 +8,7 @@ import {
   diagnosisSummaryChips,
   displayNameOf,
   ENERGY_LABEL,
+  normalizeDong,
   normalizeGu,
   type OpportunityRow,
   rowToOpportunity,
@@ -291,5 +292,20 @@ describe("normalizeGu — 지역 표기 병합", () => {
 
   it("멱등 — 두 번 적용해도 동일", () => {
     expect(normalizeGu(normalizeGu("서울 마포구"))).toBe(normalizeGu("서울 마포구"));
+  });
+});
+
+describe("normalizeDong — 분리동 번호 제거", () => {
+  it("번호가 붙은 분리동은 번호를 걷어낸다", () => {
+    expect(normalizeDong("역삼1동")).toBe("역삼동");
+    expect(normalizeDong("논현2동")).toBe("논현동");
+  });
+
+  it("번호가 없으면 그대로", () => {
+    expect(normalizeDong("망원동")).toBe("망원동");
+  });
+
+  it("멱등 — 두 번 적용해도 동일", () => {
+    expect(normalizeDong(normalizeDong("역삼1동"))).toBe(normalizeDong("역삼1동"));
   });
 });
