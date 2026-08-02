@@ -7,13 +7,17 @@ export type {
   MockOpportunity,
   CatalogStatus,
   CatalogResult,
+  OpportunityResult,
   NeighborhoodPick,
   FetchOpportunitiesOptions,
 } from "@motungi/core";
 export { POPULAR_NEIGHBORHOODS, DEFAULT_NEIGHBORHOOD, rowToMock } from "@motungi/core";
 
-import type { CatalogResult, FetchOpportunitiesOptions } from "@motungi/core";
-import { fetchOpportunities as coreFetchOpportunities } from "@motungi/core";
+import type { CatalogResult, FetchOpportunitiesOptions, OpportunityResult } from "@motungi/core";
+import {
+  fetchOpportunities as coreFetchOpportunities,
+  fetchOpportunityById as coreFetchOpportunityById,
+} from "@motungi/core";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -26,4 +30,12 @@ export async function fetchOpportunities(
 ): Promise<CatalogResult> {
   const today = new Date().toISOString().slice(0, 10);
   return coreFetchOpportunities(supabase, { today, ...options });
+}
+
+/**
+ * 활동 1건만 id로 읽어온다(상세 페이지용). 카탈로그 전량을 받지 않는다 —
+ * core 단건 조회에 이 앱의 supabase 클라이언트를 주입하는 얇은 래퍼.
+ */
+export async function fetchOpportunityById(id: string): Promise<OpportunityResult> {
+  return coreFetchOpportunityById(supabase, id);
 }
