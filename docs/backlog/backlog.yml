@@ -490,7 +490,7 @@ backlog:
   - id: M-025
     title: "모바일 활동 상세: id 미스매치 시 엉뚱한 활동 표시 + 공유에 딥링크 URL 누락"
     priority: high
-    status: todo
+    status: doing
     scope: [apps/mobile]
     done_when:
       - "apps/mobile/app/opportunity.tsx:17의 `catalog.find((x) => x.id === id) ?? catalog[0]`을 packages/core의 fetchOpportunityById(단건 조회, 이미 apps/web/src/hooks/useOpportunity.ts:25-59에서 사용 중)로 교체해, 존재하지 않는 id일 때 카탈로그 첫 항목이 아니라 not-found 상태를 렌더한다"
@@ -505,6 +505,12 @@ backlog:
       웹은 이미 core fetchOpportunityById(catalog.ts:188-205)로 단건 조회하고 있어 이관 대상 구현이
       이미 존재한다. 공유 텍스트 비교: kakao.ts는 3개 폴백 경로 모두 url을 포함하지만 RNShare.share는
       title만 넘겨 받는 사람이 딥링크를 열 수 없다.
+      [2026-08-02 야간 파이프라인 완료] apps/mobile/hooks/useOpportunity.ts 신설(웹 훅 이식) +
+      apps/mobile/data/opportunities.ts에 fetchOpportunityById 래퍼 추가, opportunity.tsx가
+      catalog[0] 폴백 대신 이 훅을 사용하도록 교체. onShare에 SITE_URL 딥링크 삽입. 신규 테스트
+      12건(훅 5 + 화면 7, id 미스매치 시 catalog[0] 미노출을 명시 assert하는 회귀 테스트 포함).
+      core 215/mobile 36/web 122 통과, typecheck 4패키지 클린. 커밋 e4f0b58, dev 직접 커밋
+      (트렁크 모델, PR 없음). qa PUSH GATE: PASS.
 
   - id: M-026
     title: "ingest Edge Function 무인증 — 서비스롤 권한 엔드포인트를 누구나 트리거 가능"
