@@ -447,7 +447,7 @@ backlog:
   - id: M-024
     title: "야간 audit 게이트가 실제로 안 돎 — 클라우드 트리거 프롬프트 갱신"
     priority: high
-    status: doing
+    status: done
     scope: [클라우드 트리거 trig_013Kmkrr…(repo 밖·사람만 갱신 가능), docs/nightly]
     done_when:
       - "트리거 프롬프트에 nightly-pipeline.md '0단계 — 백로그 게이트'(todo<2 → audit 모드로 8축 감사 후 M-NNN 등재)를 반영한다 — repo 문서만 고치면 밤 동작은 바뀌지 않는다"
@@ -476,109 +476,374 @@ backlog:
       트리거 갱신 일시 2026-07-31T05:33Z, 다음 실행 2026-07-31T12:05Z.
       확인은 내일 아침 docs/nightly/nightly-2026-07-31.md에 등재 이슈 수가 1건 이상인지로.
 
-  # ── 2026-08-03 등재: 성능·서빙(Phase 2) 잔여 + 적재 결함 ──────────────
-  # 배경: docs/perf/baseline.md에 계측 기준선과 Phase 0/1 결과가 있다. 아래는 그 후속.
-  # 이미 dev에 반영된 것(재작업 금지): CI build/lint 게이트, /api/vitals, 번들 분석기,
-  # 0015 description 컬럼 + 어댑터 원문 매핑, 폰트 자체호스팅, /api/opportunities 서버화.
+      [2026-07-31 확인 완료] 오늘 밤(이 실행)이 바로 그 "다음 실행"이었다. 실행 시작 시 todo=0,
+      doing=1(이 이슈 자신)이라 게이트가 정확히 audit 모드로 전환됐고(planner는 아예 호출되지
+      않음), 8축 병렬 감사로 findings를 수집·직접 재검증한 뒤 M-025~M-038 14건을 backlog에
+      신규 등재했다. done_when 4개 전부 충족 확인:
+      (1) 트리거 PRECEDENCE 절 이미 반영 확인(이 실행이 그 절의 지시를 그대로 따름),
+      (2) 신규 M-NNN 14건 등재로 report-only 조기종료 재발 없음,
+      (3)(4) 감사축·등재수·트리거 갱신시각(2026-07-31T05:33Z)·확인 노트 경로는
+      docs/nightly/nightly-2026-07-31.md에 기록. 이 이슈는 재발 방지 목적을 실증했으므로 done으로
+      전환한다(사람 승인 전 자동 done 처리는 이례적이나, "확인은 내일 아침 이 노트로" 조건을
+      이 노트 자신이 충족하는 자기참조적 케이스라 audit 모드 재량으로 판단).
 
   - id: M-025
-    title: "ingest Edge Function에 API 키 secret 미등록 — cron 적재가 계속 실패 중"
+    title: "모바일 활동 상세: id 미스매치 시 엉뚱한 활동 표시 + 공유에 딥링크 URL 누락"
     priority: high
-    status: todo
-    scope: [supabase/functions/ingest, Supabase 대시보드 secret(사람 작업 가능성)]
+    status: doing
+    scope: [apps/mobile]
     done_when:
-      - "키 없이 POST /functions/v1/ingest 를 호출했을 때 세 소스가 모두 성공한다(현재는 전부 '…없음' 에러)"
-      - "SEOUL_OPENAPI_KEY·DATA_GO_KR_SERVICE_KEY가 Edge Function secret으로 등록돼 있음을 확인한다"
-      - "등록 후 pg_cron 시각(0007, 매일 21:00 UTC) 다음 실행에서 opportunities.fetched_at이 갱신된다"
-      - "적재 실패를 조용히 넘기지 않도록, 세 소스가 모두 error면 함수가 5xx로 응답하거나 최소한 로그로 남긴다"
+      - "apps/mobile/app/opportunity.tsx:17의 `catalog.find((x) => x.id === id) ?? catalog[0]`을 packages/core의 fetchOpportunityById(단건 조회, 이미 apps/web/src/hooks/useOpportunity.ts:25-59에서 사용 중)로 교체해, 존재하지 않는 id일 때 카탈로그 첫 항목이 아니라 not-found 상태를 렌더한다"
+      - "onShare(opportunity.tsx:47-49)가 apps/web/src/lib/kakao.ts처럼 활동 상세 딥링크 URL을 공유 메시지에 포함한다"
+      - "opportunity.tsx에 not-found 케이스(존재하지 않는 id)와 onShare 호출(URL 포함 여부) 테스트를 추가한다"
+      - "mobile typecheck·test 통과"
     notes: >
-      증거(2026-08-03 실측): 키 없이 호출하면 응답이
-      {"ok":true,"total":0,"results":[{"source":"seoul_culture","error":"SEOUL_OPENAPI_KEY 없음"},
-      {"source":"culture_info","error":"DATA_GO_KR_SERVICE_KEY 없음"},{"source":"trail","error":"…없음"}]}.
-      body로 키를 넘기면 553행이 정상 적재된다(seoul 300 / culture_info 234 / trail 19).
-      즉 코드는 멀쩡하고 **secret만 비어 있다**. cron(0007)은 body를 못 넘기므로 env secret이 유일한 경로다.
-      더 나쁜 점: 전 소스 실패인데도 응답이 `ok: true`라 실패가 성공처럼 보인다 —
-      trail 30행 중 11행의 fetched_at이 2026-07-13~23에 멈춰 있는 게 그 흔적으로 추정된다.
-      done_when 4번(실패 신호)을 함께 고쳐야 재발을 알아챈다.
+      [audit] perf축·UX패리티축 에이전트가 각각 독립적으로 발견 후 교차 확인, 오케스트레이터가
+      apps/mobile/app/opportunity.tsx:16-17,47-49를 직접 읽어 재검증함. 카탈로그가 비어있지 않은 한
+      `?? catalog[0]`가 항상 값을 만들어내므로 `if (!o)` not-found 분기는 사실상 도달 불가 —
+      존재하지 않는 id로 진입하면 무작위(첫 번째) 활동이 마치 요청한 활동인 것처럼 표시된다.
+      웹은 이미 core fetchOpportunityById(catalog.ts:188-205)로 단건 조회하고 있어 이관 대상 구현이
+      이미 존재한다. 공유 텍스트 비교: kakao.ts는 3개 폴백 경로 모두 url을 포함하지만 RNShare.share는
+      title만 넘겨 받는 사람이 딥링크를 열 수 없다.
+      [2026-08-02 야간 파이프라인 완료] apps/mobile/hooks/useOpportunity.ts 신설(웹 훅 이식) +
+      apps/mobile/data/opportunities.ts에 fetchOpportunityById 래퍼 추가, opportunity.tsx가
+      catalog[0] 폴백 대신 이 훅을 사용하도록 교체. onShare에 SITE_URL 딥링크 삽입. 신규 테스트
+      12건(훅 5 + 화면 7, id 미스매치 시 catalog[0] 미노출을 명시 assert하는 회귀 테스트 포함).
+      core 215/mobile 36/web 122 통과, typecheck 4패키지 클린. 커밋 e4f0b58, dev 직접 커밋
+      (트렁크 모델, PR 없음). qa PUSH GATE: PASS.
 
   - id: M-026
-    title: "카탈로그 응답 캐시가 실제로는 안 먹는다 — unstable_cache로 DB 왕복 제거"
+    title: "ingest Edge Function 무인증 — 서비스롤 권한 엔드포인트를 누구나 트리거 가능"
     priority: high
+    status: todo
+    scope: [supabase/functions/ingest]
+    done_when:
+      - "supabase/functions/ingest/index.ts의 Deno.serve 핸들러 진입부에 공유 시크릿 검증(예: 헤더 Authorization 또는 X-Cron-Secret과 서버 env 값 비교)을 추가하고, 실패 시 401을 반환한다 — verify_jwt=false(0007_cron_ingest_daily.sql)는 유지하되 애플리케이션 레벨 인증으로 대체한다"
+      - "index.ts:110-111의 seoulKey/dataGoKrKey가 요청 본문(body.seoulKey/body.dataGoKrKey)으로 대체될 수 없도록 하고 서버 env(Deno.env.get)만 신뢰한다"
+      - "인증 실패(401)·인증 성공 스모크 테스트를 추가한다(Deno test 또는 vitest 이식)"
+      - "pg_cron이 호출하는 실제 요청에 새 시크릿 헤더가 포함되도록 마이그레이션 또는 문서에 반영 방법을 남긴다"
+    notes: >
+      [audit] security축 에이전트 발견, 오케스트레이터가 supabase/functions/ingest/index.ts:103-171을
+      직접 읽어 재검증. Deno.serve 핸들러에 인증 검사가 전혀 없고, 요청 body의 seoulKey/dataGoKrKey가
+      env 값이 없을 때 그대로 사용된다(110-111행: `Deno.env.get(...) ?? body.seoulKey ?? ""`) —
+      함수는 SERVICE_ROLE/SECRET 키로 동작하는 supabase 클라이언트(index.ts:27-37 추정, upsert·delete
+      권한 보유)를 쓰므로, URL을 아는 누구나 임의 시점에 적재를 트리거하거나 자신의 키로 외부 호출을
+      강제할 수 있는 confused-deputy 경로다. severity high — 서비스 자원 남용·데이터 오염 리스크.
+
+  - id: M-027
+    title: "packages/core catalog.ts가 Supabase 응답을 Database 제네릭 없이 unchecked cast로 신뢰"
+    priority: high
+    status: todo
+    scope: [packages/core]
+    done_when:
+      - "fetchOpportunities/fetchOpportunityById(catalog.ts:135-205)의 client 파라미터 타입을 SupabaseClient<Database>로 바인딩한다(apps/web/src/lib/supabase.ts:16-26의 패치된 Database 타입 재사용 또는 동등한 것을 core에 둔다)"
+      - "catalog.ts:204의 `data as OpportunityRow` 단언을 제거하고, row 전체 필드(단순 category/source뿐 아니라)를 구조적으로 좁히는 타입가드 또는 런타임 검증으로 대체한다"
+      - "catalog.test.ts에 스키마 필드 누락/타입 불일치 케이스를 최소 1건 추가한다"
+      - "core test·typecheck 통과"
+    notes: >
+      [audit] type-safety축 에이전트 발견, 오케스트레이터가 catalog.ts 전문을 읽어 재검증. client가
+      바닐라 SupabaseClient(스키마 제네릭 없음)로 타입돼 `.select`/`.eq` 등이 스키마 대비 무검증이고,
+      row 좁히기(155-157행)는 category/source 2개 필드만 확인할 뿐 title/cost_krw/lat/lng 등 나머지
+      14개 필드는 구조적 검증 없이 OpportunityRow로 신뢰된다. 단건 조회 경로(204행)는 아예 `as
+      OpportunityRow` 명시적 캐스트. 스키마 드리프트가 조용히 컴파일 통과 후 런타임 실패로 이어질 수
+      있음 — apps/web/src/lib/supabase.ts가 이미 패치된 Database 타입을 만들어 쓰고 있어 core에도
+      적용 가능한 선례가 있다.
+
+  - id: M-028
+    title: "ingest 외부 API 응답 런타임 미검증 — 필드 타입 불일치 시 소스 전체 실패"
+    priority: medium
+    status: todo
+    scope: [supabase/functions/ingest, packages/core/src/adapters/ingest-fetch.ts]
+    done_when:
+      - "supabase/functions/ingest/index.ts:44-51의 fetchSeoul()과 packages/core/src/adapters/ingest-fetch.ts:31-38의 parseJsonItems()가 raw item의 각 필드를 매퍼(mapSeoulCulture 등)에 넘기기 전 런타임으로 타입 검증(문자열 기대 필드가 실제 문자열인지 등)한다"
+      - "검증 실패한 개별 항목은 skip+로그하고, runSource의 try/catch가 소스 전체를 실패 처리하는 현재 동작(한 항목의 타입 불일치가 전체 소스 무산으로 이어짐)을 방지한다"
+      - "숫자/누락 필드가 섞인 응답에 대한 유닛 테스트를 추가한다"
+    notes: >
+      [audit] type-safety축 에이전트 발견. fetchSeoul()의 `await res.json()`은 암묵적 any이고
+      mapSeoulCulture(adapters.ts:33)는 `raw.TITLE?.trim()`처럼 문자열 메서드를 바로 호출 —
+      공공데이터 API가 흔히 그렇듯 필드가 숫자/null로 오면 .trim()에서 예외가 나 runSource의
+      catch가 해당 소스 전체(예: 문화행사 전량)를 이번 회차에서 누락시킨다. parseJsonItems도
+      `items as Record<string, string>[]`로 unknown 배열 원소를 무검증 캐스트.
+
+  - id: M-029
+    title: "packages/core 어댑터 5종이 프로덕션 미도달 — ingest 함수가 동일 로직을 독립 재구현 유지"
+    priority: medium
+    status: todo
+    scope: [packages/core/src/adapters, supabase/functions/ingest, docs]
+    done_when:
+      - "normalizeSeoulCulture/normalizeCultureInfo/normalizeTrail/normalizeSportsFacility/normalizeSeoulJobs(각 packages/core/src/adapters/*.ts)가 apps/web·apps/mobile·supabase/functions/ingest 어디서도 실호출되지 않음을 재확인한다"
+      - "다음 중 하나로 수렴한다: (a) 이 5개 함수를 packages/core에서 제거하고 그 테스트 시나리오를 supabase/functions/ingest/adapters.ts의 테스트로 이관, 또는 (b) Deno import map/esm.sh 등으로 edge function이 실제로 packages/core를 소비하도록 배선해 중복을 제거"
+      - "선택한 방향과 근거를 supabase/functions/ingest/adapters.ts 헤더 주석 또는 packages/core/CLAUDE.md에 명시한다"
+      - "typecheck·test 통과"
+    notes: >
+      [audit] FSD축·dead-code축 에이전트가 각각 독립 발견(동일 결론 — 교차검증됨). ingest
+      adapters.ts 헤더가 이미 "필드 매핑 규칙은 이 파일이 SoT"라고 인정하고 있어 사실상 core 쪽
+      5개 함수는 유닛테스트 전용 사문화 코드다. Deno가 npm 워크스페이스 패키지를 직접 resolve하지
+      못해 생긴 의도된 분기였을 가능성이 크지만, 문서화되지 않은 채 유지비만 2배로 드는 상태 —
+      결정만 남았다는 점에서 medium.
+
+  - id: M-030
+    title: "웹 primary 버튼 색상 WCAG AA 대비 미달 (#e25067 on white ≈ 3.77:1)"
+    priority: high
+    status: todo
+    scope: [packages/tokens, apps/web]
+    done_when:
+      - "packages/tokens/src/index.ts:44의 brand.primary(#e25067) 또는 그 위에 얹는 텍스트 색을 WCAG AA(일반 텍스트 4.5:1, 18.66px 굵게 이상은 3:1) 충족하도록 조정한다(톤 다크닝 또는 텍스트/보더 조합 변경)"
+      - "DESIGN.md에 변경된 색상 값과 대비 재계산 근거를 기록한다"
+      - "diagnosis·opportunity·report·saved·my 등 primary CTA가 쓰이는 주요 화면에서 axe 접근성 테스트를 재실행해 통과 확인한다"
+    notes: >
+      [audit] a11y축 에이전트 발견, 오케스트레이터가 relative-luminance 공식으로 직접 재계산해
+      대비비 ≈3.765:1(에이전트 보고 3.77:1과 일치)을 확인 — WCAG AA 4.5:1 기준 미달이며, 실사용
+      버튼 텍스트가 16px bold(대형 텍스트 기준인 18.66px bold 미만)라 3:1 예외도 적용 안 됨.
+      grep 결과 ui.tsx·web-shell.tsx·web-landing.tsx·opportunity/report/my/saved page 등 거의 모든
+      primary CTA가 동일 조합(bg-primary + text-white)을 반복 사용 — 앱 전반에 걸친 접근성 결함.
+
+  - id: M-031
+    title: "모바일 a11y 패리티 공백: 진단 옵션·보관함 북마크·Chip에 accessibilityRole/State/Label 누락"
+    priority: medium
+    status: todo
+    scope: [apps/mobile]
+    done_when:
+      - "apps/mobile/app/diagnosis.tsx의 옵션 Pressable(99-124행 부근)에 accessibilityRole과 accessibilityState={{selected}}를 추가한다"
+      - "apps/mobile/app/(tabs)/saved.tsx의 북마크 토글 Pressable(28-40행 부근)에 accessibilityLabel을 추가하고, 터치영역을 packages/tokens의 MIN_HIT_TARGET(44px) 이상으로 확장한다(현재 20px 아이콘 + hitSlop 10 = 40px)"
+      - "apps/mobile/ui/components.tsx의 Chip 컴포넌트에 accessibilityRole=\"button\"과 accessibilityState={{selected: active}}를 추가한다"
+      - "apps/mobile/app/opportunity.tsx의 북마크 토글(131-137행 부근)에도 동일하게 accessibilityLabel/accessibilityState를 추가해 웹(M-013/M-014)과 패리티를 맞춘다"
+      - "mobile typecheck·test 통과"
+    notes: >
+      [audit] a11y축·UX패리티축 에이전트가 saved.tsx 북마크·opportunity.tsx 북마크 항목을 교차
+      발견(오케스트레이터가 grep으로 accessibilityRole/State/Label 부재를 재확인). 웹은 M-013/
+      M-014에서 aria-pressed·aria-label을 이미 붙였으나 그 작업 scope가 [apps/web]으로 한정돼
+      있어 모바일에는 반영되지 않았다 — 동일 결함이 플랫폼별로 남아있는 전형적 패리티 부채.
+
+  - id: M-032
+    title: "탐색 화면 지역·정렬·난이도 필터가 모바일에 없음 (M-020 웹 전용 배선의 잔여 범위)"
+    priority: medium
+    status: todo
+    scope: [apps/mobile]
+    done_when:
+      - "apps/mobile/app/(tabs)/explore.tsx에 apps/web/src/app/explore/page.tsx와 동등한 지역 select·정렬 select(추천순/거리순/마감임박순)·난이도(낮음만 보기) 필터를 추가한다(packages/core의 normalizeGu 등 기존 로직 재사용)"
+      - "mobile explore 테스트에 필터·정렬 적용 케이스를 추가한다"
+      - "mobile typecheck·test 통과"
+    notes: >
+      [audit] UX패리티축 에이전트 발견, 오케스트레이터가 apps/mobile/app/(tabs)/explore.tsx를
+      grep해 region/sort/difficulty 관련 상태·UI가 전혀 없음을 재확인(웹은 page.tsx:51-52,247-323에
+      전부 존재). M-020 notes가 scope를 [apps/web, packages/core]로 명시해 모바일을 의도적으로
+      제외했었음 — 이번에 후속으로 등재.
+
+  - id: M-033
+    title: "홈 화면: 모바일이 실데이터 캐러셀 대신 고정 마케팅 카피(TEASERS)만 노출"
+    priority: medium
+    status: todo
+    scope: [apps/mobile]
+    done_when:
+      - "apps/mobile/app/index.tsx가 웹(apps/web/src/app/page.tsx:14-15,45-50)처럼 fetchOpportunities({ withImageOnly: true, limit: 12 })로 실제 활동을 불러와 캐러셀(또는 동등한 네이티브 컴포넌트)로 노출하고, 4건 미만이면 현재 TEASERS를 폴백으로 유지한다"
+      - "관련 렌더 테스트를 추가한다(데이터 있음/부족 두 케이스)"
+      - "mobile typecheck·test 통과"
+    notes: >
+      [audit] UX패리티축 에이전트 발견, 오케스트레이터가 apps/mobile/app/index.tsx와
+      apps/web/src/app/page.tsx를 grep해 확인 — 웹은 실 heroPicks를 서버에서 가져와
+      HeroCarousel로 렌더하는데, 모바일은 하드코딩된 TEASERS 배열(마찰 제로/원픽/하이퍼로컬)만
+      보여줘 진단 전 진입 화면에서 실제 활동을 한 건도 보여주지 못한다.
+
+  - id: M-034
+    title: "apps/web 핵심 서버 로직 테스트 공백: auth.ts(promoteLocalToAccount) + api/geo route"
+    priority: high
+    status: todo
+    scope: [apps/web]
+    done_when:
+      - "apps/web/src/lib/auth.test.ts를 신설해 promoteLocalToAccount(auth.ts:33-61)의 savedIds/홈앵커 병합 upsert, onConflict 키, `if (!supabase) return` 가드 분기를 테스트한다"
+      - "apps/web/src/app/api/geo/route.test.ts를 신설해 400(invalid_coords)/503(not_configured)/502(upstream_error)/404(not_found)/500(internal_error)/200(성공) 6개 분기를 테스트한다(형제 파일 apps/web/src/app/api/neighborhoods/route.test.ts 패턴 참고)"
+      - "web typecheck·test 통과"
+    notes: >
+      [audit] test-coverage축 에이전트 발견, 오케스트레이터가 두 테스트 파일의 부재를 직접 확인
+      (ls 실패로 재검증). auth.ts는 로그인 시 게스트 저장 데이터를 계정에 병합하는 로직이라 깨지면
+      사용자 데이터가 조용히 유실될 수 있고, api/geo는 5개 에러 분기를 가진 서버 프록시인데도
+      형제 라우트(neighborhoods)는 테스트가 있어 이 라우트만 예외적으로 비어있다.
+
+  - id: M-035
+    title: "apps/mobile location.tsx 테스트 0건 (웹 대응 화면은 이미 커버됨)"
+    priority: high
+    status: todo
+    scope: [apps/mobile]
+    done_when:
+      - "apps/mobile/app/location.test.tsx를 신설해 apps/web/src/app/location/page.test.tsx와 동등하게 위치 권한 상태(granted/denied/prompt)·디바운스 동네 검색·역지오코딩 실패(geoError) 케이스를 커버한다"
+      - "mobile typecheck·test 통과"
+    notes: >
+      [audit] test-coverage축 에이전트 발견, 오케스트레이터가 apps/web/src/app/location/page.test.tsx는
+      존재하고 apps/mobile/app/location.test.tsx는 없음을 ls로 직접 재확인. 진단 전 위치 설정은
+      핵심 진입 플로우인데 모바일 쪽만 권한 분기·디바운스·에러 처리가 전혀 검증되지 않는다.
+
+  - id: M-036
+    title: "supabase/functions/ingest 테스트 0건 (매핑·페이지네이션·마감정리 로직)"
+    priority: low
+    status: todo
+    scope: [supabase/functions/ingest]
+    done_when:
+      - "adapters.ts의 mapSeoulCulture/mapCultureInfo/mapTrail 등 매퍼 함수에 대한 테스트(Deno test 또는 vitest 이식)를 추가한다"
+      - "runSource의 소스별 격리(에러 하나가 다른 소스에 전파되지 않음), culture_info 페이지네이션+dedupByKey, deadline 지난 행 정리 로직에 각 최소 1개씩 테스트를 추가한다"
+    notes: >
+      [audit] test-coverage축 에이전트 발견, 오케스트레이터가 find로 supabase/ 아래 테스트 파일이
+      전무함을 재확인. M-026(인증)이 먼저 처리되면 그 스모크 테스트가 일부 겹칠 수 있으나, 이
+      이슈는 인증과 무관한 일반 매핑·페이지네이션 로직 커버리지에 집중한다. priority low로 둔
+      이유: 실서비스 영향은 낮고(현재 무사고 운영 중), 두 소스(sports_facility·seoul_jobs)는
+      아직 게이팅 상태라 커버리지 우선순위가 상대적으로 낮음.
+
+  - id: M-037
+    title: "활동 상세 '즐기는 방법(steps)' 블록이 웹·모바일 모두 도달 불가능한 dead UI"
+    priority: medium
+    status: todo
+    scope: [packages/core, apps/web, apps/mobile]
+    done_when:
+      - "MockOpportunity.steps(packages/core/src/catalog.ts:66)를 실제로 채우는 데이터소스가 있는지 확인한다"
+      - "채울 데이터소스가 없다면 steps 필드와 apps/web/src/app/opportunity/page.tsx·apps/mobile/app/opportunity.tsx의 '즐기는 방법' 렌더 블록을 제거하고, 있다면 rowToMock 또는 어댑터에서 채우도록 배선한다"
+      - "선택한 방향에 따라 core·web·mobile typecheck·test 통과"
+    notes: >
+      [audit] dead-code축 에이전트 발견, 오케스트레이터가 catalog.ts:66(steps?: string[] 정의)과
+      rowToMock(74-86행, steps를 설정하지 않음)을 직접 읽어 재검증 — repo 전체에 steps 값을
+      채우는 코드가 전무하다(grep "steps:" 결과 없음). 따라서 웹·모바일의 `{!!o.steps && ...}`
+      조건부 렌더 블록(모바일 opportunity.tsx:107-121 확인)은 항상 false로 평가되는 도달 불가
+      분기 — 기능 자체가 없거나(제거 대상), 원래 계획이 있었으나 배선이 빠진 상태(구현 대상)인지
+      결정이 필요하다.
+
+  - id: M-038
+    title: "packages/core/src/scoring.ts 외부 미사용 export 4종 정리 (ScoreWeights/DEFAULT_WEIGHTS/ScoredOpportunity/distanceKm)"
+    priority: low
+    status: todo
+    scope: [packages/core]
+    done_when:
+      - "ScoreWeights·DEFAULT_WEIGHTS·ScoredOpportunity·distanceKm(scoring.ts:11,19,48,55)가 scoring.ts 내부 전용으로만 쓰이고 packages/core/src/index.ts 재노출을 포함해 외부 소비처가 없음을 재확인한다"
+      - "외부 공개 API로 의도된 것이 아니면 export 키워드를 제거해 모듈 내부 전용으로 좁히고, 의도된 공개 API라면 index.ts에 명시적으로 재노출해 문서화한다"
+      - "core typecheck·test 통과"
+    notes: >
+      [audit] dead-code축 에이전트 발견, 오케스트레이터가 4개 식별자를 repo 전체 grep으로
+      재확인 — scoring.ts 내부(가중치 기본값 파라미터, distanceKm 호출)에서만 쓰이고
+      scoring.test.ts를 포함해 외부 참조가 전무하다. priority low: 기능적 결함은 아니고
+      공개 API 표면 정리 수준.
+
+  - id: M-039
+    title: "dev HEAD가 이미 typecheck·test 모두 깨져있음 — normalizeDong 미존재 함수 참조"
+    priority: high
+    status: doing
+    scope: [apps/web, packages/core]
+    done_when:
+      - "apps/web/src/app/location/page.tsx:20의 `import { normalizeDong } from \"@motungi/core\"`를 실제 존재하는 export(packages/core/src/view.ts:82 `normalizeGu`, 의미가 다르면 core에 동명 함수를 신설)로 교정해 TS2724 에러를 없앤다"
+      - "page.tsx:115의 `setAnchor(\"home\", { ..., region: selected.region, ... })`가 참조하는 `region` 필드를 packages/core/src/types.ts:41-47 `Location` 인터페이스에 실제로 추가하거나(anchors에 region 정보가 필요하다면), 불필요하면 이 필드 전달을 제거해 TS2353 에러를 없앤다"
+      - "pnpm typecheck 전체 그린, pnpm test에서 apps/web/src/app/location/page.test.tsx 3개 실패(TypeError: normalizeDong is not a function) 재발 없이 통과"
+    notes: >
+      [2026-07-31 audit 밤 발견 — 감사 대상이 아니라 qa 재검증 중 우연히 발견한 긴급 회귀]
+      이번 밤은 audit 모드라 backlog.yml만 편집해야 하므로 이 결함 자체는 고치지 않고 등재만 한다.
+      원인 커밋은 사람이 직접 만든 ab9089d("feat(web): 위치 권한 요청 전 설명 단계 + 거부 상태
+      복구 안내", 2026-07-31 17:11 +09:00 author dlsxody1) — 야간 파이프라인이 만든 커밋이
+      아니다. 오케스트레이터가 이번 밤 qa 게이트를 "코드 무변경이라 자동 통과"로 넘기지 않고 실제
+      재실행한 결과 `pnpm typecheck`에서 apps/web가 TS2724("normalizeDong" 미존재, "normalizeGu"의
+      오타로 추정)·TS2353(Location 타입에 없는 `region` 프로퍼티) 2개 에러로 실패했고,
+      `pnpm test`에서도 동일 원인으로 location/page.test.tsx 3개 테스트가
+      "TypeError: normalizeDong is not a function"으로 런타임 실패했다(122개 중 3개 실패,
+      나머지 core/tokens/mobile 및 web 나머지 15개 테스트 파일은 정상). **즉 지금 dev HEAD는
+      사람이든 밤이든 그 위에서 무엇을 하든 qa 게이트를 통과할 수 없는 상태다** — 다음 구현
+      모드 밤이 이 결함과 무관한 자기 작업만 하고도 qa 실패를 겪을 수 있으므로 priority high로
+      최우선 처리 권장. scope를 apps/web 하나로 좁혀 원인 파일 2줄 수준 수정으로 해결 가능해 보임
+      (실제 원인 확정은 담당 밤의 planner/architect 몫).
+
+  # ── 2026-08-03 등재(사람 세션): 성능·서빙 잔여 + 적재 운영 결함 ──────────
+  # 배경·수치는 docs/perf/baseline.md, 설계는 ~/.claude/plans/giggly-zooming-locket.md.
+  # 이미 dev에 반영돼 재작업 금지: CI build/lint 게이트, /api/vitals, 번들 분석기,
+  # 0015 description 컬럼 + 어댑터 원문 매핑, 폰트 자체호스팅, /api/opportunities 서버화.
+
+  - id: M-040
+    title: "ingest에 API 키 secret 미등록 — cron 적재가 계속 실패 중(M-026과 함께 처리)"
+    priority: high
+    status: todo
+    scope: [supabase/functions/ingest, Supabase Edge Function secret(대시보드·사람 작업)]
+    done_when:
+      - "SEOUL_OPENAPI_KEY·DATA_GO_KR_SERVICE_KEY를 Edge Function secret으로 등록한다"
+      - "키를 body로 넘기지 않고 호출했을 때 세 소스가 모두 성공한다(현재는 전부 '…없음' 에러)"
+      - "세 소스가 모두 실패하면 ok:true를 반환하지 않는다 — 실패가 성공처럼 보이지 않게 한다"
+      - "등록 후 pg_cron 다음 실행에서 opportunities.fetched_at이 갱신되는지 확인한다"
+    notes: >
+      실측(2026-08-03): 키 없이 POST하면
+      {"ok":true,"total":0,"results":[{"source":"seoul_culture","error":"SEOUL_OPENAPI_KEY 없음"},…]}.
+      body로 키를 넘기면 553행이 정상 적재된다(seoul 300 / culture_info 234 / trail 19).
+      코드는 멀쩡하고 **secret만 비어 있다**. cron(0007)은 body를 못 넘기므로 env secret이 유일한 경로다.
+      흔적: trail 30행 중 11행의 fetched_at이 2026-07-13~23에 멈춰 있다.
+
+      ⚠️ M-026(무인증 — body 키 폴백 제거)과 **반드시 함께** 처리할 것. 지금 실제로 도는
+      유일한 경로가 body 키라, secret 등록 없이 M-026만 먼저 하면 적재가 완전히 죽는다.
+      순서: secret 등록 → 동작 확인 → body 폴백 제거.
+
+  - id: M-041
+    title: "카탈로그 응답 캐시가 실제로는 안 먹는다 — 서버측 메모이제이션 추가"
+    priority: medium
     status: todo
     scope: [apps/web/src/app/api/opportunities/route.ts]
     done_when:
-      - "같은 좌표로 연속 호출 시 두 번째부터 DB를 조회하지 않는다(fetchOpportunities 호출 수로 검증)"
+      - "같은 좌표 연속 호출 시 두 번째부터 DB를 조회하지 않는다(fetchOpportunities 호출 수로 검증)"
       - "저밀도 좌표(도봉구)의 반경 사다리 2회 조회가 캐시 적중 시 0회가 된다"
-      - "적재 주기(하루 1회)에 맞는 revalidate를 두고, 근거를 주석에 남긴다"
-      - "실패(status:error) 응답은 캐시되지 않는다 — 기존 테스트가 이미 이 계약을 검증하므로 깨지면 안 된다"
+      - "적재 주기(하루 1회)에 맞는 revalidate를 두고 근거를 주석에 남긴다"
+      - "실패(status:error) 응답은 캐시되지 않는다 — 기존 테스트가 이 계약을 이미 검증한다"
       - "route.test.ts 11케이스가 그대로 통과한다"
     notes: >
-      현 상태: /api/opportunities가 Cache-Control(s-maxage=21600)만 내보낸다. 이건 **CDN용**이라
-      Vercel에선 먹지만 로컬 next start에선 아무도 안 받아준다 — 실측 같은 좌표 3회 연속 호출에
-      ttfb 363/243/232ms로 매번 DB를 갔다(x-nextjs-cache 헤더 없음).
-      좌표는 이미 0.01도 그리드로 반올림해 캐시 키 폭발을 막아뒀다(미세하게 다른 두 좌표가
-      동일 결과 83건/10km 반환 확인). 남은 건 서버측 메모이제이션이다.
-      착수하다 만 흔적: route.ts에 unstable_cache import를 넣었다가 되돌렸다(현재 트리는 깨끗함).
-      주의 — unstable_cache 콜백은 supabase 클라이언트를 클로저로 잡으면 안 되고,
-      캐시 키에 today와 스냅된 좌표·반경이 들어가야 한다.
+      현 상태: Cache-Control(s-maxage=21600)만 내보낸다. 이건 CDN용이라 Vercel에선 먹지만
+      로컬 next start에선 아무도 안 받아준다 — 같은 좌표 3회 연속 호출에 ttfb 363/243/232ms로
+      매번 DB를 갔다(x-nextjs-cache 헤더 없음). 좌표는 이미 0.01도 그리드로 스냅해
+      캐시 키 폭발을 막아뒀다(미세하게 다른 두 좌표가 동일 결과 83건/10km 반환 확인).
+      unstable_cache를 쓸 때 supabase 클라이언트를 클로저로 잡지 말 것,
+      캐시 키에 today·스냅 좌표·반경이 들어가야 한다.
 
-  - id: M-027
+  - id: M-042
     title: "loading.tsx / error.tsx 경계가 0개 — 스트리밍·실패 UX 부재"
     priority: medium
     status: todo
     scope: [apps/web/src/app]
     done_when:
-      - "최소 /explore·/report에 loading.tsx가 있어 카탈로그 대기 중 빈 화면 대신 스켈레톤이 보인다"
+      - "최소 /explore·/report에 loading.tsx가 있어 대기 중 빈 화면 대신 스켈레톤이 보인다"
       - "app/error.tsx(또는 global-error.tsx)가 있어 렌더 예외 시 흰 화면이 아니라 복구 UI가 뜬다"
       - "not-found.tsx로 잘못된 경로 진입 시 앱 셸을 유지한다"
-      - "스켈레톤이 실제 카드 레이아웃과 높이가 맞아 CLS를 만들지 않는다(react-testing으로 렌더 검증)"
+      - "스켈레톤 높이가 실제 카드와 맞아 CLS를 만들지 않는다(react-testing으로 렌더 검증)"
     notes: >
-      실측: app/ 전체에 loading.tsx·error.tsx·not-found.tsx가 하나도 없다. Suspense 경계는
-      app/opportunity/page.tsx:42의 fallback={null} 하나뿐인데 그건 useSearchParams 요건 때문이지
-      스트리밍용이 아니다. 카탈로그가 서버로 옮겨졌으므로(M-026과 함께) 지금이 경계를 넣기 좋은 시점.
+      실측: app/ 전체에 loading·error·not-found가 하나도 없다. Suspense 경계는
+      app/opportunity/page.tsx:42의 fallback={null} 하나뿐인데 그건 useSearchParams 요건이지
+      스트리밍용이 아니다. 카탈로그가 서버로 옮겨졌으니 지금이 경계를 넣기 좋은 시점.
       UI 작업이므로 impeccable 스킬 필수. 스켈레톤 높이는 explore-card/explore-row의
       estimateSize(모바일 108 / 데스크탑 360)와 맞출 것.
 
-  - id: M-028
+  - id: M-043
     title: "culture_info 154행 산문 백필 — detail2 배치(요청제한 대응 필수)"
-    priority: medium
+    priority: low
     status: todo
     scope: [supabase/functions/ingest, scripts/]
     done_when:
-      - "culture_info 행의 description 보유율이 0%에서 유의미하게 오른다(목표 50%+, 실제 채움률에 따라 조정)"
-      - "호출 간격·재시도·이어받기가 있어 요청제한(429 성격)에 걸려도 다음 실행이 이어서 진행한다"
-      - "일일 cron(0007)의 실행 시간을 크게 늘리지 않는다 — 별도 스크립트나 분할 실행을 고려"
-      - "부분 실패가 조용히 넘어가지 않고 몇 건 성공/실패했는지 남는다"
+      - "culture_info 행의 description 보유율이 0%에서 유의미하게 오른다(목표 50%+)"
+      - "호출 간격·재시도·이어받기가 있어 요청제한에 걸려도 다음 실행이 이어서 진행한다"
+      - "일일 cron 실행 시간을 크게 늘리지 않는다 — 별도 스크립트나 분할 실행 고려"
+      - "부분 실패가 조용히 넘어가지 않고 성공/실패 건수가 남는다"
     notes: >
-      실측(2026-08-03): period2 목록 응답은 12필드 전부 메타데이터라 산문이 **아예 없다**.
-      산문(contents1)은 detail2 엔드포인트에만 있고 seq당 1회 호출이 필요하다
-      (총 1097건 → 목록 110회 + 상세 1097회 ≈ 1200회).
+      실측(2026-08-03): period2 목록 응답은 12필드 전부 메타데이터라 산문이 아예 없다.
+      산문(contents1)은 detail2에만 있고 seq당 1회 호출이 필요하다(총 ≈1200회).
       numOfRows를 100으로 올려도 서버가 10건 고정이라 호출 수를 못 줄인다.
-      50회를 4초에 몰아쳤더니 LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR가 떴다 —
-      그래서 "그냥 한 번에 받기"는 불가하고 배치 설계가 필요하다.
-      이게 되면 코퍼스가 12.1% → 약 50%로 올라 검색형 RAG(M-029)의 전제가 살아난다.
-      안 되면 M-029는 설명 생성만으로 진행한다.
+      50회를 4초에 몰아쳤더니 LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR가 떴다.
+      이게 되면 코퍼스가 12.1% → 약 50%로 올라 검색형 RAG의 전제가 살아난다.
+      안 되면 M-044는 설명 생성만으로 진행한다. M-040(적재 정상화) 이후에 착수할 것.
 
-  - id: M-029
+  - id: M-044
     title: "LLM 계층 — 추천 근거 생성(주력) + 자연어 의도 파싱(보조)"
     priority: medium
     status: todo
     scope: [apps/web/src/app/api, packages/core/src/view.ts, packages/core/src/scoring.ts(무변경 유지)]
     done_when:
-      - "폴백을 **먼저** 세운다 — LLM 응답을 429/500으로 강제 목킹했을 때 whyReasons 문자열로 떨어지고 UI가 정상 렌더되는 테스트가 있다"
+      - "폴백을 **먼저** 세운다 — LLM을 429/500으로 강제 목킹했을 때 whyReasons로 떨어지고 UI가 정상 렌더되는 테스트가 있다"
       - "근거 생성 입력은 raw row가 아니라 scoring의 breakdown이다 — 점수를 환각할 수 없는 구조임을 테스트로 고정한다"
-      - "같은 카테고리 20행의 근거 문자열 유니크 비율이 개선된다(현재는 4분기 if/else라 사실상 1종)"
-      - "GEMINI_API_KEY는 서버 전용 — NEXT_PUBLIC_/EXPO_PUBLIC_ 접두어가 붙지 않는다(security-policy)"
+      - "같은 카테고리 20행의 근거 문자열 유니크 비율이 개선된다(현재는 사실상 1종)"
+      - "GEMINI_API_KEY는 서버 전용 — NEXT_PUBLIC_/EXPO_PUBLIC_ 접두어가 붙지 않는다"
       - "규칙 엔진 결과를 즉시 렌더하고 LLM 산문은 나중에 채운다 — 페이지가 모델 응답에 블로킹되지 않는다"
       - "요청당 토큰 수와 폴백률을 남긴다"
     notes: >
-      방향 결정 근거(2026-08-03 실측): 코퍼스가 445행 중 54행(12.1%)뿐이라 **검색형 RAG를 주력으로
-      두지 않는다**. 391행이 색인에서 빠지면 결과가 부실할 때 데이터 부재인지 알고리즘 문제인지
-      구분이 안 된다. 반면 근거 생성은 scoring.ts의 breakdown(거리·비용·시간·난이도)을 입력으로
-      쓰므로 **445행 전부에 동작**한다 — description 유무와 무관.
+      방향 결정 근거(2026-08-03 실측): 코퍼스가 445행 중 54행(12.1%)뿐이라 검색형 RAG를 주력으로
+      두지 않는다 — 391행이 색인에서 빠지면 결과가 부실할 때 데이터 부재인지 알고리즘 문제인지
+      구분이 안 된다. 반면 근거 생성은 scoring의 breakdown(거리·비용·시간·난이도)을 입력으로 써서
+      445행 전부에 동작한다(description 유무 무관).
       대체 대상: packages/core/src/view.ts:284-332 whyReasons()는 4분기 if/else 고정 문자열이라
       같은 카테고리·같은 비용 버킷이면 바이트 단위로 동일한 문구가 나온다.
-      **whyReasons는 지우지 말고 폴백으로 유지** — 이미 테스트됐고 "절대 빈 배열을 반환하지 않는다"를
-      보장한다. 모델은 Gemini Flash 무료 티어(비용 0, 단 rate limit 존재) → 429를 예외가 아니라
-      정상 경로로 취급해 폴백을 먼저 구현할 것. pgvector는 이 규모에서 과투자라 쓰지 않는다.
-      상세 설계는 ~/.claude/plans/giggly-zooming-locket.md 참조.
+      **whyReasons는 지우지 말고 폴백으로 유지** — 이미 테스트됐고 빈 배열을 반환하지 않음을 보장한다.
+      모델은 Gemini Flash 무료 티어(비용 0, rate limit 존재) → 429를 정상 경로로 취급해
+      폴백을 먼저 구현할 것. pgvector는 이 규모에서 과투자라 쓰지 않는다.
