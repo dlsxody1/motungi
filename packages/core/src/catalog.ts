@@ -62,8 +62,6 @@ export type MockOpportunity = Opportunity & {
   matchScore: number;
   /** 상세 메타(칩) */
   meta: { label: string; value: string }[];
-  /** 참여 방법 스텝 (실데이터엔 없을 수 있음 → 상세에서 없으면 섹션 숨김) */
-  steps?: string[];
   costNote?: string;
   tone: "brand" | "mint";
 };
@@ -101,10 +99,48 @@ export interface CatalogResult {
 
 /** fetchOpportunities 조회 컬럼(전량 select 아님 — 화면이 바인딩하는 필드만). */
 const CATALOG_COLUMNS =
-  "id,source,category,external_id,title,summary,cost_krw,difficulty,dong_name,lat,lng,cta_url,image_url,deadline,source_label,time_start_hour,time_end_hour";
+  "id,source,category,external_id,title,summary,cost_krw,difficulty,dong_name,lat,lng,cta_url,image_url,deadline,source_label,time_start_hour,time_end_hour,course_start,course_end,course_notes,duration_min,is_loop";
+
+/**
+ * 단건 조회 컬럼 = 목록 컬럼 + `description`(설명 원문).
+ *
+ * 목록에 description을 넣지 않는 이유: 목록은 최대 300행을 브라우저로 내려보내는데
+ * 원문은 행당 수백 자라 페이로드가 크게 늘어난다. 반면 카드 UI는 원문을 렌더하지 않는다
+ * (제목·summary·메타칩만 쓴다). 원문이 필요한 곳은 상세 화면과 서버측 검색·LLM이다.
+ */
+const DETAIL_COLUMNS = `${CATALOG_COLUMNS},description`;
 
 /** 조회 상한 기본값(옵션 미지정 시). */
 const DEFAULT_LIMIT = 200;
+
+/** 위도 1도당 거리(km). 경도는 위도에 따라 cos배로 좁아진다. */
+const KM_PER_DEG_LAT = 111.32;
+
+/**
+ * 중심점 + 반경(km) → 위경도 바운딩 박스.
+ *
+ * 정확한 원(ST_DWithin)이 아니라 사각형이라 대각선 방향으로 최대 41% 과포함한다.
+ * 그럼에도 박스를 쓰는 이유: 앵커 좌표 자체가 구 중심 근사(neighborhoods.coord_level='sigungu')라
+ * 원/박스 차이가 앵커 오차에 묻힌다. PostGIS RPC를 쓰면 기존 쿼리 체인을 전부 재배선해야 한다.
+ *
+ * 서울·수도권 전용 — 극지방(cos→0)과 날짜변경선 횡단은 다루지 않는다.
+ */
+export function boundingBox(
+  point: GeoPoint,
+  radiusKm: number,
+): { minLat: number; maxLat: number; minLng: number; maxLng: number } {
+  const dLat = radiusKm / KM_PER_DEG_LAT;
+  // 고위도일수록 경도 1도의 실거리가 짧아지므로 같은 km를 담으려면 더 넓은 각도가 필요하다.
+  const cosLat = Math.cos((point.lat * Math.PI) / 180);
+  // 0 나눗셈 방어(극점). 수도권에선 cosLat≈0.79라 사실상 도달하지 않는 가드.
+  const dLng = radiusKm / (KM_PER_DEG_LAT * Math.max(Math.abs(cosLat), 1e-6));
+  return {
+    minLat: point.lat - dLat,
+    maxLat: point.lat + dLat,
+    minLng: point.lng - dLng,
+    maxLng: point.lng + dLng,
+  };
+}
 
 export interface FetchOpportunitiesOptions {
   /** 관심 카테고리 화이트리스트. 없으면 카테고리 필터 없음. */
@@ -119,6 +155,12 @@ export interface FetchOpportunitiesOptions {
   limit?: number;
   /** 대표 이미지(image_url)가 있는 활동만. 랜딩 캐러셀처럼 썸네일이 필수인 곳에서 서버에 위임. */
   withImageOnly?: boolean;
+  /**
+   * 앵커(집·직장) 좌표 반경 필터. 주어질 때만 적용된다.
+   * "동네 큐레이션"의 핵심 — 전 지역을 받아 클라에서 버리는 대신 DB에서 좁힌다.
+   * 정확한 원이 아니라 바운딩 박스다(boundingBox 주석 참조).
+   */
+  near?: { point: GeoPoint; radiusKm: number };
 }
 
 /**
@@ -144,6 +186,15 @@ export async function fetchOpportunities(
   if (options.categories?.length) query = query.in("category", options.categories);
   // 썸네일 필수 화면(랜딩 캐러셀)은 이미지 있는 행만 서버에서 거른다.
   if (options.withImageOnly) query = query.not("image_url", "is", null);
+  // 앵커 반경으로 좁힌다. 좌표 없는 행은 자연히 제외 — 좌표가 없으면 "근처"일 수 없다.
+  if (options.near) {
+    const box = boundingBox(options.near.point, options.near.radiusKm);
+    query = query
+      .gte("lat", box.minLat)
+      .lte("lat", box.maxLat)
+      .gte("lng", box.minLng)
+      .lte("lng", box.maxLng);
+  }
   // 마감 임박순(가까운 것 먼저), 상시(null)는 뒤로. 상한까지만.
   const { data, error } = await query
     .order("deadline", { ascending: true, nullsFirst: false })
@@ -192,7 +243,7 @@ export async function fetchOpportunityById(
   if (!client) return { data: null, status: "unconfigured" };
   const { data, error } = await client
     .from("opportunities")
-    .select(CATALOG_COLUMNS)
+    .select(DETAIL_COLUMNS)
     .eq("id", id)
     .maybeSingle();
   if (error) return { data: null, status: "error" };

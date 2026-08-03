@@ -2,6 +2,7 @@ import * as ExpoLocation from "expo-location";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { normalizeDong } from "@motungi/core";
 import {
   DEFAULT_NEIGHBORHOOD,
   type NeighborhoodPick,
@@ -69,6 +70,7 @@ export default function LocationScreen() {
     setAnchor("home", {
       dongName: selected.dongName,
       admCode: selected.admCode,
+      region: selected.region,
       point: selected.point,
     });
     router.push("/diagnosis");
@@ -89,7 +91,8 @@ export default function LocationScreen() {
       // (바로 넘기지 않음 — 위치가 제대로 잡혔는지 유저가 눈으로 확인).
       const geo = await reverseGeocode(point.lat, point.lng);
       setSelected({
-        dongName: geo?.dongName ?? "현재 위치",
+        // NAVER는 "역삼1동"처럼 번호가 붙은 행정동명을 준다 — 검색 결과 표기와 맞춘다.
+        dongName: geo?.dongName ? normalizeDong(geo.dongName) : "현재 위치",
         admCode: geo?.admCode ?? undefined,
         region: geo ? undefined : "좌표로 설정됨",
         point,
@@ -149,7 +152,7 @@ export default function LocationScreen() {
           <Search size={20} color={C.faint} />
           <TextInput
             style={styles.searchInput}
-            placeholder="동네 이름 검색 (예: 역삼동)"
+            placeholder="동네 또는 구 검색 (예: 역삼동, 강남구)"
             placeholderTextColor={C.muted}
             value={query}
             onChangeText={setQuery}

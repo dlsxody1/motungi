@@ -3,6 +3,7 @@ import { Jua } from "next/font/google";
 import type { ReactNode } from "react";
 import { AuthBoot } from "@/components/auth-boot";
 import { KakaoSDK } from "@/components/kakao-sdk";
+import { WebVitals } from "@/components/web-vitals";
 import "./globals.css";
 
 /* 워드마크 전용 귀여운 둥근고딕 — 로고 '모퉁이'에만 쓴다(본문은 Pretendard 유지). */
@@ -66,17 +67,24 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko" className={jua.variable}>
       <head>
-        {/* Pretendard — 본문 한글 웹폰트 (CDN) */}
-        <link
-          rel="stylesheet"
-          as="style"
-          crossOrigin="anonymous"
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
-        />
+        {/*
+          Pretendard — 본문 한글 웹폰트. jsdelivr CDN에서 자체 호스팅으로 옮겼다.
+          이유는 용량이 아니라 **연결 비용**이다: CDN판은 서드파티 오리진에서 CSS 1개 +
+          한글 서브셋 woff2 15개 = 총 16요청이 나가는데 preconnect가 없어 DNS+TLS를
+          폰트 발견 시점에야 새로 맺었다(실측 마지막 응답 133~149ms).
+          같은 오리진에서 주면 이미 열린 커넥션을 재사용한다.
+
+          next/font/local을 안 쓴 이유: 그건 파일을 명시해야 해서 통짜 가변폰트(2.0MB)를
+          쓰게 되는데, 한글은 동적 서브셋(92개 유니코드 레인지 분할)이 훨씬 싸다.
+          브라우저가 실제로 쓰는 글자의 서브셋만 받는다.
+        */}
+        <link rel="preload" as="style" href="/fonts/pretendard/pretendardvariable-dynamic-subset.css" />
+        <link rel="stylesheet" href="/fonts/pretendard/pretendardvariable-dynamic-subset.css" />
       </head>
       <body>
         <AuthBoot />
         <KakaoSDK />
+        <WebVitals />
         {children}
       </body>
     </html>

@@ -71,4 +71,39 @@ describe("normalizeSeoulCulture", () => {
     const out = normalizeSeoulCultures([RAW, { ...RAW, TITLE: "" }]);
     expect(out).toHaveLength(1);
   });
+
+  // summary는 "구 · 장소 · 분류" 조인이라 "무슨 공연인지"가 없다 → 원문을 따로 보존한다.
+  describe("description(설명 원문)", () => {
+    it("PROGRAM·PLAYER·ETC_DESC를 빈 줄로 이어 보존한다", () => {
+      // 서울시 실제 응답 형태(2026-08-03 표본).
+      const o = normalizeSeoulCulture({
+        ...RAW,
+        PROGRAM: "Let It Snow, White Christmas 등 크리스마스 캐롤 명곡을 재즈 트리오가 연주",
+        PLAYER: "Piano : Kazumi Tateishi, Contrabass : Shinobu Sato",
+        ETC_DESC: "8세 이상 입장 가능",
+      })!;
+      expect(o.description).toBe(
+        "Let It Snow, White Christmas 등 크리스마스 캐롤 명곡을 재즈 트리오가 연주\n\n" +
+          "Piano : Kazumi Tateishi, Contrabass : Shinobu Sato\n\n" +
+          "8세 이상 입장 가능",
+      );
+    });
+
+    it("일부만 채워져도(실측 PROGRAM 14%) 있는 것만 넣는다", () => {
+      const o = normalizeSeoulCulture({ ...RAW, PROGRAM: "재즈 트리오 내한공연" })!;
+      expect(o.description).toBe("재즈 트리오 내한공연");
+    });
+
+    it("산문이 전부 비면 undefined — 대다수 행의 정상 상태다", () => {
+      const o = normalizeSeoulCulture({ ...RAW, PROGRAM: "", PLAYER: "", ETC_DESC: "" })!;
+      expect(o.description).toBeUndefined();
+    });
+
+    it("description이 없어도 카드는 정상 렌더된다(summary는 그대로)", () => {
+      const o = normalizeSeoulCulture(RAW)!;
+      expect(o.description).toBeUndefined();
+      expect(o.summary).toBeTruthy();
+      expect(o.title).toBeTruthy();
+    });
+  });
 });

@@ -45,4 +45,42 @@ describe("normalizeTrail", () => {
     const out = normalizeTrails([RAW, { ...RAW, crsIdx: "" }]);
     expect(out).toHaveLength(1);
   });
+
+  // description = 검색·LLM용 산문 원문. summary("지역 · 거리 · 요약")와 별개다.
+  describe("description(설명 원문)", () => {
+    it("crsSummary·crsContents·crsTourInfo를 빈 줄로 이어 보존한다", () => {
+      const o = normalizeTrail({ ...RAW, crsTourInfo: "주변 볼거리: 자갈치시장" })!;
+      expect(o.description).toBe(
+        "부산역에서 시작하여 걷기 좋은 봉래산을 지나는 코스\n\n" +
+          "갈맷길 3-3구간과 중첩되는 구간으로...\n\n" +
+          "주변 볼거리: 자갈치시장",
+      );
+    });
+
+    it("<br>은 개행으로 살린다 — 지우기만 하면 문장이 붙는다", () => {
+      const o = normalizeTrail({
+        ...RAW,
+        crsSummary: "- 송도해수욕장까지 이어지는 코스<br>- 해안경관이 아름다운 구간<br>",
+        crsContents: undefined,
+        crsTourInfo: undefined,
+      })!;
+      expect(o.description).toBe("- 송도해수욕장까지 이어지는 코스\n- 해안경관이 아름다운 구간");
+    });
+
+    it("summary와 달리 잘리지 않는다(원문 전체 보존)", () => {
+      const long = "가".repeat(400);
+      const o = normalizeTrail({ ...RAW, crsContents: long })!;
+      expect(o.description).toContain(long);
+    });
+
+    it("산문이 전부 없으면 undefined(DB null)", () => {
+      const o = normalizeTrail({
+        ...RAW,
+        crsSummary: undefined,
+        crsContents: undefined,
+        crsTourInfo: undefined,
+      })!;
+      expect(o.description).toBeUndefined();
+    });
+  });
 });

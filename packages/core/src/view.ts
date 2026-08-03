@@ -14,6 +14,8 @@ export interface OpportunityRow {
   external_id: string | null;
   title: string;
   summary: string;
+  /** 설명 원문(0015). 소스별 채움률이 달라 null이 정상. */
+  description?: string | null;
   cost_krw: number | null;
   difficulty: number | null;
   dong_name: string | null;
@@ -25,6 +27,11 @@ export interface OpportunityRow {
   source_label: string | null;
   time_start_hour: number | null;
   time_end_hour: number | null;
+  course_start: string | null;
+  course_end: string | null;
+  course_notes: string | null;
+  duration_min: number | null;
+  is_loop: boolean | null;
 }
 
 /**
@@ -54,6 +61,8 @@ export function rowToOpportunity(r: OpportunityRow): Opportunity {
     category: r.category,
     title: decodeHtmlEntities(r.title),
     summary: decodeHtmlEntities(r.summary),
+    // 공공데이터 이중 이스케이프는 설명 원문에도 그대로 온다 — 같은 디코드를 태운다.
+    description: r.description ? decodeHtmlEntities(r.description) : undefined,
     costKrw: r.cost_krw ?? undefined,
     difficulty: r.difficulty ?? undefined,
     location: {
@@ -68,7 +77,32 @@ export function rowToOpportunity(r: OpportunityRow): Opportunity {
     imageUrl: r.image_url ?? undefined,
     deadline: r.deadline ?? undefined,
     sourceLabel: r.source_label ?? undefined,
+    courseStart: r.course_start ?? undefined,
+    courseEnd: r.course_end ?? undefined,
+    // DB엔 줄바꿈 구분 한 덩어리로 저장 — 표시층에서 배열로 되돌린다.
+    courseNotes: r.course_notes ? r.course_notes.split("\n").filter(Boolean) : undefined,
+    durationMin: r.duration_min ?? undefined,
+    isLoop: r.is_loop ?? undefined,
   };
+}
+
+/**
+ * 행정동 이름 → 사용자가 말하는 동네 이름.
+ *
+ * 행정동은 행정 편의로 쪼갠 단위라 "개포1동·개포2동"처럼 번호가 붙는다. 사람은 그냥
+ * "개포동"에 산다고 말한다. 목록·검색은 DB의 dong_display 생성 컬럼(마이그레이션 0014)이
+ * 처리하지만, GPS 역지오코딩은 NAVER가 준 원본 이름("역삼1동")이 그대로 들어오므로
+ * 표시 직전에 같은 규칙을 적용해야 "현재 위치"와 "검색 결과"의 표기가 어긋나지 않는다.
+ *
+ * 규칙은 0014의 SQL과 동일하게 유지할 것:
+ *   1) 숫자 + 선택적 '제'/중점/'가' 제거 : 금호1가동→금호동, 상계3·4동→상계동
+ *   2) 끝의 '본동' → '동'               : 중계본동→중계동
+ * 멱등: normalizeDong(normalizeDong(x)) === normalizeDong(x).
+ */
+export function normalizeDong(dongName: string): string {
+  const stripped = dongName.replace(/제?\d+(·\d+)*(가)?/g, "").replace(/본동$/, "동");
+  // 정규화 결과가 비면(이름이 통째로 숫자 등) 원본을 살린다 — 빈 라벨을 노출하지 않는다.
+  return stripped.trim() === "" ? dongName : stripped;
 }
 
 /**
@@ -176,7 +210,32 @@ export function buildMeta(opp: Opportunity): { label: string; value: string }[] 
     const level = opp.difficulty <= 0.33 ? "낮음" : opp.difficulty <= 0.66 ? "보통" : "높음";
     meta.push({ label: "강도", value: level });
   }
+  // 걷기길: 소요시간·순환여부가 "갈 수 있는 코스인지" 판단의 핵심 정보다.
+  if (opp.durationMin != null) {
+    meta.push({ label: "소요시간", value: durationLabel(opp.durationMin) });
+  }
+  if (opp.isLoop != null) {
+    meta.push({ label: "코스", value: opp.isLoop ? "순환형" : "비순환형" });
+  }
   return meta;
+}
+
+/** 분 → "약 5시간 30분" / "약 40분". 코스 소요시간 표시용. */
+export function durationLabel(min: number): string {
+  if (!Number.isFinite(min) || min <= 0) return "";
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `약 ${m}분`;
+  return m === 0 ? `약 ${h}시간` : `약 ${h}시간 ${m}분`;
+}
+
+/**
+ * 걷기길처럼 반나절 이상 걸리는 활동인지 — "퇴근하고"가 아니라 주말 나들이로 라벨링한다.
+ * 두루누비 수도권 코스는 13~24km·5시간+라 퇴근 후에 갈 수 있는 것처럼 보이면 안 된다.
+ * source 기준으로 판단한다(category "active"엔 앞으로 짧은 소스가 들어올 수 있으므로).
+ */
+export function isWeekendOuting(opp: Opportunity): boolean {
+  return opp.source === "trail" || (opp.durationMin != null && opp.durationMin >= 180);
 }
 
 /** 에너지 성향 한글 라벨 (진단 요약·프로필). */

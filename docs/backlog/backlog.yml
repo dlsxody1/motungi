@@ -475,3 +475,110 @@ backlog:
       트리거와 모순되면 트리거가 이기고, 모순을 야간 노트에 file:line으로 기록하게 함(재발 방지).
       트리거 갱신 일시 2026-07-31T05:33Z, 다음 실행 2026-07-31T12:05Z.
       확인은 내일 아침 docs/nightly/nightly-2026-07-31.md에 등재 이슈 수가 1건 이상인지로.
+
+  # ── 2026-08-03 등재: 성능·서빙(Phase 2) 잔여 + 적재 결함 ──────────────
+  # 배경: docs/perf/baseline.md에 계측 기준선과 Phase 0/1 결과가 있다. 아래는 그 후속.
+  # 이미 dev에 반영된 것(재작업 금지): CI build/lint 게이트, /api/vitals, 번들 분석기,
+  # 0015 description 컬럼 + 어댑터 원문 매핑, 폰트 자체호스팅, /api/opportunities 서버화.
+
+  - id: M-025
+    title: "ingest Edge Function에 API 키 secret 미등록 — cron 적재가 계속 실패 중"
+    priority: high
+    status: todo
+    scope: [supabase/functions/ingest, Supabase 대시보드 secret(사람 작업 가능성)]
+    done_when:
+      - "키 없이 POST /functions/v1/ingest 를 호출했을 때 세 소스가 모두 성공한다(현재는 전부 '…없음' 에러)"
+      - "SEOUL_OPENAPI_KEY·DATA_GO_KR_SERVICE_KEY가 Edge Function secret으로 등록돼 있음을 확인한다"
+      - "등록 후 pg_cron 시각(0007, 매일 21:00 UTC) 다음 실행에서 opportunities.fetched_at이 갱신된다"
+      - "적재 실패를 조용히 넘기지 않도록, 세 소스가 모두 error면 함수가 5xx로 응답하거나 최소한 로그로 남긴다"
+    notes: >
+      증거(2026-08-03 실측): 키 없이 호출하면 응답이
+      {"ok":true,"total":0,"results":[{"source":"seoul_culture","error":"SEOUL_OPENAPI_KEY 없음"},
+      {"source":"culture_info","error":"DATA_GO_KR_SERVICE_KEY 없음"},{"source":"trail","error":"…없음"}]}.
+      body로 키를 넘기면 553행이 정상 적재된다(seoul 300 / culture_info 234 / trail 19).
+      즉 코드는 멀쩡하고 **secret만 비어 있다**. cron(0007)은 body를 못 넘기므로 env secret이 유일한 경로다.
+      더 나쁜 점: 전 소스 실패인데도 응답이 `ok: true`라 실패가 성공처럼 보인다 —
+      trail 30행 중 11행의 fetched_at이 2026-07-13~23에 멈춰 있는 게 그 흔적으로 추정된다.
+      done_when 4번(실패 신호)을 함께 고쳐야 재발을 알아챈다.
+
+  - id: M-026
+    title: "카탈로그 응답 캐시가 실제로는 안 먹는다 — unstable_cache로 DB 왕복 제거"
+    priority: high
+    status: todo
+    scope: [apps/web/src/app/api/opportunities/route.ts]
+    done_when:
+      - "같은 좌표로 연속 호출 시 두 번째부터 DB를 조회하지 않는다(fetchOpportunities 호출 수로 검증)"
+      - "저밀도 좌표(도봉구)의 반경 사다리 2회 조회가 캐시 적중 시 0회가 된다"
+      - "적재 주기(하루 1회)에 맞는 revalidate를 두고, 근거를 주석에 남긴다"
+      - "실패(status:error) 응답은 캐시되지 않는다 — 기존 테스트가 이미 이 계약을 검증하므로 깨지면 안 된다"
+      - "route.test.ts 11케이스가 그대로 통과한다"
+    notes: >
+      현 상태: /api/opportunities가 Cache-Control(s-maxage=21600)만 내보낸다. 이건 **CDN용**이라
+      Vercel에선 먹지만 로컬 next start에선 아무도 안 받아준다 — 실측 같은 좌표 3회 연속 호출에
+      ttfb 363/243/232ms로 매번 DB를 갔다(x-nextjs-cache 헤더 없음).
+      좌표는 이미 0.01도 그리드로 반올림해 캐시 키 폭발을 막아뒀다(미세하게 다른 두 좌표가
+      동일 결과 83건/10km 반환 확인). 남은 건 서버측 메모이제이션이다.
+      착수하다 만 흔적: route.ts에 unstable_cache import를 넣었다가 되돌렸다(현재 트리는 깨끗함).
+      주의 — unstable_cache 콜백은 supabase 클라이언트를 클로저로 잡으면 안 되고,
+      캐시 키에 today와 스냅된 좌표·반경이 들어가야 한다.
+
+  - id: M-027
+    title: "loading.tsx / error.tsx 경계가 0개 — 스트리밍·실패 UX 부재"
+    priority: medium
+    status: todo
+    scope: [apps/web/src/app]
+    done_when:
+      - "최소 /explore·/report에 loading.tsx가 있어 카탈로그 대기 중 빈 화면 대신 스켈레톤이 보인다"
+      - "app/error.tsx(또는 global-error.tsx)가 있어 렌더 예외 시 흰 화면이 아니라 복구 UI가 뜬다"
+      - "not-found.tsx로 잘못된 경로 진입 시 앱 셸을 유지한다"
+      - "스켈레톤이 실제 카드 레이아웃과 높이가 맞아 CLS를 만들지 않는다(react-testing으로 렌더 검증)"
+    notes: >
+      실측: app/ 전체에 loading.tsx·error.tsx·not-found.tsx가 하나도 없다. Suspense 경계는
+      app/opportunity/page.tsx:42의 fallback={null} 하나뿐인데 그건 useSearchParams 요건 때문이지
+      스트리밍용이 아니다. 카탈로그가 서버로 옮겨졌으므로(M-026과 함께) 지금이 경계를 넣기 좋은 시점.
+      UI 작업이므로 impeccable 스킬 필수. 스켈레톤 높이는 explore-card/explore-row의
+      estimateSize(모바일 108 / 데스크탑 360)와 맞출 것.
+
+  - id: M-028
+    title: "culture_info 154행 산문 백필 — detail2 배치(요청제한 대응 필수)"
+    priority: medium
+    status: todo
+    scope: [supabase/functions/ingest, scripts/]
+    done_when:
+      - "culture_info 행의 description 보유율이 0%에서 유의미하게 오른다(목표 50%+, 실제 채움률에 따라 조정)"
+      - "호출 간격·재시도·이어받기가 있어 요청제한(429 성격)에 걸려도 다음 실행이 이어서 진행한다"
+      - "일일 cron(0007)의 실행 시간을 크게 늘리지 않는다 — 별도 스크립트나 분할 실행을 고려"
+      - "부분 실패가 조용히 넘어가지 않고 몇 건 성공/실패했는지 남는다"
+    notes: >
+      실측(2026-08-03): period2 목록 응답은 12필드 전부 메타데이터라 산문이 **아예 없다**.
+      산문(contents1)은 detail2 엔드포인트에만 있고 seq당 1회 호출이 필요하다
+      (총 1097건 → 목록 110회 + 상세 1097회 ≈ 1200회).
+      numOfRows를 100으로 올려도 서버가 10건 고정이라 호출 수를 못 줄인다.
+      50회를 4초에 몰아쳤더니 LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR가 떴다 —
+      그래서 "그냥 한 번에 받기"는 불가하고 배치 설계가 필요하다.
+      이게 되면 코퍼스가 12.1% → 약 50%로 올라 검색형 RAG(M-029)의 전제가 살아난다.
+      안 되면 M-029는 설명 생성만으로 진행한다.
+
+  - id: M-029
+    title: "LLM 계층 — 추천 근거 생성(주력) + 자연어 의도 파싱(보조)"
+    priority: medium
+    status: todo
+    scope: [apps/web/src/app/api, packages/core/src/view.ts, packages/core/src/scoring.ts(무변경 유지)]
+    done_when:
+      - "폴백을 **먼저** 세운다 — LLM 응답을 429/500으로 강제 목킹했을 때 whyReasons 문자열로 떨어지고 UI가 정상 렌더되는 테스트가 있다"
+      - "근거 생성 입력은 raw row가 아니라 scoring의 breakdown이다 — 점수를 환각할 수 없는 구조임을 테스트로 고정한다"
+      - "같은 카테고리 20행의 근거 문자열 유니크 비율이 개선된다(현재는 4분기 if/else라 사실상 1종)"
+      - "GEMINI_API_KEY는 서버 전용 — NEXT_PUBLIC_/EXPO_PUBLIC_ 접두어가 붙지 않는다(security-policy)"
+      - "규칙 엔진 결과를 즉시 렌더하고 LLM 산문은 나중에 채운다 — 페이지가 모델 응답에 블로킹되지 않는다"
+      - "요청당 토큰 수와 폴백률을 남긴다"
+    notes: >
+      방향 결정 근거(2026-08-03 실측): 코퍼스가 445행 중 54행(12.1%)뿐이라 **검색형 RAG를 주력으로
+      두지 않는다**. 391행이 색인에서 빠지면 결과가 부실할 때 데이터 부재인지 알고리즘 문제인지
+      구분이 안 된다. 반면 근거 생성은 scoring.ts의 breakdown(거리·비용·시간·난이도)을 입력으로
+      쓰므로 **445행 전부에 동작**한다 — description 유무와 무관.
+      대체 대상: packages/core/src/view.ts:284-332 whyReasons()는 4분기 if/else 고정 문자열이라
+      같은 카테고리·같은 비용 버킷이면 바이트 단위로 동일한 문구가 나온다.
+      **whyReasons는 지우지 말고 폴백으로 유지** — 이미 테스트됐고 "절대 빈 배열을 반환하지 않는다"를
+      보장한다. 모델은 Gemini Flash 무료 티어(비용 0, 단 rate limit 존재) → 429를 예외가 아니라
+      정상 경로로 취급해 폴백을 먼저 구현할 것. pgvector는 이 규모에서 과투자라 쓰지 않는다.
+      상세 설계는 ~/.claude/plans/giggly-zooming-locket.md 참조.

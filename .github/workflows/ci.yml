@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
 
 jobs:
@@ -17,4 +17,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+      - run: pnpm lint
       - run: pnpm test
+      # build는 마지막 — 앞 단계보다 느리고, 여기서만 잡히는 결함(RSC 경계·번들 해석)이 있다.
+      # 이 줄이 없던 동안 프로덕션 빌드를 깨뜨린 커밋이 CI green으로 통과했다.
+      - run: pnpm build

@@ -75,6 +75,49 @@ async function fetchDataGoKrXml(url: string): Promise<Record<string, string>[]> 
   return parseXmlItems(xml);
 }
 
+/**
+ * 걷기길 시점 좌표 — GPX 파일 첫 trkpt.
+ *
+ * 두루누비 courseList는 좌표를 주지 않고 GPX 파일 경로(gpxpath)만 준다. 좌표가 없으면
+ * 거리 스코어가 중립(0.5)로 떨어져 "동네" 큐레이션에서 사실상 빠지므로 적재 때 한 번 채운다.
+ * 실패(네트워크·형식)는 null로 삼키고 넘어간다 — 좌표 하나 때문에 적재 전체를 막지 않는다.
+ */
+async function fetchTrailStartCoord(
+  gpxUrl?: string | null,
+): Promise<{ lat: number; lng: number } | null> {
+  if (!gpxUrl) return null;
+  try {
+    const res = await fetch(gpxUrl, { redirect: "follow" });
+    if (!res.ok) return null;
+    const xml = await res.text();
+    const m = xml.match(/<trkpt\b[^>]*>/);
+    if (!m) return null;
+    const lat = Number(m[0].match(/\blat="([^"]+)"/)?.[1]);
+    const lng = Number(m[0].match(/\blon="([^"]+)"/)?.[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
+  } catch {
+    return null;
+  }
+}
+
+/** GPX는 수백 KB라 동시성을 제한한다(수도권 19건 기준 3라운드). */
+const TRAIL_GPX_CONCURRENCY = 8;
+
+async function enrichTrailCoords(rows: OppRow[]): Promise<OppRow[]> {
+  for (let i = 0; i < rows.length; i += TRAIL_GPX_CONCURRENCY) {
+    const chunk = rows.slice(i, i + TRAIL_GPX_CONCURRENCY);
+    const coords = await Promise.all(chunk.map((r) => fetchTrailStartCoord(r.gpx_url)));
+    coords.forEach((c, j) => {
+      if (c) {
+        chunk[j]!.lat = c.lat;
+        chunk[j]!.lng = c.lng;
+      }
+    });
+  }
+  return rows;
+}
+
 /** OppRow[] → opportunities upsert. (source, external_id) 충돌 시 갱신. */
 async function upsertRows(rows: OppRow[]): Promise<number> {
   if (!rows.length) return 0;
@@ -137,7 +180,11 @@ Deno.serve(async (req) => {
       if (!dataGoKrKey) throw new Error("DATA_GO_KR_SERVICE_KEY 없음");
       const url = `https://apis.data.go.kr/B551011/Durunubi/courseList?serviceKey=${enc}&numOfRows=${LIMIT}&pageNo=1&MobileOS=ETC&MobileApp=motungi&_type=json`;
       const raw = await fetchDataGoKrJson(url);
-      return raw.map(mapTrail).filter((r): r is OppRow => r != null && inMetro(r.dong_name));
+      const rows = raw
+        .map(mapTrail)
+        .filter((r): r is OppRow => r != null && inMetro(r.dong_name));
+      // 좌표는 GPX 안에만 있다 — 수도권으로 좁힌 뒤에 채운다(전국 152건 fetch 방지).
+      return await enrichTrailCoords(rows);
     }),
     // ⚠️ sports_facility(mapSportsFacility)·seoul_jobs(mapSeoulJob)는 의도적으로 미배선.
     //    매퍼는 준비됐으나 Raw* 필드명이 추정값(발급 응답 미확정)이라 실호출 시 전량 null 위험.

@@ -12,8 +12,9 @@
  */
 import Link from "next/link";
 import type { MockOpportunity } from "@/data/opportunities";
-import { HeroCarousel } from "./hero-carousel";
-import { ArrowMiniIcon, CheckMiniIcon, SearchMiniIcon, SparkIcon } from "./landing-icons";
+import { HeroPosterStage } from "./hero-poster-stage";
+import { ArrowMiniIcon, CheckMiniIcon, SparkIcon } from "./landing-icons";
+import { LandingLocationLink } from "./landing-location-link";
 import { LandingPhoto } from "./landing-photo";
 import { WebContainer } from "./web-shell";
 
@@ -24,18 +25,27 @@ const STEPS = [
   { n: "03", verb: "동네 리포트", desc: "오늘의 원픽과 활동 목록. 고민 없이 바로 나가면 돼요." },
 ];
 
-/** 카테고리 미리보기 — 사진 썸네일 + 예시. "이 안에 뭐가 있는지"를 장면으로 보인다. */
+/** 갈래 미리보기 — 실제 적재된 활동에서 뽑은 예시만 쓴다.
+ *
+ *  이 목록은 한 번 크게 틀렸었다: "경의선숲길·새벽 러닝 크루·원데이 도예·플리마켓 셀러"는
+ *  DB에 0건인, 지어낸 예시였다. 없는 콘텐츠를 광고하면 첫 검색에서 바로 들통난다.
+ *  아래 예시는 전부 opportunities 테이블에 실제로 있는 제목에서 가져왔다.
+ *  갈래를 늘리려면 먼저 적재부터 하고, 그 다음 여기에 추가한다. */
 const CATEGORIES = [
-  { label: "문화·공연", ex: "한강 야간 재즈, 동네 소극장", src: "/landing/hangang-jazz.svg", tone: "rose" as const },
-  { label: "운동·산책", ex: "경의선숲길, 새벽 러닝 크루", src: "/landing/gyeongui-forest.svg", tone: "mint" as const },
-  { label: "먹거리·마켓", ex: "망원시장 야시장, 플리마켓", src: "/landing/mangwon-market.svg", tone: "warm" as const },
-  { label: "클래스·배움", ex: "원데이 도예, 동네 북클럽", src: "/landing/oneday-pottery.svg", tone: "purple" as const },
-  { label: "퇴근후 부업", ex: "주말 플리마켓 셀러", src: "/landing/flea-market.svg", tone: "warm" as const },
+  { label: "공연·연주", ex: "정기연주회, 실내악, 오페라 워크숍" },
+  { label: "전시·예술", ex: "미술관 기획전, 아트센터 전시" },
+  { label: "연극·뮤지컬", ex: "대학로 연극, 음악극" },
+  { label: "강좌·워크숍", ex: "예술 교육 프로그램, 시민 아카데미" },
+  { label: "걷기 코스", ex: "서해랑길, DMZ 평화의 길" },
+  { label: "축제·영화", ex: "동네 축제, 시네마 상영회" },
 ];
 
 export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }) {
-  // 캐러셀은 이미지 있는 실데이터가 충분할 때만(로컬/빈 DB에서는 기존 목업 폴백).
-  const showCarousel = heroPicks.length >= 4;
+  // 벤토 주인공 셀에 세울 실제 원픽. 없으면(로컬/빈 DB) 톤 그라데이션 폴백으로 내려간다.
+  const featured = heroPicks.find((o) => o.imageUrl);
+  // 가로 스크롤 열에 세울 실제 활동들. 히어로 링과 겹쳐도 무방 —
+  // 링은 장식(aria-hidden)이고 여기가 실제로 클릭 가능한 목록이다.
+  const realPicks = heroPicks.filter((o) => o.imageUrl);
   return (
     <>
       {/* ── 히어로 ── */}
@@ -54,7 +64,8 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
           }}
         />
 
-        <WebContainer className="relative flex items-center justify-between gap-16 py-[76px] pb-[88px]">
+        {/* 히어로는 첫 화면 안에 들어와야 한다 — CTA가 스크롤 없이 보이도록 상하 여백을 줄였다. */}
+        <WebContainer className="relative flex items-center justify-between gap-16 py-14">
           {/* 좌측 카피 */}
           <div className="max-w-[620px] flex-1">
             <h1 className="text-[58px] font-extrabold leading-[1.12] tracking-[-0.035em] text-white text-balance">
@@ -71,20 +82,7 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
               <label htmlFor="loc-search" className="mb-1.5 block text-[13px] font-semibold text-white/85">
                 어느 동네에서 찾을까요?
               </label>
-              <Link
-                href="/location"
-                id="loc-search"
-                className="group flex items-center gap-3 rounded-2xl bg-surface p-[9px] pl-4 shadow-[0_18px_40px_rgba(40,20,10,0.22)] transition-shadow hover:shadow-[0_22px_48px_rgba(40,20,10,0.28)]"
-              >
-                <SearchMiniIcon size={20} className="shrink-0 text-primary" />
-                <span className="flex-1 text-[16px] font-semibold text-ink">
-                  망원동 <span className="text-[14px] font-medium text-muted">· 서울 마포구</span>
-                </span>
-                <span className="flex h-[52px] shrink-0 items-center gap-1.5 rounded-[11px] bg-primary px-[26px] text-[16px] font-bold text-white transition-[background-color,transform] group-hover:bg-primary-deep group-active:scale-[0.98]">
-                  찾기
-                  <ArrowMiniIcon size={18} />
-                </span>
-              </Link>
+              <LandingLocationLink />
             </div>
             <p className="mt-4 flex items-center gap-1.5 text-[14px] text-white/85">
               <CheckMiniIcon size={16} />
@@ -92,35 +90,10 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
             </p>
           </div>
 
-          {/* 우측 — 실 활동 자동 전환 캐러셀(썸네일 있는 실데이터). 없으면 기존 사진 목업 폴백 */}
-          <div className="relative hidden w-[440px] shrink-0 lg:block">
-            {showCarousel ? (
-              <HeroCarousel items={heroPicks} />
-            ) : (
-              <LandingPhoto
-                src="/landing/hangang-jazz.svg"
-                alt="한강 야간 재즈 공연이 열리는 저녁 강변 풍경"
-                tone="dusk"
-                priority
-                sizes="440px"
-                className="aspect-[3/4] rounded-[26px] shadow-[0_34px_70px_rgba(30,12,20,0.4)] ring-1 ring-white/10"
-                scrim
-              >
-                <span className="absolute left-5 top-5 inline-flex items-center rounded-pill bg-black/35 px-3 py-1.5 text-[12px] font-bold text-white backdrop-blur-sm">
-                  오늘의 원픽 · 동네 문화
-                </span>
-                <div className="absolute inset-x-5 bottom-5">
-                  <h3 className="break-keep text-[22px] font-extrabold leading-[1.3] tracking-[-0.01em] text-white drop-shadow-sm">
-                    퇴근길 20분, 망원 한강 야간 재즈 소품 공연
-                  </h3>
-                  <p className="mt-1.5 flex items-center gap-1.5 text-[13px] font-medium text-white/85">
-                    <span>저녁 7시 · 회사에서 도보 15분</span>
-                    <span className="text-white/40">·</span>
-                    <span className="font-bold text-white">무료</span>
-                  </p>
-                </div>
-              </LandingPhoto>
-            )}
+          {/* 우측 — 실 활동 포스터가 도는 3D 링(WebGL). 포스터 부족·WebGL 실패 시
+              내부에서 기존 캐러셀로 자동 폴백한다. 스크롤하면 뒤로 물러난다(hero-recede). */}
+          <div className="hero-recede relative hidden w-[460px] shrink-0 lg:block">
+            <HeroPosterStage items={heroPicks} />
           </div>
         </WebContainer>
       </section>
@@ -139,14 +112,21 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
             </p>
           </div>
 
-          {/* 벤토: 큰 사진 셀(주인공, 2행) + 보조 두 셀. 아이콘 타일 제거. */}
-          <div className="reveal mt-10 grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
-            {/* 큰 셀 — 실제 장소 사진 위에 원픽 정보. 카드 안 카드 제거. */}
+          {/* 벤토: 큰 사진 셀(주인공, 2행) + 보조 두 셀. 아이콘 타일 제거.
+              stage-3d: 자식 카드들이 공유하는 원근 무대 — 호버하면 앞으로 일어선다. */}
+          <div className="stage-3d reveal-depth mt-10 grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
+            {/* 큰 셀 — 실제 활동 포스터 위에 원픽 정보. 카드 안 카드 제거.
+                featured가 있으면 진짜 데이터, 없으면 톤 그라데이션 폴백. */}
             <LandingPhoto
-              src="/landing/hangang-jazz.svg"
-              alt="망원 한강 야간 재즈 공연 현장"
+              src={featured?.imageUrl}
+              alt={featured ? `오늘의 원픽 — ${featured.title}` : "오늘의 원픽 활동"}
               tone="dusk"
               sizes="(min-width: 1024px) 58vw, 100vw"
+              // 이 셀이 LCP 후보다(첫 화면 바로 아래 큰 이미지) → priority로 미리 받는다.
+              priority
+              // 포스터 위에 카피를 얹으므로 살짝만 눌러 대비를 확보한다. 블러는 걸지 않는다 —
+              // 포스터는 작품이라 흐리면 고장난 것처럼 보인다(가독성은 scrim이 담당).
+              imgClassName="opacity-80"
               className="wcard-hover flex min-h-[420px] flex-col justify-end rounded-[24px] p-8 lg:row-span-2"
               scrim
             >
@@ -163,19 +143,11 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
                 <p className="mt-3 text-[15px] leading-[1.6] text-white/90">
                   관심사·동네·시간에 규칙 기반으로 맞춘 활동 1~3개. 왜 이걸 골랐는지 근거까지 함께 보여드려요.
                 </p>
-                {/* 결과물 힌트 — 사진 위 인라인 메타(카드 아님) */}
-                <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] font-semibold text-white/90">
-                  <span>퇴근길 20분 · 망원 한강 재즈</span>
-                  <span className="text-white/40">|</span>
-                  <span>도보 15분</span>
-                  <span className="text-white/40">|</span>
-                  <span className="text-white">무료</span>
-                </div>
               </div>
             </LandingPhoto>
 
             {/* 보조 셀 1 — 마찰 제로. 아이콘 타일 대신 큰 숫자 + 텍스트. */}
-            <article className="wcard-hover flex flex-col justify-between rounded-[22px] border border-line-alt bg-bg p-7">
+            <article className="tilt-3d wcard-hover flex flex-col justify-between rounded-[22px] border border-line-alt bg-bg p-7">
               <p className="text-[15px] font-bold text-primary">마찰 제로</p>
               <div className="mt-6">
                 <p className="text-[40px] font-extrabold leading-none tracking-[-0.02em] text-ink">
@@ -187,19 +159,16 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
               </div>
             </article>
 
-            {/* 보조 셀 2 — 하이퍼로컬. 사진 썸네일 + 텍스트. */}
-            <article className="wcard-hover flex items-center gap-4 rounded-[22px] border border-line-alt bg-mint-tint/50 p-5">
-              <LandingPhoto
-                src="/landing/gyeongui-forest.svg"
-                alt="경의선숲길 산책로"
-                tone="mint"
-                sizes="112px"
-                className="size-[112px] shrink-0 rounded-[16px]"
-              />
-              <div>
-                <p className="text-[17px] font-bold leading-tight text-ink">하이퍼로컬</p>
-                <p className="mt-1.5 text-[13px] leading-[1.55] text-label">
-                  집과 회사를 기준으로, 퇴근길·주말에 걸어서 닿는 진짜 동네 활동만.
+            {/* 보조 셀 2 — 하이퍼로컬. 손으로 그린 SVG 대신 숫자로 규모를 말한다.
+                실적재된 활동 수는 heroPicks로 증명되지 않으므로 숫자를 지어내지 않는다. */}
+            <article className="tilt-3d wcard-hover flex flex-col justify-between rounded-[22px] border border-line-alt bg-mint-tint/50 p-7">
+              <p className="text-[15px] font-bold text-mint">하이퍼로컬</p>
+              <div className="mt-6">
+                <p className="text-[40px] font-extrabold leading-none tracking-[-0.02em] text-ink">
+                  걸어서<span className="ml-1 text-[22px] font-bold text-muted">닿는 거리</span>
+                </p>
+                <p className="mt-2.5 text-[14px] leading-[1.6] text-label">
+                  집과 회사 두 곳을 기준으로 거리를 재요. 퇴근길에 들를 수 있는 것만 남겨드려요.
                 </p>
               </div>
             </article>
@@ -237,6 +206,55 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
         </WebContainer>
       </section>
 
+      {/* ── 지금 열리는 실제 활동 — 주장이 아니라 증거.
+             다른 섹션과 레이아웃 계열이 겹치지 않게 가로 스크롤 포스터 열로 짠다.
+             (앞: 사진 벤토 / 3스텝 행 / 여기: 가로 스크롤 / 뒤: 썸네일 그리드) ── */}
+      {realPicks.length >= 4 && (
+        <section className="overflow-hidden bg-ink-dark py-[76px]">
+          <WebContainer>
+            <div className="reveal flex flex-wrap items-end justify-between gap-4">
+              <h2 className="max-w-[34rem] text-[26px] font-bold leading-tight tracking-[-0.02em] text-white text-balance">
+                지금 이 순간에도, 동네에서 열리고 있어요.
+              </h2>
+              <Link
+                href="/explore"
+                className="flex items-center gap-1.5 rounded-[13px] border border-white/25 px-5 py-2.5 text-[14px] font-bold text-white transition-colors hover:bg-white/10"
+              >
+                전체 보기
+                <ArrowMiniIcon size={16} />
+              </Link>
+            </div>
+          </WebContainer>
+
+          {/* 컨테이너 밖으로 흘러나가는 가로 스크롤 — 목록이 끝나지 않는다는 느낌을 준다.
+              네이티브 overflow 스크롤이라 스크롤 하이재킹 없음(키보드·터치 그대로). */}
+          <ul className="scroll-row reveal-slide mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-[max(1.5rem,calc((100vw-1280px)/2))] pb-2">
+            {realPicks.map((o) => (
+              <li key={o.id} className="w-[210px] shrink-0 snap-start">
+                <Link href={`/opportunity?id=${o.id}`} className="group block">
+                  {/* 포스터는 잘리면 안 되는 '작품'이다 — object-contain으로 전체를 보여주고,
+                      남는 여백은 뒤에 깔린 어두운 톤이 받아준다(비율이 제각각이라 크롭하면 제목이 잘림). */}
+                  <LandingPhoto
+                    src={o.imageUrl}
+                    alt={o.title}
+                    tone="dusk"
+                    sizes="210px"
+                    fit="contain"
+                    className="aspect-[3/4] rounded-[16px] bg-black/25 ring-1 ring-white/12 transition-transform duration-300 ease-out group-hover:-translate-y-1.5 group-focus-visible:-translate-y-1.5"
+                  />
+                  <p className="mt-3 line-clamp-2 break-keep text-[14px] font-bold leading-[1.4] text-white">
+                    {o.title}
+                  </p>
+                  <p className="mt-1 text-[13px] text-white/65">
+                    {o.location?.dongName ?? "서울"}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* ── 카테고리 미리보기(사진 썸네일) + 마무리 CTA ── */}
       <section className="bg-surface py-[76px]">
         <WebContainer>
@@ -245,28 +263,20 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
               동네엔 생각보다 많은 게 있어요.
             </h2>
             <p className="mt-2 text-[16px] text-label">
-              다섯 갈래에서 오늘의 컨디션에 맞는 걸 골라드려요.
+              오늘의 컨디션에 맞는 갈래에서 골라드려요.
             </p>
           </div>
 
-          {/* 사진 썸네일 리스트 — 컬러 점 대신 실제 장면. 맥락 있는 콘텐츠. */}
-          <ul className="reveal mt-8 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          {/* 갈래 리스트 — 라벨 자체를 갈래 색으로 칠해 구분한다.
+              (색 스트로크 테두리·컬러 점 같은 장식 대신 글자에 색을 준다.) */}
+          <ul className="reveal-depth stage-3d mt-8 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
             {CATEGORIES.map((c) => (
               <li
                 key={c.label}
-                className="wcard-hover flex items-center gap-4 overflow-hidden rounded-[16px] border border-line-alt bg-bg p-2.5 pr-4"
+                className="wcard-hover overflow-hidden rounded-[16px] border border-line-alt bg-bg p-5"
               >
-                <LandingPhoto
-                  src={c.src}
-                  alt={`${c.label} 예시 — ${c.ex}`}
-                  tone={c.tone}
-                  sizes="84px"
-                  className="size-[84px] shrink-0 rounded-[12px]"
-                />
-                <span className="min-w-0">
-                  <span className="block text-[15px] font-bold text-ink">{c.label}</span>
-                  <span className="mt-0.5 block truncate text-[13px] text-label">{c.ex}</span>
-                </span>
+                <span className="block text-[16px] font-bold text-ink">{c.label}</span>
+                <span className="mt-1 block text-[13.5px] leading-[1.5] text-label">{c.ex}</span>
               </li>
             ))}
           </ul>

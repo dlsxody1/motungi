@@ -43,6 +43,8 @@ export interface Location {
   admCode?: string;
   /** 표시용 동 이름 e.g. "망원동" */
   dongName?: string;
+  /** 시·구 표기 e.g. "마포구" / "서울 마포구". 매칭엔 normalizeGu로 정규화해 쓸 것. */
+  region?: string;
   point?: GeoPoint;
 }
 
@@ -71,6 +73,12 @@ export interface Opportunity {
   title: string;
   /** 근거/요약 한 줄 */
   summary: string;
+  /**
+   * 활동 설명 원문(산문). summary가 "구 · 장소 · 장르" 조인 문자열인 것과 달리 실제 문장이다.
+   * 자연어 검색·LLM 근거 생성의 입력. **소스별 채움률이 크게 달라 없는 게 정상**이다
+   * (실측: trail 100%, seoul_culture 약 20%, culture_info 0%). 마이그레이션 0015.
+   */
+  description?: string;
   /** 참가/이용 비용(원). 0 = 무료. side_job이면 반대로 벌이(income) 성격 — 표시 시 costHeading으로 "예상 수입" 구분. */
   costKrw?: number;
   /** 시작 난이도 0(쉬움)~1(어려움) */
@@ -86,5 +94,14 @@ export interface Opportunity {
   deadline?: string; // ISO date
   /** 데이터 출처·갱신일 (신뢰 표기, §8) */
   sourceLabel?: string;
+  /** 걷기길 코스 안내(trail 전용). 두루누비 travelerinfo 파싱 결과. */
+  courseStart?: string;
+  courseEnd?: string;
+  /** 시점/종점 형식이 아닌 주의사항(DMZ 코스 등). courseStart와 배타적. */
+  courseNotes?: string[];
+  /** 총 소요시간(분). */
+  durationMin?: number;
+  /** 순환형이면 true — 비순환형은 종점에서 돌아와야 한다. */
+  isLoop?: boolean;
   fetchedAt?: string; // ISO datetime
 }

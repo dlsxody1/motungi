@@ -5,7 +5,7 @@
  * 실제 응답(2026-07)으로 필드 확정. 고유 ID 필드가 없어 제목+시작일+장소로 external_id 생성.
  */
 import type { Opportunity } from "../types";
-import { hashKey, parseFeeKrw, parseHour, parsePoint, toIsoDate } from "./util";
+import { hashKey, joinDescription, parseFeeKrw, parseHour, parsePoint, toIsoDate } from "./util";
 
 /** culturalEventInfo row (실제 필드명). */
 export interface RawSeoulCulture {
@@ -37,6 +37,12 @@ export interface RawSeoulCulture {
   IS_FREE?: string;
   /** 공연시간 "수요일 11:00" */
   PRO_TIME?: string;
+  /** 프로그램 소개(산문). 실측 채움률 14% */
+  PROGRAM?: string;
+  /** 출연진(산문). 실측 채움률 11% */
+  PLAYER?: string;
+  /** 기타 안내(산문). 실측 채움률 3% */
+  ETC_DESC?: string;
 }
 
 /** 무료 판정: IS_FREE="무료"거나 요금 파싱 결과가 0. */
@@ -59,6 +65,9 @@ export function normalizeSeoulCulture(raw: RawSeoulCulture): Opportunity | null 
     category: "culture",
     title,
     summary: buildSummary(raw),
+    // PROGRAM·PLAYER·ETC_DESC는 응답에 오는데 여태 매핑되지 않았다.
+    // 채움률은 낮지만(14%/11%/3%) 있는 행은 유일하게 "무슨 공연인지"를 담는다.
+    description: joinDescription([raw.PROGRAM, raw.PLAYER, raw.ETC_DESC]),
     costKrw: resolveCost(raw),
     location: { dongName: raw.GUNAME, point },
     timeWindow: startHour != null ? { startHour, endHour: Math.min(startHour + 2, 24) } : undefined,

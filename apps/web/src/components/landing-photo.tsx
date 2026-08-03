@@ -29,6 +29,10 @@ export function LandingPhoto({
   className = "",
   imgClassName = "",
   sizes = "(min-width: 1024px) 40vw, 100vw",
+  /** 기본은 크롭(cover). 포스터처럼 잘리면 안 되는 이미지는 "contain"을 준다.
+   *  Tailwind는 object-cover를 object-contain보다 뒤에 출력하므로 imgClassName으로는
+   *  덮을 수 없다(동일 특이도 → 나중 규칙 승리). 그래서 클래스를 합치지 않고 하나만 고른다. */
+  fit = "cover",
   priority = false,
   /** 사진 위에 텍스트를 얹을 때 하단을 어둡게 하는 그라데이션 스크림 */
   scrim = false,
@@ -42,6 +46,7 @@ export function LandingPhoto({
   className?: string;
   imgClassName?: string;
   sizes?: string;
+  fit?: "cover" | "contain";
   priority?: boolean;
   scrim?: boolean;
   style?: CSSProperties;
@@ -59,7 +64,7 @@ export function LandingPhoto({
           fill
           sizes={sizes}
           priority={priority}
-          className={`object-cover ${imgClassName}`}
+          className={`${fit === "contain" ? "object-contain" : "object-cover"} ${imgClassName}`}
         />
       )}
       {/* 사진 위 텍스트 가독성 스크림 — 사진이 있을 때만 의미 있으나, 폴백에서도 깊이감을 준다 */}

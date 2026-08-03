@@ -3,7 +3,8 @@
 import type { OpportunityCategory } from "@motungi/core";
 import { nearestAnchorKm, normalizeGu, scoreAll } from "@motungi/core";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useVirtualizer, useWindowVirtualizer } from "@tanstack/react-virtual";
 import { BottomNav } from "@/components/bottom-nav";
 import {
   BookmarkIcon,
@@ -16,6 +17,8 @@ import { NeighborhoodMenu } from "@/components/neighborhood-menu";
 import { Thumbnail } from "@/components/thumbnail";
 import { Chip, MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
+import { ExploreCard } from "@/components/explore-card";
+import { ExploreRow } from "@/components/explore-row";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -47,6 +50,8 @@ export default function ExplorePage() {
 
   const [filter, setFilter] = useState("전체");
   const [query, setQuery] = useState("");
+  // 필터링은 디바운스된 값으로 — 캐럿은 query로 즉시 반응하되 목록 재계산만 미룬다.
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [easyOnly, setEasyOnly] = useState(false);
   const [region, setRegion] = useState<string | null>(null);
   // 정렬: 추천순(진단 필요) · 거리순(앵커 필요) · 마감임박순(기본).
@@ -80,9 +85,15 @@ export default function ExplorePage() {
     return scored;
   }, [scored, sort, hasAnchor, anchors]);
 
+  // 한글 입력 중(IME 조합)에도 매 자모마다 필터가 돌지 않도록 150ms 미룬다.
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedQuery(query), 150);
+    return () => window.clearTimeout(t);
+  }, [query]);
+
   const list = useMemo(() => {
     const cat = FILTERS.find((f) => f.label === filter)?.category ?? null;
-    const q = query.trim();
+    const q = debouncedQuery.trim();
     return source.filter((o) => {
       if (cat && o.category !== cat) return false;
       if (region && normalizeGu(o.location?.dongName) !== region) return false;
@@ -90,16 +101,7 @@ export default function ExplorePage() {
       if (easyOnly && !(o.difficulty != null && o.difficulty <= 0.33)) return false;
       return true;
     });
-  }, [filter, region, query, source, easyOnly]);
-
-  // 점진 렌더: 초기 STEP개만, "더보기"로 +STEP. 필터/검색이 바뀌면 처음부터.
-  const STEP = 30;
-  const [visibleCount, setVisibleCount] = useState(STEP);
-  useEffect(() => {
-    setVisibleCount(STEP);
-  }, [filter, region, query, easyOnly, sort]);
-  const visible = useMemo(() => list.slice(0, visibleCount), [list, visibleCount]);
-  const hasMore = visibleCount < list.length;
+  }, [filter, region, debouncedQuery, source, easyOnly]);
 
   // 활성 필터 칩(실제 상태 파생). 선택 없으면 미표시. 전부 해제 가능(죽은 칩 없음).
   const activeChips: { key: string; label: string; clear: () => void }[] = [];
@@ -126,13 +128,65 @@ export default function ExplorePage() {
       const gu = normalizeGu(o.location?.dongName);
       if (gu) counts.set(gu, (counts.get(gu) ?? 0) + 1);
     }
+    // 상위 8개 제한은 300건 무필터 시절의 우회책이었다. 이제 목록이 앵커 반경이라
+    // 구 종류가 애초에 적고, 자르면 오히려 선택 못 하는 구가 생긴다.
     return [...counts.entries()]
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
       .map(([label, count]) => ({ label, count }));
   }, [source]);
 
-  const openDetail = (id: string) => router.push(`/opportunity?id=${id}`);
+  // memo된 카드가 실제로 걸리려면 콜백이 렌더마다 새로 만들어지면 안 된다.
+  const openDetail = useCallback((id: string) => router.push(`/opportunity?id=${id}`), [router]);
+
+  // ── 가상화 ──
+  // 모바일은 스크롤 컨테이너가 window가 아니라 아래 div, 데스크톱은 페이지 스크롤이다.
+  const mobileScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const mobileVirtualizer = useVirtualizer({
+    count: list.length,
+    getScrollElement: () => mobileScrollRef.current,
+    // 행 높이는 가변(제목 줄바꿈) — 추정값으로 시작하고 measureElement로 실측 보정한다.
+    estimateSize: () => 108,
+    overscan: 6,
+  });
+
+  // 데스크톱 그리드 열 수(sm:2 / xl:3). useVirtualizer는 1차원이라 lanes로 알려줘야 한다.
+  const [lanes, setLanes] = useState(1);
+  useEffect(() => {
+    const sm = window.matchMedia("(min-width: 640px)");
+    const xl = window.matchMedia("(min-width: 1280px)");
+    const sync = () => setLanes(xl.matches ? 3 : sm.matches ? 2 : 1);
+    sync();
+    sm.addEventListener("change", sync);
+    xl.addEventListener("change", sync);
+    return () => {
+      sm.removeEventListener("change", sync);
+      xl.removeEventListener("change", sync);
+    };
+  }, []);
+
+  // 그리드는 "행" 단위로 가상화한다. lanes로 열마다 독립 진행시키면 카드 높이가 달라
+  // 행이 어긋나 보이므로(계단 현상), 한 행(= lanes개 카드)을 하나의 가상 항목으로 둔다.
+  const rowCount = Math.ceil(list.length / lanes);
+  // 데스크톱은 페이지(window) 스크롤이다. documentElement를 getScrollElement로 넘기면
+  // 스크롤 이벤트를 못 받아 창이 갱신되지 않는다 — window 전용 훅을 쓴다.
+  const desktopListRef = useRef<HTMLDivElement | null>(null);
+  // 목록이 시작되는 y좌표. 첫 렌더에는 ref가 비어 있어 0이고, 마운트 후 아래 effect가 채운다.
+  const [listTop, setListTop] = useState(0);
+  const desktopVirtualizer = useWindowVirtualizer({
+    count: rowCount,
+    // 목록이 페이지 상단이 아니라 헤더/필터 아래에서 시작하므로 그 오프셋을 알려준다.
+    scrollMargin: listTop,
+    estimateSize: () => 360,
+    overscan: 3,
+  });
+
+  // 열 수가 바뀌면 한 행에 담기는 카드가 달라져 기존 실측 높이가 무의미해진다 → 재측정.
+  // 첫 렌더에는 desktopListRef가 null이라 scrollMargin이 0이므로, 마운트 후에도 한 번 돌린다.
+  useEffect(() => {
+    setListTop(desktopListRef.current?.offsetTop ?? 0);
+    desktopVirtualizer.measure();
+  }, [lanes, listTop, desktopVirtualizer]);
 
   return (
     <>
@@ -141,7 +195,7 @@ export default function ExplorePage() {
         <MobileScreen>
           <div className="flex flex-1 flex-col bg-bg">
             <SafeTop />
-            <div className="flex flex-1 flex-col overflow-y-auto px-5 pb-4">
+            <div ref={mobileScrollRef} className="flex flex-1 flex-col overflow-y-auto px-5 pb-4">
               <div className="flex items-center justify-between pt-1">
                 <h1 className="text-[24px] font-extrabold text-ink">탐색</h1>
                 <NeighborhoodMenu
@@ -183,37 +237,27 @@ export default function ExplorePage() {
                     : "조건에 맞는 활동이 아직 없어요."}
                 </p>
               )}
-              <div className="mt-2 divide-y divide-line-alt">
-                {visible.map((o) => (
-                  <button
-                    key={o.id}
-                    onClick={() => openDetail(o.id)}
-                    className="flex w-full items-start gap-3 py-4 text-left"
-                  >
-                    <div className="flex-1">
-                      <p className={`text-[12px] font-bold ${o.tone === "mint" ? "text-mint" : "text-primary"}`}>
-                        {o.categoryLabel}
-                      </p>
-                      <p className="mt-1 text-[16px] font-bold text-ink">{o.title}</p>
-                      <p className="mt-0.5 text-[13px] text-muted">{o.summary}</p>
+              {/* 가상화: 보이는 행만 마운트한다. 높이는 measureElement로 실측 보정. */}
+              <div
+                className="relative mt-2"
+                style={{ height: mobileVirtualizer.getTotalSize() }}
+              >
+                {mobileVirtualizer.getVirtualItems().map((v) => {
+                  const o = list[v.index];
+                  if (!o) return null;
+                  return (
+                    <div
+                      key={o.id}
+                      ref={mobileVirtualizer.measureElement}
+                      data-index={v.index}
+                      className="absolute left-0 top-0 w-full border-b border-line-alt"
+                      style={{ transform: `translateY(${v.start}px)` }}
+                    >
+                      <ExploreRow o={o} onOpen={openDetail} />
                     </div>
-                    <div className="shrink-0 text-right">
-                      <p className={`text-[15px] font-extrabold ${o.tone === "mint" ? "text-mint" : "text-primary"}`}>
-                        {o.costLabel}
-                      </p>
-                      <p className="text-[12px] text-muted">자세히 →</p>
-                    </div>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
-              {hasMore && (
-                <button
-                  onClick={() => setVisibleCount((n) => n + STEP)}
-                  className="tap-safe mt-4 h-11 w-full rounded-xl border border-line bg-surface text-[14px] font-semibold text-label"
-                >
-                  더보기 ({list.length - visibleCount}개 남음)
-                </button>
-              )}
             </div>
             <BottomNav active="explore" />
             <SafeBottom />
@@ -349,59 +393,39 @@ export default function ExplorePage() {
                     : "조건에 맞는 활동이 아직 없어요."}
                 </p>
               )}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {visible.map((o) => {
+              {/* 행 단위 가상화 — 각 가상 항목이 한 행(카드 lanes개)을 담는다. */}
+              <div
+                ref={desktopListRef}
+                className="relative"
+                style={{ height: desktopVirtualizer.getTotalSize() }}
+              >
+                {desktopVirtualizer.getVirtualItems().map((v) => {
+                  const rowItems = list.slice(v.index * lanes, v.index * lanes + lanes);
+                  if (rowItems.length === 0) return null;
                   return (
-                    <button
-                      key={o.id}
-                      onClick={() => openDetail(o.id)}
-                      className="wcard-hover flex flex-col overflow-hidden rounded-[18px] bg-surface text-left shadow-web"
+                    <div
+                      key={v.key}
+                      ref={desktopVirtualizer.measureElement}
+                      data-index={v.index}
+                      className="absolute left-0 top-0 w-full pb-4"
+                      style={{
+                        // window 기준 좌표라 목록 시작 오프셋만큼 되돌려야 컨테이너 안에 맞는다.
+                        transform: `translateY(${v.start - desktopVirtualizer.options.scrollMargin}px)`,
+                      }}
                     >
-                      {o.imageUrl && (
-                        <Thumbnail
-                          src={o.imageUrl}
-                          tone={o.tone === "mint" ? "mint" : "brand"}
-                          rounded="rounded-none"
-                          sizeClass="h-32 w-full"
-                        />
-                      )}
-                      <div className="flex flex-1 flex-col p-5">
-                      <div className="flex items-start justify-between">
-                        <span
-                          className={`rounded-md px-2 py-1 text-[11px] font-bold ${
-                            o.tone === "mint" ? "bg-mint-tint text-mint" : "bg-tint text-primary-deep"
-                          }`}
-                        >
-                          {o.categoryLabel}
-                        </span>
-                        <BookmarkIcon size={20} filled={false} className="text-faint" />
+                      {/* 행 안에서는 평범한 그리드 — 같은 행 카드끼리 높이가 맞는다. */}
+                      <div
+                        className="grid gap-4"
+                        style={{ gridTemplateColumns: `repeat(${lanes}, minmax(0, 1fr))` }}
+                      >
+                        {rowItems.map((o) => (
+                          <ExploreCard key={o.id} o={o} onOpen={openDetail} />
+                        ))}
                       </div>
-                      <p className="mt-3 flex-1 text-[17px] font-bold leading-[1.34] text-ink">{o.title}</p>
-                      <p className="mt-1.5 flex items-center gap-1 text-[12px] text-muted">
-                        <LocationIcon size={13} />
-                        {o.summary}
-                      </p>
-                      <div className="mt-3.5 flex items-end justify-between border-t border-line-alt pt-3">
-                        <p className={`text-[18px] font-extrabold ${o.tone === "mint" ? "text-mint" : "text-primary"}`}>
-                          {o.costLabel}
-                        </p>
-                        <p className="text-[13px] font-semibold text-muted">자세히 →</p>
-                      </div>
-                      </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
-              {hasMore && (
-                <div className="mt-6 flex justify-center">
-                  <button
-                    onClick={() => setVisibleCount((n) => n + STEP)}
-                    className="tap-safe h-11 rounded-xl border border-line bg-surface px-6 text-[14px] font-semibold text-label hover:border-faint"
-                  >
-                    더보기 ({list.length - visibleCount}개 남음)
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </WebContainer>

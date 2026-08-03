@@ -7,13 +7,17 @@ export type {
   MockOpportunity,
   CatalogStatus,
   CatalogResult,
+  OpportunityResult,
   NeighborhoodPick,
   FetchOpportunitiesOptions,
 } from "@motungi/core";
 export { POPULAR_NEIGHBORHOODS, DEFAULT_NEIGHBORHOOD, rowToMock } from "@motungi/core";
 
-import type { CatalogResult, FetchOpportunitiesOptions } from "@motungi/core";
-import { fetchOpportunities as coreFetchOpportunities } from "@motungi/core";
+import type { CatalogResult, FetchOpportunitiesOptions, OpportunityResult } from "@motungi/core";
+import {
+  fetchOpportunities as coreFetchOpportunities,
+  fetchOpportunityById as coreFetchOpportunityById,
+} from "@motungi/core";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -26,4 +30,12 @@ export async function fetchOpportunities(
 ): Promise<CatalogResult> {
   const today = new Date().toISOString().slice(0, 10);
   return coreFetchOpportunities(supabase, { today, ...options });
+}
+
+/**
+ * id로 활동 1건만 조회(상세·딥링크용). 마감 필터는 걸지 않는다 —
+ * 이미 지난 활동이라도 링크로 들어오면 그 활동을 보여줘야 한다.
+ */
+export async function fetchOpportunityById(id: string): Promise<OpportunityResult> {
+  return coreFetchOpportunityById(supabase, id);
 }
