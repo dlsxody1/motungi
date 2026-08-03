@@ -84,6 +84,21 @@ export function judgeIngest(results: IngestSourceResult[]): IngestOutcome {
   };
 }
 
+/**
+ * cron 시크릿 검증 (순수 함수, M-026).
+ *
+ * Edge Function은 SERVICE_ROLE 키로 동작해 upsert/delete 권한을 갖는다. 인증 없이 배포되면
+ * URL을 아는 누구나 임의 시점에 적재를 트리거할 수 있는 confused-deputy 경로가 된다(M-026).
+ * 서버 시크릿이 비어 있으면(미설정) 항상 거부한다 — "시크릿 없음=통과"를 허용하지 않는다.
+ */
+export function isCronAuthorized(
+  serverSecret: string | undefined | null,
+  headerValue: string | undefined | null,
+): boolean {
+  if (!serverSecret) return false;
+  return headerValue === serverSecret;
+}
+
 /** key가 이미 등장한 이후 항목을 제거(첫 등장만 유지). */
 export function dedupByKey<T>(items: T[], keyFn: (item: T) => string): T[] {
   const seen = new Set<string>();

@@ -5,9 +5,11 @@
  * 각 소스는 독립 try/catch로 격리 — 한 소스가 실패해도 나머지는 적재된다.
  * upsert 키: (source, external_id) unique.
  *
- * 키 해석 우선순위: Edge Function secret(env) → 요청 body.
- *   - Cron 자동 실행: secret 등록 필요 (SEOUL_OPENAPI_KEY, DATA_GO_KR_SERVICE_KEY).
- *   - 수동/초기 검증: POST body { seoulKey, dataGoKrKey }로 전달 가능.
+ * 인증(M-026): 이 함수는 SERVICE_ROLE 권한(upsert/delete)으로 동작하므로 verify_jwt=false여도
+ * 애플리케이션 레벨에서 호출자를 검증한다. 요청 헤더 `x-cron-secret`이 Edge Function secret
+ * `INGEST_CRON_SECRET`과 일치해야 실행되고, 불일치·미설정이면 401을 반환한다.
+ * 외부 API 키 해석: SEOUL_OPENAPI_KEY / DATA_GO_KR_SERVICE_KEY는 서버 env(secret)만 신뢰한다
+ * (요청 body로 대체 불가 — 과거엔 body 폴백이 있었으나 인증 없는 임의 키 주입 경로였다).
  * Supabase 접속: SUPABASE_URL + SERVICE_ROLE_KEY(자동 주입).
  */
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -20,6 +22,7 @@ import {
 import {
   dedupByKey,
   inMetro,
+  isCronAuthorized,
   judgeIngest,
   parseJsonItems,
   parseXmlItems,
@@ -145,14 +148,16 @@ async function runSource(
 }
 
 Deno.serve(async (req) => {
-  // 키 해석: env(secret) 우선, 없으면 요청 body.
-  let body: { seoulKey?: string; dataGoKrKey?: string } = {};
-  try {
-    if (req.method === "POST") body = await req.json();
-  } catch { /* body 없음 허용 */ }
+  // 인증(M-026): 시크릿 불일치·미설정이면 소스 fetch·DB 접근 전에 즉시 401로 차단한다.
+  if (!isCronAuthorized(Deno.env.get("INGEST_CRON_SECRET"), req.headers.get("x-cron-secret"))) {
+    return new Response(
+      JSON.stringify({ ok: false, error: "unauthorized" }, null, 2),
+      { status: 401, headers: { "content-type": "application/json" } },
+    );
+  }
 
-  const seoulKey = (Deno.env.get("SEOUL_OPENAPI_KEY") ?? body.seoulKey ?? "").trim();
-  const dataGoKrKey = (Deno.env.get("DATA_GO_KR_SERVICE_KEY") ?? body.dataGoKrKey ?? "").trim();
+  const seoulKey = (Deno.env.get("SEOUL_OPENAPI_KEY") ?? "").trim();
+  const dataGoKrKey = (Deno.env.get("DATA_GO_KR_SERVICE_KEY") ?? "").trim();
   const enc = encodeURIComponent(dataGoKrKey);
 
   const results = await Promise.all([

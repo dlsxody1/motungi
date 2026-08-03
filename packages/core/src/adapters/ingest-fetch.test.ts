@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   dedupByKey,
   inMetro,
+  isCronAuthorized,
   judgeIngest,
   parseJsonItems,
   parseXmlItems,
@@ -66,6 +67,24 @@ describe("inMetro", () => {
   it("null/undefined는 true(미기재는 통과)", () => {
     expect(inMetro(null)).toBe(true);
     expect(inMetro(undefined)).toBe(true);
+  });
+});
+
+describe("isCronAuthorized — M-026 cron 시크릿 검증", () => {
+  it("헤더 값이 서버 시크릿과 일치하면 true", () => {
+    expect(isCronAuthorized("s3cr3t", "s3cr3t")).toBe(true);
+  });
+  it("헤더 값이 다르면 false", () => {
+    expect(isCronAuthorized("s3cr3t", "wrong")).toBe(false);
+  });
+  it("헤더가 없으면(null/undefined) false", () => {
+    expect(isCronAuthorized("s3cr3t", null)).toBe(false);
+    expect(isCronAuthorized("s3cr3t", undefined)).toBe(false);
+  });
+  it("서버 시크릿이 미설정(빈 값)이면 헤더가 무엇이든 항상 false — '시크릿 없음=통과' 금지", () => {
+    expect(isCronAuthorized(undefined, "anything")).toBe(false);
+    expect(isCronAuthorized(null, "anything")).toBe(false);
+    expect(isCronAuthorized("", "")).toBe(false);
   });
 });
 

@@ -515,7 +515,7 @@ backlog:
   - id: M-026
     title: "ingest Edge Function 무인증 — 서비스롤 권한 엔드포인트를 누구나 트리거 가능"
     priority: high
-    status: todo
+    status: doing
     scope: [supabase/functions/ingest]
     done_when:
       - "supabase/functions/ingest/index.ts의 Deno.serve 핸들러 진입부에 공유 시크릿 검증(예: 헤더 Authorization 또는 X-Cron-Secret과 서버 env 값 비교)을 추가하고, 실패 시 401을 반환한다 — verify_jwt=false(0007_cron_ingest_daily.sql)는 유지하되 애플리케이션 레벨 인증으로 대체한다"
@@ -529,6 +529,23 @@ backlog:
       함수는 SERVICE_ROLE/SECRET 키로 동작하는 supabase 클라이언트(index.ts:27-37 추정, upsert·delete
       권한 보유)를 쓰므로, URL을 아는 누구나 임의 시점에 적재를 트리거하거나 자신의 키로 외부 호출을
       강제할 수 있는 confused-deputy 경로다. severity high — 서비스 자원 남용·데이터 오염 리스크.
+
+      [2026-08-03 야간 파이프라인 완료] packages/core/src/adapters/ingest-fetch.ts에 순수 함수
+      isCronAuthorized(serverSecret, headerValue) 추가(시크릿 미설정 시 항상 false로 거부).
+      supabase/functions/ingest/index.ts의 Deno.serve 진입부에서 외부 fetch·DB 접근 전에
+      isCronAuthorized(env.INGEST_CRON_SECRET, header x-cron-secret)를 검사해 실패 시 401 반환하도록
+      수정, req.json() body 파싱 블록을 통째로 제거하고 seoulKey/dataGoKrKey는 Deno.env.get만 신뢰
+      (body 폴백 제거). supabase/migrations/0016_ingest_cron_auth.sql 신설(0007과 동일 job명
+      'ingest-daily'라 cron.schedule이 갱신) — 실제 pg_cron 호출에 x-cron-secret 헤더를 추가하고
+      더는 쓰이지 않는 body(seoulKey/dataGoKrKey) 블록은 제거. ingest-fetch.test.ts에 isCronAuthorized
+      테스트 4건(일치/불일치/헤더없음/시크릿미설정) 추가. .env.example·turbo.json globalEnv에
+      INGEST_CRON_SECRET 문서화(값은 비움). done_when 4개 전부 충족 — 독립 qa 에이전트가 file:line
+      근거로 재검증, PASS 판정(상세는 nightly-2026-08-03.md). core 267/mobile 39/web 164 통과,
+      4패키지 typecheck 클린, lint 클린. 커밋은 dev 직접(트렁크 모델, PR 없음). 배포 후속 필요:
+      사람이 `select vault.create_secret(..., 'INGEST_CRON_SECRET')` 실행 + Edge Function
+      secret 동일 값 등록(마이그레이션 파일 헤더 주석 참고) — 이걸 안 하면 cron이 401을 받게 되므로
+      마이그레이션 적용과 secret 등록을 같은 타이밍에 해야 한다. status는 사람의 최종 리뷰 전까지
+      doing으로 둠(done 승격은 사람 담당).
 
   - id: M-027
     title: "packages/core catalog.ts가 Supabase 응답을 Database 제네릭 없이 unchecked cast로 신뢰"
