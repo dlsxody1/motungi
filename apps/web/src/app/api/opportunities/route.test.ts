@@ -14,6 +14,16 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 
+/**
+ * unstable_cache는 Next 요청 컨텍스트(AsyncLocalStorage) 밖에서 못 돈다 — 순수 vitest에선
+ * 어떤 코드든 터진다. 여기서는 **캐시를 통과시키는 래퍼**로 대체해, 캐시 적중 여부가 아니라
+ * 핸들러의 로직(반경 사다리·그리드 스냅·실패 처리)을 검증한다.
+ * 캐시가 실제로 DB 조회를 줄이는지는 프로덕션 빌드에서 별도로 계측한다.
+ */
+vi.mock("next/cache", () => ({
+  unstable_cache: (fn: (...args: unknown[]) => unknown) => fn,
+}));
+
 const fetchOpportunities = vi.fn();
 vi.mock("@motungi/core", () => ({
   fetchOpportunities: (...args: unknown[]) => fetchOpportunities(...args),
@@ -112,6 +122,38 @@ describe("GET /api/opportunities", () => {
 
     const res = await GET(req());
 
+    expect(res.headers.get("Cache-Control")).toContain("s-maxage=21600");
+  });
+
+  it("조회 실패는 throw로 빠져나가 캐시에 저장되지 않는다(M-041)", async () => {
+    // unstable_cache는 resolve된 값을 그대로 캐시한다 — status:"error"를 그냥 반환하면
+    // 일시적 장애가 6시간 고정된다. 그래서 실패 경로는 throw여야 한다.
+    fetchOpportunities.mockResolvedValue({ data: [], status: "error" });
+
+    const res = await GET(req("?lat=37.5&lng=127.0"));
+    const body = await res.json();
+
+    expect(body.status).toBe("error");
+    expect(body.items).toEqual([]);
+    expect(body.radiusKm).toBeNull();
+    expect(res.headers.get("Cache-Control")).toBeNull();
+  });
+
+  it("앵커 없는 경로의 실패도 캐시되지 않는다", async () => {
+    fetchOpportunities.mockResolvedValue({ data: [], status: "error" });
+
+    const res = await GET(req());
+
+    expect((await res.json()).status).toBe("error");
+    expect(res.headers.get("Cache-Control")).toBeNull();
+  });
+
+  it("empty(0건)는 정상 결과라 캐시한다 — 그 동네에 활동이 없는 것도 사실이다", async () => {
+    fetchOpportunities.mockResolvedValue({ data: [], status: "empty" });
+
+    const res = await GET(req("?lat=37.5&lng=127.0"));
+
+    expect((await res.json()).status).toBe("empty");
     expect(res.headers.get("Cache-Control")).toContain("s-maxage=21600");
   });
 

@@ -753,7 +753,7 @@ backlog:
   - id: M-040
     title: "ingest에 API 키 secret 미등록 — cron 적재가 계속 실패 중(M-026과 함께 처리)"
     priority: high
-    status: todo
+    status: doing
     scope: [supabase/functions/ingest, Supabase Edge Function secret(대시보드·사람 작업)]
     done_when:
       - "SEOUL_OPENAPI_KEY·DATA_GO_KR_SERVICE_KEY를 Edge Function secret으로 등록한다"
@@ -771,10 +771,24 @@ backlog:
       유일한 경로가 body 키라, secret 등록 없이 M-026만 먼저 하면 적재가 완전히 죽는다.
       순서: secret 등록 → 동작 확인 → body 폴백 제거.
 
+      [2026-08-03 21:0x 코드 몫 완료] done_when 3번(실패가 성공처럼 보이지 않게)을 구현했다.
+      - 전 소스 실패 시 `ok:true` → **HTTP 500 + ok:false + error:"all_sources_failed"**.
+      - 이때 **purge를 건너뛴다**. 새로 적재된 게 없는데 마감 지난 행만 지우면 카탈로그가
+        조용히 비어간다 — 적재 실패가 데이터 손실로 번지는 걸 막았다.
+      - 부분 실패는 200을 유지하되 `failedSources`를 응답에 남긴다(재시도 루프 유발 방지).
+      - 판정 로직을 core의 순수 함수 `judgeIngest`로 분리해 테스트 5케이스를 붙였다
+        (packages/core/src/adapters/ingest-fetch.test.ts). ingest 함수 자체는 테스트가 0건이라
+        (밤 M-036) 판정만이라도 커버한 것.
+
+      **남은 것은 사람 몫**: Supabase 대시보드 → Edge Functions → ingest → Secrets에서
+      SEOUL_OPENAPI_KEY·DATA_GO_KR_SERVICE_KEY 등록. 에이전트가 접근할 수 없다.
+      등록 전까지는 cron이 매일 500을 반환한다(전과 달리 이제는 실패가 보인다).
+      등록 후 `curl -X POST .../functions/v1/ingest -d '{}'`로 세 소스 성공 확인 → 그 다음 M-026.
+
   - id: M-041
     title: "카탈로그 응답 캐시가 실제로는 안 먹는다 — 서버측 메모이제이션 추가"
     priority: medium
-    status: todo
+    status: done
     scope: [apps/web/src/app/api/opportunities/route.ts]
     done_when:
       - "같은 좌표 연속 호출 시 두 번째부터 DB를 조회하지 않는다(fetchOpportunities 호출 수로 검증)"
@@ -789,6 +803,28 @@ backlog:
       캐시 키 폭발을 막아뒀다(미세하게 다른 두 좌표가 동일 결과 83건/10km 반환 확인).
       unstable_cache를 쓸 때 supabase 클라이언트를 클로저로 잡지 말 것,
       캐시 키에 today·스냅 좌표·반경이 들어가야 한다.
+
+      [2026-08-03 완료] unstable_cache 도입. 실측 결과:
+      | 경로 | 첫 호출 | 캐시 적중 |
+      |---|---|---|
+      | 도봉구(저밀도·사다리 2회) | 994ms | **3ms** |
+      | 역삼동(고밀도·사다리 1회) | 93ms | 2.7ms |
+      | 앵커없음(300건) | 249ms | 3ms |
+      개선 전 같은 좌표 3연속이 363/243/232ms였던 것과 비교하면 재호출이 ~100배 빨라졌다.
+      그리드 스냅도 확인 — 한 번도 요청한 적 없는 37.66881 좌표가 2ms(같은 캐시 키로 접힘).
+
+      **밟은 함정(중요)**: 처음엔 "클로저로 잡지 말라"는 지침을 따라 supabase 클라이언트를
+      **인자로** 넘겼는데, unstable_cache는 인자를 JSON.stringify해 캐시 키를 만든다 →
+      클라이언트 내부 Timeout 객체의 순환 참조로 "Converting circular structure to JSON"이
+      나서 **매 호출이 조용히 error로 떨어졌다**(응답은 200이라 겉으론 정상으로 보였다).
+      해결: 클라이언트를 인자로도 클로저로도 넘기지 않고 **캐시된 함수 안에서 직접 참조**한다.
+      → 캐시 함수의 인자는 전부 직렬화 가능해야 한다는 게 교훈.
+
+      실패를 캐시하지 않는 계약은 throw로 구현했다 — unstable_cache는 resolve된 값만 캐시하므로
+      status:"error"를 그냥 반환하면 일시 장애가 6시간 고정된다. 던지고 바깥에서 잡는다.
+      테스트 11 → 14케이스(실패 비캐시 2건 + empty는 캐시함 1건 추가).
+      단 unstable_cache는 Next 요청 컨텍스트 밖에선 못 돌아 vitest에선 pass-through로 목킹했다 —
+      캐시 적중 자체는 프로덕션 빌드 계측으로 검증했다(위 표).
 
   - id: M-042
     title: "loading.tsx / error.tsx 경계가 0개 — 스트리밍·실패 UX 부재"

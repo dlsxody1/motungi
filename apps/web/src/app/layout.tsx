@@ -79,6 +79,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           브라우저가 실제로 쓰는 글자의 서브셋만 받는다.
         */}
         <link rel="preload" as="style" href="/fonts/pretendard/pretendardvariable-dynamic-subset.css" />
+        {/* eslint-disable-next-line @next/next/no-css-tags -- next/font는 파일을 명시해야 해서
+            동적 서브셋(92분할)을 못 쓴다. 통짜 2.0MB를 받느니 이 링크가 낫다(위 주석 참조). */}
         <link rel="stylesheet" href="/fonts/pretendard/pretendardvariable-dynamic-subset.css" />
       </head>
       <body>

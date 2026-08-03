@@ -20,6 +20,7 @@ import {
 import {
   dedupByKey,
   inMetro,
+  judgeIngest,
   parseJsonItems,
   parseXmlItems,
 } from "../../../packages/core/src/adapters/ingest-fetch.ts";
@@ -191,10 +192,39 @@ Deno.serve(async (req) => {
     //    데드코드가 아니라 게이팅 상태 — 인증키 발급 후 응답 1건으로 필드 확정하면 여기 runSource 추가.
   ]);
 
-  const total = results.reduce((s, r) => s + r.upserted, 0);
+  // 판정은 core의 순수 함수가 한다(테스트 소유는 packages/core/src/adapters/ingest-fetch.test.ts).
+  const { allFailed, failedSources, total } = judgeIngest(results);
+
+  /**
+   * 전 소스 실패 = 적재 자체가 안 된 것. 예전엔 이때도 `ok: true`를 반환해서
+   * **실패가 성공처럼 보였다** — 실제로 키 secret이 비어 있는 동안 cron이 매일
+   * "성공"을 반환하며 아무것도 적재하지 않았고, 아무도 알아채지 못했다(M-040).
+   * 이제 5xx로 응답해 호출자(cron 로그·수동 확인)가 실패를 알 수 있게 한다.
+   *
+   * 또한 이 경우 **purge를 건너뛴다**. 새로 적재된 게 없는데 마감 지난 행만 지우면
+   * 카탈로그가 조용히 비어간다 — 적재 실패가 데이터 손실로 번지는 걸 막는다.
+   */
+  if (allFailed) {
+    return new Response(
+      JSON.stringify(
+        {
+          ok: false,
+          error: "all_sources_failed",
+          message: "전 소스 적재 실패 — 키(secret) 등록 여부를 확인하라.",
+          total: 0,
+          purged: 0,
+          results,
+        },
+        null,
+        2,
+      ),
+      { status: 500, headers: { "content-type": "application/json" } },
+    );
+  }
 
   // 마감 지난 활동 정리: 새로 적재한 뒤 오래된 것을 치운다. 상시(deadline null)·미래 마감은
-  // 보존 — deadline이 있고 오늘보다 과거인 것만 삭제. 각 소스 실패와 무관하게 항상 실행.
+  // 보존 — deadline이 있고 오늘보다 과거인 것만 삭제.
+  // 일부 소스만 실패한 경우는 그대로 진행한다(그 소스의 신규분만 빠질 뿐 카탈로그는 갱신됐다).
   const today = new Date().toISOString().slice(0, 10);
   let purged = 0;
   try {
@@ -212,7 +242,10 @@ Deno.serve(async (req) => {
     );
   }
 
-  return new Response(JSON.stringify({ ok: true, total, purged, results }, null, 2), {
-    headers: { "content-type": "application/json" },
-  });
+  // 일부 실패는 200으로 두되 어떤 소스가 실패했는지 남긴다 — 부분 성공을 실패로 취급해
+  // 재시도 루프를 유발하지 않으면서도 조용히 넘어가지 않게.
+  return new Response(
+    JSON.stringify({ ok: true, total, purged, failedSources, results }, null, 2),
+    { headers: { "content-type": "application/json" } },
+  );
 });
