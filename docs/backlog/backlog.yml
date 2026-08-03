@@ -785,6 +785,14 @@ backlog:
       등록 전까지는 cron이 매일 500을 반환한다(전과 달리 이제는 실패가 보인다).
       등록 후 `curl -X POST .../functions/v1/ingest -d '{}'`로 세 소스 성공 확인 → 그 다음 M-026.
 
+      ⚠️ **코드는 커밋됐지만 아직 배포되지 않았다**(2026-08-03 기준 배포본 v6 = 옛 동작).
+      확인법: 키 없이 POST했을 때 HTTP 200 + ok:true면 구버전, HTTP 500 + ok:false면 신버전.
+      배포는 `supabase functions deploy ingest --no-verify-jwt`(CLI 로그인 토큰 필요) 또는
+      MCP deploy_edge_function으로. 배포 시 **verify_jwt=false를 반드시 유지**할 것 —
+      pg_cron(0007)이 JWT 없이 호출한다. 번들엔 index.ts·adapters.ts와 core의
+      util.ts·ingest-fetch.ts를 `_shared/`로 복사해 넣어야 한다(번들 루트 밖 상대경로는 Deno가 못 찾음).
+      secret 등록과 재배포를 같이 하면 한 번에 끝난다.
+
   - id: M-041
     title: "카탈로그 응답 캐시가 실제로는 안 먹는다 — 서버측 메모이제이션 추가"
     priority: medium
