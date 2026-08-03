@@ -62,6 +62,8 @@ export type MockOpportunity = Opportunity & {
   matchScore: number;
   /** 상세 메타(칩) */
   meta: { label: string; value: string }[];
+  /** 참여 방법 스텝 (실데이터엔 없을 수 있음 → 상세에서 없으면 섹션 숨김) */
+  steps?: string[];
   costNote?: string;
   tone: "brand" | "mint";
 };

@@ -9,15 +9,19 @@ import {
   Text,
   View,
 } from "react-native";
-import { displayNameOf, isWeekendOuting, whyReasons } from "@motungi/core";
+import { displayNameOf, whyReasons } from "@motungi/core";
+import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useOpportunity } from "@/hooks/useOpportunity";
 import { useAppStore } from "@/store/useAppStore";
 import { Button, FlowHeader, Screen, Tag } from "@/ui/components";
 import { Bookmark, CheckCircle, ExternalLink, Location, Share } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
 
+const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://motungi.app";
+
 /** A6 · 기회 상세 */
 export default function OpportunityScreen() {
+  useEnsureCatalog();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   // 상세는 카탈로그 전량을 받지 않는다 — id로 1건만(이미 스토어에 있으면 재사용).
@@ -28,19 +32,18 @@ export default function OpportunityScreen() {
   const answers = useAppStore((s) => s.answers);
   const user = useAppStore((s) => s.user);
 
-  // 아직 불러오는 중(idle/loading)이면 "없음"이 아니라 스피너.
-  if (!o && (status === "idle" || status === "loading")) {
-    return (
-      <Screen>
-        <FlowHeader />
-        <View style={styles.notFound}>
-          <ActivityIndicator color={C.primary} />
-        </View>
-      </Screen>
-    );
-  }
-
   if (!o) {
+    // 아직 불러오는 중(idle/loading)이면 "없음"이 아니라 로딩 스피너.
+    if (status === "idle" || status === "loading") {
+      return (
+        <Screen>
+          <FlowHeader />
+          <View style={styles.notFound}>
+            <ActivityIndicator size="large" color={C.primary} />
+          </View>
+        </Screen>
+      );
+    }
     return (
       <Screen>
         <FlowHeader />
@@ -64,7 +67,9 @@ export default function OpportunityScreen() {
   const hasLink = !!o.ctaUrl && o.ctaUrl !== "#";
 
   const onShare = () => {
-    RNShare.share({ message: `${o.title}\n모퉁이에서 발견한 우리 동네 활동` }).catch(() => {});
+    RNShare.share({
+      message: `${o.title}\n모퉁이에서 발견한 우리 동네 활동\n${SITE_URL}/opportunity?id=${o.id}`,
+    }).catch(() => {});
   };
 
   return (
@@ -78,10 +83,7 @@ export default function OpportunityScreen() {
       />
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <Tag label={o.categoryLabel} />
-          {isWeekendOuting(o) && <Text style={styles.weekendBadge}>주말 나들이</Text>}
-        </View>
+        <Tag label={o.categoryLabel} />
         <Text style={styles.title}>{o.title}</Text>
         <View style={styles.locRow}>
           <Location size={16} color={C.primary} />
@@ -125,37 +127,18 @@ export default function OpportunityScreen() {
           ))}
         </View>
 
-        {/* 걷기길 코스 안내 — 두루누비엔 사진이 없어 이 안내가 그 자리를 대신한다.
-            시점이 있으면 코스 안내, 없으면 주의사항(DMZ 코스). 둘 다 없으면 렌더 안 함. */}
-        {!!o.courseStart && (
+        {/* 즐기는 방법 (스텝이 있을 때만) */}
+        {!!o.steps && o.steps.length > 0 && (
           <>
-            <Text style={styles.guideTitle}>코스 안내</Text>
-            <View style={styles.guideCard}>
-              <Text style={styles.guideLabel}>시점</Text>
-              <Text style={styles.guideText}>{o.courseStart}</Text>
-              {!!o.courseEnd && (
-                <>
-                  <Text style={[styles.guideLabel, { marginTop: 12 }]}>종점</Text>
-                  <Text style={styles.guideText}>{o.courseEnd}</Text>
-                </>
-              )}
-              {o.isLoop === false && (
-                <Text style={styles.guideNote}>
-                  비순환형이라 종점에서 출발지로 돌아오는 길을 따로 계획해야 해요.
-                </Text>
-              )}
-            </View>
-          </>
-        )}
-
-        {!o.courseStart && !!o.courseNotes?.length && (
-          <>
-            <Text style={styles.guideTitle}>알아두세요</Text>
-            <View style={styles.guideCard}>
-              {o.courseNotes.map((n, i) => (
-                <Text key={i} style={[styles.guideText, i > 0 && { marginTop: 8 }]}>
-                  · {n}
-                </Text>
+            <Text style={styles.sectionTitle}>즐기는 방법</Text>
+            <View style={{ gap: 16 }}>
+              {o.steps.map((s, i) => (
+                <View key={i} style={styles.step}>
+                  <View style={styles.stepNum}>
+                    <Text style={styles.stepNumText}>{i + 1}</Text>
+                  </View>
+                  <Text style={styles.stepText}>{s}</Text>
+                </View>
               ))}
             </View>
           </>
@@ -211,13 +194,11 @@ const styles = StyleSheet.create({
   metaCard: { flex: 1, backgroundColor: C.surface, borderRadius: R.lg, paddingVertical: 12, alignItems: "center", ...cardShadow },
   metaLabel: { fontSize: 11, color: C.muted },
   metaValue: { marginTop: 4, fontSize: 15, fontWeight: "700", color: C.ink },
-  guideTitle: { marginTop: 24, marginBottom: 10, fontSize: 17, fontWeight: "700", color: C.ink },
-  guideCard: { backgroundColor: C.surface, borderRadius: R.md, padding: 16, ...cardShadow },
-  guideLabel: { fontSize: 12, fontWeight: "600", color: C.primaryDeep },
-  guideText: { marginTop: 2, fontSize: 14, lineHeight: 22, color: C.label },
-  guideNote: { marginTop: 12, fontSize: 12, color: C.muted },
-  weekendBadge: { backgroundColor: C.surfaceAlt, color: C.muted, fontSize: 11, fontWeight: "600",
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, overflow: "hidden" },
+  sectionTitle: { marginTop: 24, marginBottom: 12, fontSize: 17, fontWeight: "700", color: C.ink },
+  step: { flexDirection: "row", gap: 12 },
+  stepNum: { width: 24, height: 24, borderRadius: 999, backgroundColor: C.primary, alignItems: "center", justifyContent: "center" },
+  stepNumText: { fontSize: 12, fontWeight: "700", color: C.white },
+  stepText: { flex: 1, fontSize: 14, lineHeight: 22, color: C.label },
   disclaimer: { marginTop: 24, backgroundColor: C.surfaceAlt, borderRadius: R.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 12, lineHeight: 18, color: C.muted },
   actions: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8 },
   bookmark: { width: 52, height: 52, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },

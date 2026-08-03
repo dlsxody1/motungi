@@ -112,7 +112,6 @@ export default function LocationPage() {
     setAnchor("home", {
       dongName: selected.dongName,
       admCode: selected.admCode,
-      region: selected.region,
       point: selected.point,
     });
     router.push("/diagnosis");

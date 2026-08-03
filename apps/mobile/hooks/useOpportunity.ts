@@ -12,14 +12,13 @@ export interface OpportunityView {
 }
 
 /**
- * 상세 화면용 단건 로드. 카탈로그 전량을 받지 않는다. (웹 hooks/useOpportunity와 동일 계약 —
- * 훅은 각 앱의 @/data·@/store alias에 묶여서 useEnsureCatalog처럼 앱별로 둔다.)
+ * 상세 페이지용 단건 로드. 카탈로그 전량을 받지 않는다.
  *
  * 1) 이미 스토어 카탈로그에 있으면(탐색/보관함에서 넘어온 경우) 그걸 즉시 재사용 — 재조회 없음.
- * 2) 없으면(딥링크·공유링크로 직접 진입) id로 딱 1건만 서버에서 조회.
+ * 2) 없으면(새로고침·공유링크로 직접 진입) id로 딱 1건만 서버에서 조회.
  *
- * 이전엔 `catalog.find(...) ?? catalog[0]`이라 카탈로그 밖 id로 들어오면 엉뚱한 활동을
- * 요청한 것처럼 보여줬다. 이제 못 찾으면 조회하고, 그래도 없으면 not-found로 간다.
+ * 이렇게 하면 "상세 하나 보려고 300건을 다 받는" 낭비가 사라진다. 크로스셀(탐색 더보기)은
+ * 카탈로그가 있으면 그대로 쓰고, 없으면 상세엔 굳이 필요 없으니 안 받는다.
  */
 export function useOpportunity(id: string | null): OpportunityView {
   const catalog = useAppStore((s) => s.catalog);

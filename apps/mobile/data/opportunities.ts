@@ -33,8 +33,8 @@ export async function fetchOpportunities(
 }
 
 /**
- * id로 활동 1건만 조회(상세·딥링크용). 마감 필터는 걸지 않는다 —
- * 이미 지난 활동이라도 링크로 들어오면 그 활동을 보여줘야 한다.
+ * 활동 1건만 id로 읽어온다(상세 페이지용). 카탈로그 전량을 받지 않는다 —
+ * core 단건 조회에 이 앱의 supabase 클라이언트를 주입하는 얇은 래퍼.
  */
 export async function fetchOpportunityById(id: string): Promise<OpportunityResult> {
   return coreFetchOpportunityById(supabase, id);
