@@ -64,6 +64,7 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
             </h1>
             <p className="mt-5 max-w-[30rem] text-[19px] leading-[1.6] font-medium text-white/95">
               수백 개 대신 딱 1~3개. 퇴근 후·주말 내 동네에서 즐길 문화·여가·활동을 60초 만에 골라드려요.
+              정할 게 있으면 직접 둘러봐도 좋고요.
             </p>
 
             {/* 위치 검색 인풋 — 클릭하면 동네 검색으로. placeholder-as-label 아님(값 표시 + 라벨 위) */}
@@ -72,6 +73,19 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
                 어느 동네에서 찾을까요?
               </label>
               <LandingLocationLink />
+
+              {/* 두 번째 길. 같은 무게의 버튼 2개는 선택 마비를 부르므로 위계를 준다 —
+                  추천이 기본(위 필드), 탐색은 이미 정한 사람을 위한 출구(밑줄 링크).
+                  동등하다는 건 둘 다 정당하다는 뜻이지 시각적으로 같아야 한다는 뜻이 아니다. */}
+              <p className="mt-3.5 text-[15px] text-white/85">
+                뭘 할지 이미 정했다면{" "}
+                <Link
+                  href="/explore"
+                  className="font-semibold text-white underline decoration-white/45 underline-offset-4 transition-colors hover:decoration-white"
+                >
+                  동네 활동 둘러보기
+                </Link>
+              </p>
             </div>
             <p className="mt-4 flex items-center gap-1.5 text-[14px] text-white/85">
               <CheckMiniIcon size={16} />
@@ -92,12 +106,12 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
         <WebContainer>
           <div className="reveal max-w-[640px]">
             <h2 className="text-[30px] font-extrabold leading-[1.2] tracking-[-0.02em] text-ink text-balance">
-              검색하지 마세요.
+              뒤질 필요는 없어요.
               <br />
-              오늘 할 것만 정해드릴게요.
+              찾고 싶을 땐 찾으시고요.
             </h2>
             <p className="mt-3 text-[16px] leading-[1.65] text-label">
-              흩어진 동네 정보를 뒤지는 대신, 내게 맞는 하나를 받는 방식.
+              흩어진 동네 정보를 모아 하나로 좁혀드려요. 오늘은 정해주는 대로, 다음엔 직접 골라도 되게.
             </p>
           </div>
 

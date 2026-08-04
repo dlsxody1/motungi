@@ -113,6 +113,18 @@ describe("WebLanding", () => {
     expect(screen.getByText("찾기")).toBeInTheDocument();
   });
 
+  it("두 길: 추천(/location)과 직접 탐색(/explore)을 모두 제시한다", () => {
+    render(<WebLanding />);
+
+    // 랜딩은 더 이상 검색을 부정하지 않는다 — 둘 다 정당한 길로 안내한다.
+    expect(
+      screen.getByRole("link", { name: /동네 활동 둘러보기/ }),
+    ).toHaveAttribute("href", "/explore");
+
+    // 옛 반검색 카피가 남아 있으면 헤더에서 권하고 본문에서 부정하는 모순이 된다.
+    expect(screen.queryByText(/검색하지 마세요/)).not.toBeInTheDocument();
+  });
+
   it("실데이터가 없으면 '지금 열리는 활동' 섹션을 아예 렌더하지 않는다", () => {
     // 빈 DB에서 가짜 활동을 지어내지 않는다 — 섹션 자체가 사라진다.
     render(<WebLanding />);

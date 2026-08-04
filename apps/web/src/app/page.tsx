@@ -50,19 +50,26 @@ export default async function Home() {
                 </div>
               )}
 
+              {/* 두 길 — 정해달라(주) / 직접 본다(부).
+                  같은 무게 버튼 2개는 선택 마비를 부르므로 위계를 준다. 둘 다 정당한 의도지만
+                  기본은 큐레이션이다. "로그인 없이"는 링크가 아니라 안심 문구라 텍스트로 내린다
+                  (예전엔 /report로 가는 링크였는데, 진단을 건너뛴 폴백 리포트로 떨어졌다). */}
               <div className="mt-auto space-y-3 pt-8">
                 <Link
                   href="/location"
                   className="tap-safe flex h-[52px] w-full items-center justify-center rounded-xl bg-white text-[16px] font-bold text-primary-deep active:scale-[0.99]"
                 >
-                  내 동네에서 찾기
+                  내 동네에서 골라받기
                 </Link>
                 <Link
-                  href="/report"
-                  className="tap-safe flex h-[44px] w-full items-center justify-center text-[14px] font-semibold text-white/90"
+                  href="/explore"
+                  className="tap-safe flex h-[48px] w-full items-center justify-center rounded-xl border border-white/35 text-[15px] font-semibold text-white active:scale-[0.99]"
                 >
-                  로그인 없이 바로 시작
+                  동네 활동 둘러보기
                 </Link>
+                <p className="pt-1 text-center text-[13px] text-white/80">
+                  로그인 없이 바로 시작 · 저장할 때만 가입
+                </p>
               </div>
             </div>
             <SafeBottom />

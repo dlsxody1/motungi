@@ -15,6 +15,7 @@ import { MobileScreen, SafeBottom, SafeTop, Tag } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { diagnosisSummaryChips, displayNameOf } from "@motungi/core";
 import { useReportFallback } from "@/hooks/useReportFallback";
+import { exploreHref } from "@/lib/explore-filters";
 import { shareContent } from "@/lib/kakao";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -162,7 +163,7 @@ export default function ReportPage() {
                 <div className="mb-1 mt-6 flex items-center justify-between">
                   <p className="text-[14px] font-semibold text-label">함께 보면 좋아요</p>
                   <Link
-                    href="/explore"
+                    href={exploreHref(onePick.category)}
                     className="text-[13px] font-semibold text-primary hover:text-primary-deep"
                   >
                     더 찾아보기 →
@@ -325,7 +326,7 @@ export default function ReportPage() {
               <div className="mb-3 mt-7 flex items-center justify-between">
                 <p className="text-[16px] font-bold text-ink">함께 보면 좋아요</p>
                 <Link
-                  href="/explore"
+                  href={exploreHref(onePick.category)}
                   className="text-[14px] font-semibold text-primary hover:text-primary-deep"
                 >
                   더 찾아보기 →
