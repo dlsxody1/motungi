@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import bundleAnalyzer from "@next/bundle-analyzer";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -41,4 +42,22 @@ const nextConfig = {
 
 // ANALYZE=true 일 때만 번들 리포트를 뽑는다(평소 빌드에 부담 주지 않음).
 // 사용: ANALYZE=true pnpm --filter @motungi/web build
-export default bundleAnalyzer({ enabled: process.env.ANALYZE === "true" })(nextConfig);
+const withAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true" });
+
+// Sentry 래핑 — source map 업로드는 SENTRY_AUTH_TOKEN이 있을 때만 일어난다(로컬 빌드는 그냥 통과).
+// tunnelRoute는 넣지 않는다: 광고차단 우회 이득보다 서버 부하가 크다. 이벤트 유실이 실측되면 추가.
+export default withSentryConfig(withAnalyzer(nextConfig), {
+  // 조직·프로젝트는 시크릿이 아니다(소스맵을 어디로 올릴지 가리키는 식별자). 진짜 시크릿은
+  // SENTRY_AUTH_TOKEN 하나뿐이라 그것만 env로 둔다. env 미설정 시 업로드는 조용히 건너뛴다.
+  org: process.env.SENTRY_ORG ?? "34745a4ae607",
+  project: process.env.SENTRY_PROJECT ?? "javascript-nextjs",
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  // 클라이언트 소스 파일을 넓게 올린다 — 이게 없으면 청크 경계 밖 프레임이 난독화된 채로 남는다.
+  widenClientFileUpload: true,
+  // 클라이언트 번들에서 소스맵 참조를 지운다 — 업로드는 하되 공개는 하지 않는다.
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+  // Sentry SDK 디버그 로거를 프로덕션 번들에서 트리셰이킹(번들 절감).
+  // 예전 disableLogger의 후속 옵션 — 10.x에서 deprecated 경고가 뜬다.
+  webpack: { treeshake: { removeDebugLogging: true } },
+});

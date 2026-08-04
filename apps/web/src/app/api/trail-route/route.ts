@@ -12,6 +12,7 @@
  */
 import { NextResponse } from "next/server";
 import { parseGpxPoints } from "@motungi/core";
+import { apiError, reportError } from "@/lib/api-error";
 import { supabase } from "@/lib/supabase";
 
 /** 지도 표시용 상한. 14km 코스에서 약 70m 간격이라 육안으로 원본과 구분되지 않는다. */
@@ -24,17 +25,25 @@ const ALLOWED_HOST = "www.durunubi.kr";
 export const revalidate = 86400;
 
 export async function GET(request: Request) {
+  // 예상 못 한 예외가 스택 트레이스째 500으로 나가지 않게 감싼다.
+  // 특히 parseGpxPoints는 외부(두루누비) XML을 파싱하므로 깨진 입력에 던질 수 있다.
+  try {
+    return await handle(request);
+  } catch (err) {
+    reportError("api/trail-route", err);
+    return apiError("internal_error", "일시적인 오류가 발생했습니다.", 500);
+  }
+}
+
+async function handle(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id")?.trim() ?? "";
   if (!id) {
-    return NextResponse.json({ error: "invalid_id", message: "id가 필요합니다." }, { status: 400 });
+    return apiError("invalid_id", "id가 필요합니다.", 400);
   }
 
   if (!supabase) {
-    return NextResponse.json(
-      { error: "not_configured", message: "경로 조회가 설정되지 않았습니다." },
-      { status: 503 },
-    );
+    return apiError("not_configured", "경로 조회가 설정되지 않았습니다.", 503);
   }
 
   const { data, error } = await supabase
@@ -44,16 +53,11 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   if (error) {
-    return NextResponse.json(
-      { error: "query_error", message: "경로를 불러오지 못했습니다." },
-      { status: 502 },
-    );
+    reportError("api/trail-route", error);
+    return apiError("query_error", "경로를 불러오지 못했습니다.", 502);
   }
   if (!data?.gpx_url) {
-    return NextResponse.json(
-      { error: "not_found", message: "이 활동에는 경로 정보가 없습니다." },
-      { status: 404 },
-    );
+    return apiError("not_found", "이 활동에는 경로 정보가 없습니다.", 404);
   }
 
   // DB 값이라도 한 번 더 검증한다 — 적재 경로가 바뀌어도 프록시가 무방비가 되지 않게.
@@ -61,33 +65,35 @@ export async function GET(request: Request) {
   try {
     gpxUrl = new URL(data.gpx_url);
   } catch {
-    return NextResponse.json({ error: "not_found", message: "경로 주소가 올바르지 않습니다." }, { status: 404 });
+    // 적재된 값이 깨진 것 — 사용자 잘못이 아니라 데이터 문제라 남긴다.
+    reportError("api/trail-route", new Error(`invalid gpx_url in DB: ${data.gpx_url}`));
+    return apiError("not_found", "경로 주소가 올바르지 않습니다.", 404);
   }
   if (gpxUrl.protocol !== "https:" || gpxUrl.hostname !== ALLOWED_HOST) {
-    return NextResponse.json(
-      { error: "not_found", message: "허용되지 않은 경로 주소입니다." },
-      { status: 404 },
-    );
+    return apiError("not_found", "허용되지 않은 경로 주소입니다.", 404);
   }
 
   let xml: string;
   try {
     const res = await fetch(gpxUrl, { redirect: "follow" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`두루누비 GPX HTTP ${res.status}`);
     xml = await res.text();
-  } catch {
-    return NextResponse.json(
-      { error: "upstream_error", message: "경로 파일을 가져오지 못했습니다." },
-      { status: 502 },
-    );
+  } catch (err) {
+    reportError("api/trail-route", err);
+    return apiError("upstream_error", "경로 파일을 가져오지 못했습니다.", 502);
   }
 
-  const points = parseGpxPoints(xml, MAX_POINTS);
+  // 파싱 실패는 상류(두루누비) 응답 문제 — 500이 아니라 502가 맞다.
+  let points: ReturnType<typeof parseGpxPoints>;
+  try {
+    points = parseGpxPoints(xml, MAX_POINTS);
+  } catch (err) {
+    reportError("api/trail-route", err);
+    return apiError("upstream_error", "경로 파일을 해석하지 못했습니다.", 502);
+  }
+
   if (points.length === 0) {
-    return NextResponse.json(
-      { error: "not_found", message: "경로 좌표가 없습니다." },
-      { status: 404 },
-    );
+    return apiError("not_found", "경로 좌표가 없습니다.", 404);
   }
 
   const lats = points.map((p) => p[0]);

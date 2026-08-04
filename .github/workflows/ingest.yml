@@ -20,8 +20,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # - run: pnpm --filter @motungi/core exec tsx scripts/ingest.ts
-        env:
-          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
-          YOUTH_POLICY_API_KEY: ${{ secrets.YOUTH_POLICY_API_KEY }}
+      #   env:
+      #     # 이름은 .env / .env.example과 반드시 일치해야 한다(예전엔 DATA_GO_KR_API_KEY로
+      #     # 어긋나 있어, 활성화했다면 키가 안 들어간 채로 돌 뻔했다).
+      #     SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      #     NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      #     DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
+      #     SEOUL_OPENAPI_KEY: ${{ secrets.SEOUL_OPENAPI_KEY }}

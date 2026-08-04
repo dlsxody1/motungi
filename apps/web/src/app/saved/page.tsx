@@ -22,8 +22,13 @@ export default function SavedPage() {
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
 
   // 저장 id를 id 조회로 해소한다 — 300건 창 밖이라고 사라지지 않는다(useSavedOpportunities 주석).
-  const { items } = useSavedOpportunities();
+  // status를 버리면 **조회 실패가 "저장한 게 없어요"로 보인다** — 사용자에게 틀린 정보다.
+  const { items, status, retry } = useSavedOpportunities();
+  const failed = status === "error";
   const openDetail = (id: string) => router.push(`/opportunity?id=${id}`);
+
+  // 실패했을 땐 개수를 못 세므로 숫자를 숨긴다(0개라고 단언하면 그 자체가 거짓말).
+  const countLabel = failed ? "" : `${items.length}개`;
 
   return (
     <>
@@ -67,10 +72,28 @@ export default function SavedPage() {
 
               <div className="mb-1 mt-6 flex items-center justify-between">
                 <h2 className="text-[17px] font-bold text-ink">저장한 활동</h2>
-                <span className="text-[13px] text-muted">{items.length}개</span>
+                <span className="text-[13px] text-muted">{countLabel}</span>
               </div>
 
-              {items.length === 0 ? (
+              {failed ? (
+                <div className="py-12" role="alert">
+                  <p className="text-center text-[16px] font-bold text-ink">
+                    저장한 활동을 불러오지 못했어요
+                  </p>
+                  <p className="mt-1 text-center text-[13px] text-muted">
+                    저장한 목록은 그대로예요. 잠시 후 다시 시도해 주세요.
+                  </p>
+                  <div className="mt-4 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={retry}
+                      className="tap-safe flex h-11 items-center justify-center rounded-xl bg-primary px-6 text-[14px] font-bold text-white"
+                    >
+                      다시 시도
+                    </button>
+                  </div>
+                </div>
+              ) : items.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-12 text-center">
                   <BookmarkIcon size={28} className="text-faint" />
                   <p className="mt-1 text-[16px] font-bold text-ink">
@@ -188,10 +211,28 @@ export default function SavedPage() {
               {/* 저장한 활동 */}
               <div className="mb-3 mt-9 flex items-center justify-between">
                 <h2 className="text-[19px] font-bold text-ink">저장한 활동</h2>
-                <span className="text-[14px] text-muted">{items.length}개</span>
+                <span className="text-[14px] text-muted">{countLabel}</span>
               </div>
 
-              {items.length === 0 ? (
+              {failed ? (
+                // 상태 박스는 흰 surface — tint/로즈 배경은 경고처럼 읽힌다(DESIGN.md).
+                <div
+                  className="flex flex-col items-center gap-2 rounded-[18px] bg-surface py-16 text-center shadow-web"
+                  role="alert"
+                >
+                  <p className="text-[17px] font-bold text-ink">저장한 활동을 불러오지 못했어요</p>
+                  <p className="text-[14px] text-muted">
+                    저장한 목록은 그대로예요. 잠시 후 다시 시도해 주세요.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={retry}
+                    className="tap-safe mt-3 flex h-11 items-center justify-center rounded-xl bg-primary px-6 text-[14px] font-bold text-white hover:bg-primary-deep"
+                  >
+                    다시 시도
+                  </button>
+                </div>
+              ) : items.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 rounded-[18px] bg-surface py-16 text-center shadow-web">
                   <BookmarkIcon size={30} className="text-faint" />
                   <p className="mt-1 text-[17px] font-bold text-ink">

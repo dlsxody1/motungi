@@ -15,6 +15,7 @@ import {
   LocationIcon,
   ShareIcon,
 } from "@/components/icons";
+import { ErrorState } from "@/components/error-state";
 import { MobileScreen, SafeBottom, SafeTop, Tag } from "@/components/ui";
 import { NaverMapSDK } from "@/components/naver-map-sdk";
 import { Thumbnail } from "@/components/thumbnail";
@@ -508,17 +509,10 @@ function OpportunityLoading() {
 /** 활동을 찾을 수 없을 때(카탈로그 비었거나 id 불일치)의 상태 화면. */
 function OpportunityNotFound({ onExplore }: { onExplore: () => void }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-      <p className="text-[18px] font-extrabold text-ink md:text-[22px]">활동을 찾을 수 없어요</p>
-      <p className="mt-2 max-w-[320px] text-[14px] leading-relaxed text-muted md:text-[15px]">
-        이 활동이 사라졌거나 아직 불러오지 못했어요. 탐색에서 다른 활동을 둘러보세요.
-      </p>
-      <button
-        onClick={onExplore}
-        className="mt-6 h-11 rounded-xl bg-primary px-6 text-[14px] font-bold text-white transition-colors hover:bg-primary-deep"
-      >
-        탐색 둘러보기
-      </button>
-    </div>
+    <ErrorState
+      title="활동을 찾을 수 없어요"
+      desc="이 활동이 사라졌거나 아직 불러오지 못했어요. 탐색에서 다른 활동을 둘러보세요."
+      action={{ label: "탐색 둘러보기", onClick: onExplore }}
+    />
   );
 }

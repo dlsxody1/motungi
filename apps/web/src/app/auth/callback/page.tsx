@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { reportError } from "@/lib/api-error";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -19,9 +20,11 @@ export default function AuthCallbackPage() {
       if (supabase) {
         // detectSessionInUrl이 이미 처리했으면 code가 없을 수 있음 — 실패는 무시.
         if (window.location.href.includes("code=")) {
+          // 실패해도 /report로는 보낸다(로그인 없이도 쓸 수 있는 화면이라).
+          // 다만 조용히 넘기면 "로그인이 왜 안 되지"를 영영 진단 못 한다.
           await supabase.auth
             .exchangeCodeForSession(window.location.href)
-            .catch(() => {});
+            .catch((err: unknown) => reportError("auth/callback", err));
         }
       }
       if (!cancelled) router.replace("/report");

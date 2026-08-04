@@ -43,10 +43,13 @@ function ok(n: number) {
 beforeEach(() => {
   state.supabase = {};
   fetchOpportunities.mockReset();
+  // 실패 케이스는 의도적으로 reportError를 태운다 — 기대된 로그라 출력만 죽인다.
+  vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
 afterEach(() => {
   vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 describe("GET /api/opportunities", () => {

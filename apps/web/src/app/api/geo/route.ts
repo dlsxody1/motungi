@@ -7,6 +7,7 @@
  *  → { admCode, dongName, point: { lat, lng } }
  */
 import { NextResponse } from "next/server";
+import { apiError, reportError } from "@/lib/api-error";
 
 // 신형 NAVER Cloud Platform Maps 도메인. 구형 naveropenapi.apigw.ntruss.com은
 // 이 앱 자격증명에서 401/210(Permission Denied)로 막힌다.
@@ -37,19 +38,13 @@ export async function GET(request: Request) {
   const lng = Number(searchParams.get("lng"));
 
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return NextResponse.json(
-      { error: "invalid_coords", message: "lat, lng 쿼리 파라미터가 필요합니다." },
-      { status: 400 },
-    );
+    return apiError("invalid_coords", "lat, lng 쿼리 파라미터가 필요합니다.", 400);
   }
 
   const keyId = clean(process.env.NAVER_MAP_CLIENT_ID);
   const key = clean(process.env.NAVER_MAP_Client_SECRET);
   if (!keyId || !key) {
-    return NextResponse.json(
-      { error: "not_configured", message: "위치 서비스가 설정되지 않았습니다." },
-      { status: 503 },
-    );
+    return apiError("not_configured", "위치 서비스가 설정되지 않았습니다.", 503);
   }
 
   try {
@@ -67,10 +62,9 @@ export async function GET(request: Request) {
     });
 
     if (!res.ok) {
-      return NextResponse.json(
-        { error: "upstream_error", message: "역지오코딩에 실패했습니다." },
-        { status: 502 },
-      );
+      // 401/210(Permission Denied)이 여기로 온다 — 도메인·권한 설정 사고를 남겨야 진단이 된다.
+      reportError("api/geo", new Error(`NAVER reverse-geocode HTTP ${res.status}`));
+      return apiError("upstream_error", "역지오코딩에 실패했습니다.", 502);
     }
 
     const data = (await res.json()) as { results?: NaverResult[] };
@@ -80,10 +74,7 @@ export async function GET(request: Request) {
     const region = results.find((r) => r.name === "admcode") ?? results[0];
     const dongName = region?.region?.area3?.name;
     if (!region || !dongName) {
-      return NextResponse.json(
-        { error: "not_found", message: "해당 좌표의 동네를 찾지 못했습니다." },
-        { status: 404 },
-      );
+      return apiError("not_found", "해당 좌표의 동네를 찾지 못했습니다.", 404);
     }
 
     return NextResponse.json({
@@ -91,10 +82,8 @@ export async function GET(request: Request) {
       dongName,
       point: { lat, lng },
     });
-  } catch {
-    return NextResponse.json(
-      { error: "internal_error", message: "일시적인 오류가 발생했습니다." },
-      { status: 500 },
-    );
+  } catch (err) {
+    reportError("api/geo", err);
+    return apiError("internal_error", "일시적인 오류가 발생했습니다.", 500);
   }
 }
