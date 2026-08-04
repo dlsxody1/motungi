@@ -25,6 +25,10 @@ const STEPS = [
   { n: "03", verb: "동네 리포트", desc: "오늘의 원픽과 활동 목록. 고민 없이 바로 나가면 돼요." },
 ];
 
+/** 갈래 라벨 — 실제로 opportunities에 적재된 것만. 없는 콘텐츠를 광고하면
+ *  첫 검색에서 바로 들통난다. 갈래를 늘리려면 먼저 적재부터 하고 여기에 추가한다. */
+const CATEGORIES = ["공연·연주", "전시·예술", "연극·뮤지컬", "강좌·워크숍", "걷기 코스", "축제·영화"];
+
 export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }) {
   // 벤토 주인공 셀에 세울 실제 원픽. 없으면(로컬/빈 DB) 톤 그라데이션 폴백으로 내려간다.
   const featured = heroPicks.find((o) => o.imageUrl);
@@ -239,6 +243,64 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
           </ul>
         </section>
       )}
+
+      {/* ── 마무리 CTA · 비대칭 클로징 ──
+          이전엔 갈래 6칸 카드 그리드 + 가운데 정렬 핑크 박스였다. 클릭도 안 되는 라벨 6개가
+          화면 절반을 먹고, 그 바로 아래 또 헤딩이 와서 결론이 두 번 났다.
+          여기서는 좌: 카피+CTA / 우: 갈래 세로 목록의 비대칭 split 한 덩어리로 합친다.
+          배경은 히어로 그라데이션을 되받아 페이지를 수미상관으로 닫는다
+          (앞 섹션들이 각각 사진 벤토 / 가로 스텝 행 / 다크 가로스크롤이라 계열이 겹치지 않는다). */}
+      <section
+        className="relative overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(115deg, var(--color-primary) 0%, var(--color-purple) 78%, var(--color-ink-dark) 128%)",
+        }}
+      >
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(85% 70% at 92% 4%, rgba(255,255,255,0.16), transparent 52%)",
+          }}
+        />
+        <WebContainer className="relative grid grid-cols-1 items-center gap-12 py-[84px] lg:grid-cols-[1.15fr_0.85fr] lg:gap-20">
+          {/* 좌 — 결론과 행동 */}
+          <div className="reveal">
+            <h2 className="max-w-[16ch] text-[34px] font-extrabold leading-[1.18] tracking-[-0.025em] text-white text-balance">
+              오늘 저녁, 뭐 할지 아직 안 정했다면.
+            </h2>
+            <p className="mt-4 max-w-[32rem] text-[16px] leading-[1.65] text-white/85">
+              동네만 정해주면 오늘 갈 만한 곳으로 좁혀드려요.
+            </p>
+            <Link
+              href="/location"
+              className="mt-8 inline-flex h-[54px] items-center gap-2 rounded-[13px] bg-white px-8 text-[16px] font-bold whitespace-nowrap text-primary-deep transition-transform hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
+            >
+              내 동네에서 찾기
+              <ArrowMiniIcon size={18} />
+            </Link>
+            <p className="mt-4 flex items-center gap-1.5 text-[14px] text-white/80">
+              <CheckMiniIcon size={16} />
+              로그인 없이 바로 시작 · 저장할 때만 가입
+            </p>
+          </div>
+
+          {/* 우 — 갈래. 카드 6칸 대신 hairline으로 나눈 세로 목록이라
+              "이런 것들이 들어온다"는 정보만 조용히 전달한다. */}
+          <ul className="reveal border-t border-white/20">
+            {CATEGORIES.map((label) => (
+              <li
+                key={label}
+                className="border-b border-white/20 py-3 text-[15px] font-semibold text-white/90"
+              >
+                {label}
+              </li>
+            ))}
+          </ul>
+        </WebContainer>
+      </section>
     </>
   );
 }
