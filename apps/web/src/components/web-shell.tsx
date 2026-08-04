@@ -69,6 +69,7 @@ export function TopNav({
   variant = "app",
   dongName,
   userName,
+  hideNeighborhood = false,
 }: {
   active?: NavKey;
   variant?: "marketing" | "app";
@@ -76,6 +77,15 @@ export function TopNav({
   dongName?: string;
   /** 앱 variant 아바타 표기 이름(첫 글자만 렌더). 없으면 게스트. */
   userName?: string;
+  /**
+   * 헤더의 동네 pill을 숨긴다.
+   *
+   * 탐색 화면은 사이드바에 "내 동네"(앵커 변경)와 "지역"(결과 내 필터)을 나란히 두는데,
+   * 헤더에도 같은 모양의 동네 pill이 있으면 **생김새는 같고 하는 일은 다른 컨트롤이
+   * 한 화면에 둘** 있게 된다(하나는 재조회, 하나는 클라 필터). 앵커 변경 진입점을
+   * 사이드바 한 곳으로 모으고 헤더는 비운다.
+   */
+  hideNeighborhood?: boolean;
 }) {
   const dongLabel = dongName ?? "동네 설정";
   return (
@@ -112,10 +122,12 @@ export function TopNav({
         </div>
       ) : (
         <div className="flex items-center gap-[18px]">
-          <NeighborhoodMenu
-            dongLabel={dongLabel}
-            triggerClassName="flex items-center gap-1.5 rounded-pill border border-line bg-surface px-3.5 py-2 text-[13px] font-semibold text-label shadow-card"
-          />
+          {!hideNeighborhood && (
+            <NeighborhoodMenu
+              dongLabel={dongLabel}
+              triggerClassName="flex items-center gap-1.5 rounded-pill border border-line bg-surface px-3.5 py-2 text-[13px] font-semibold text-label shadow-card"
+            />
+          )}
           {/* 보관함 입구는 좌측 내비의 "보관함" 하나로 충분하다 — 같은 /saved로 가는
               북마크 아이콘을 헤더에 또 두지 않는다(입구 중복). */}
           {userName ? (
@@ -186,6 +198,7 @@ export function DesktopShell({
   footer = true,
   dongName,
   userName,
+  hideNeighborhood = false,
 }: {
   children: ReactNode;
   active?: NavKey;
@@ -193,6 +206,8 @@ export function DesktopShell({
   footer?: boolean;
   dongName?: string;
   userName?: string;
+  /** 헤더 동네 pill을 숨긴다 — 화면이 자체 앵커 진입점을 가질 때(TopNav 주석 참조). */
+  hideNeighborhood?: boolean;
 }) {
   return (
     <div className="hidden min-h-dvh flex-col bg-bg md:flex">
@@ -202,7 +217,13 @@ export function DesktopShell({
       >
         본문 바로가기
       </a>
-      <TopNav active={active} variant={variant} dongName={dongName} userName={userName} />
+      <TopNav
+        active={active}
+        variant={variant}
+        dongName={dongName}
+        userName={userName}
+        hideNeighborhood={hideNeighborhood}
+      />
       <main id="main" className="flex-1">
         {children}
       </main>

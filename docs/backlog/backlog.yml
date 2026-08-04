@@ -547,6 +547,22 @@ backlog:
       마이그레이션 적용과 secret 등록을 같은 타이밍에 해야 한다. status는 사람의 최종 리뷰 전까지
       doing으로 둠(done 승격은 사람 담당).
 
+      [2026-08-04 배포 완료] 위 "배포 후속"을 전부 실행하고 실측 검증함.
+      (1) vault.create_secret(..., 'INGEST_CRON_SECRET') 생성 — 64자.
+      (2) Edge Function secret 3종(SEOUL_OPENAPI_KEY·DATA_GO_KR_SERVICE_KEY·INGEST_CRON_SECRET)
+      사람이 등록. (3) ingest v6→v8 배포(verify_jwt=false 유지 — pg_cron이 JWT 없이 호출).
+      배포는 supabase CLI 대신 MCP deploy_edge_function 사용 — CLI는 Docker 필요 + functions/ingest가
+      packages/core를 ../../../로 import해 번들에 없어 400 실패. scripts/bundle-ingest.sh로 해결(커밋 b881e5b).
+      (4) 마이그레이션 0016 적용 — cron.job jobid 2 갱신(중복 생성 아님), x-cron-secret 헤더 포함·
+      body의 seoulKey/dataGoKrKey 제거 확인. (5) 검증: 헤더 없음/오답 → 401 각각 확인,
+      정답 → 200 ok:true, 세 소스 전부 성공(failedSources: []). cron이 실제로 쓸 net.http_post를
+      동일 페이로드로 직접 실행해 200 재확인(net._http_response id=29) — 야간 경로까지 실증.
+      purged 168~169건은 전부 deadline 경과분이며 past_due=0·future=427로 미래분 손실 없음.
+
+      부수 정정: "적재 0건이라 카탈로그가 매일 샌다"는 관측은 사실이 아니었다. 배포 전에도
+      cron이 body로 키를 넘겨 v6가 정상 적재 중이었고(8/3 17건, 최근 7일 60건), 466→457 감소는
+      마감 경과분 정리라는 의도된 동작이었다. 즉 이 배포는 출혈 차단이 아니라 M-026 보안 강화다.
+
   - id: M-027
     title: "packages/core catalog.ts가 Supabase 응답을 Database 제네릭 없이 unchecked cast로 신뢰"
     priority: high

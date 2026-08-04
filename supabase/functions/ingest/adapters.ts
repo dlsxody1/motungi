@@ -9,6 +9,8 @@
  *    필드명이 다르므로 함께 수정할 것.
  */
 import { hashKey, joinDescription, parseFeeKrw, parseHour, parsePoint, parseTrailGuide, toIsoDate } from "../../../packages/core/src/adapters/util.ts";
+// 퇴근후 판정은 core가 SoT(테스트 소유: core/adapters/seoul-jobs.test.ts).
+import { isAfterWorkShift, parseShiftHours, parseWorkRegion } from "../../../packages/core/src/adapters/seoul-jobs.ts";
 
 /** DB opportunities row (upsert 페이로드). */
 export interface OppRow {
@@ -203,25 +205,38 @@ export function mapSeoulJob(raw: Record<string, string>): OppRow | null {
   const jobName = raw.JOBCODE_NM?.trim();
   if (!id || !jobName) return null;
 
+  // ⭐ 컨셉 게이트 — "퇴근하고 뭐하지"는 퇴근 후에 할 수 있는 일만 뜻한다.
+  // 시간제라도 종료가 낮이면(9~12시 요양보호사 등) 제외한다. 이 필터가 없으면
+  // 수도권 시간제 6,294건이 통째로 들어와 낮 근무가 부업 탭을 덮는다(→ 309건).
+  const workTime = raw.WORK_TIME_NM || raw.DTY_CN;
+  if (!isAfterWorkShift(workTime)) return null;
+
   const title = raw.CMPNY_NM ? `${raw.CMPNY_NM} · ${jobName}` : jobName;
-  const startHour = parseHour(raw.WORK_TIME_NM || raw.DTY_CN);
+  const shift = parseShiftHours(workTime);
+  const region = parseWorkRegion(raw.WORK_PARAR_BASS_ADRES_CN);
   return {
     source: "seoul_jobs",
     category: "side_job",
     external_id: id,
     title,
-    summary: [raw.CMPNY_NM, empType, raw.WORK_PARAR_BASS_ADRES_CN].filter(Boolean).join(" · ") || title,
+    summary: [raw.CMPNY_NM, empType, region].filter(Boolean).join(" · ") || title,
     // side_job의 cost_krw는 지출이 아니라 벌이(income) — UI에서 카테고리로 분기 표기.
     cost_krw: parseFeeKrw(raw.HOPE_WAGE) ?? null,
     difficulty: null,
-    dong_name: raw.WORK_PARAR_BASS_ADRES_CN || null,
+    // 원문은 "경기 구리시대림어린이집"처럼 상세주소가 붙어 온다 — 시군구까지만 잘라
+    // 넣지 않으면 normalizeGu가 못 걷어내 지역 필터에 안 걸린다.
+    dong_name: region ?? null,
     lat: null,
     lng: null,
     cta_url: null,
     image_url: null,
-    deadline: toIsoDate(raw.RCEPT_CLOS) ?? null,
+    // RCEPT_CLOS는 실응답에 없다 — RCEPT_CLOS_NM이고 값이 "마감일 (2026-09-26)"이라
+    // toIsoDate(^앵커)로는 못 읽는다. 괄호 안 날짜만 뽑아 넘긴다.
+    // 이게 null이면 마감 지난 공고가 purge되지 않고 계속 쌓인다.
+    deadline: toIsoDate(raw.RCEPT_CLOS_NM?.match(/\d{4}-\d{2}-\d{2}/)?.[0]) ?? null,
     source_label: "서울시 일자리플러스센터",
-    time_start_hour: startHour ?? null,
-    time_end_hour: startHour != null ? Math.min(startHour + 4, 24) : null,
+    // 종료시각은 실측을 쓴다(예전엔 start+4 추정이라 19시 필터와 어긋났다).
+    time_start_hour: shift?.start ?? null,
+    time_end_hour: shift?.end ?? null,
   };
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/bottom-nav";
+import { ErrorState } from "@/components/error-state";
 import {
   BookmarkIcon,
   ChevronLeftIcon,
@@ -15,6 +16,7 @@ import { MobileScreen, SafeBottom, SafeTop, Tag } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { diagnosisSummaryChips, displayNameOf } from "@motungi/core";
 import { useReportFallback } from "@/hooks/useReportFallback";
+import { exploreHref } from "@/lib/explore-filters";
 import { shareContent } from "@/lib/kakao";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -162,7 +164,7 @@ export default function ReportPage() {
                 <div className="mb-1 mt-6 flex items-center justify-between">
                   <p className="text-[14px] font-semibold text-label">함께 보면 좋아요</p>
                   <Link
-                    href="/explore"
+                    href={exploreHref(onePick.category)}
                     className="text-[13px] font-semibold text-primary hover:text-primary-deep"
                   >
                     더 찾아보기 →
@@ -325,7 +327,7 @@ export default function ReportPage() {
               <div className="mb-3 mt-7 flex items-center justify-between">
                 <p className="text-[16px] font-bold text-ink">함께 보면 좋아요</p>
                 <Link
-                  href="/explore"
+                  href={exploreHref(onePick.category)}
                   className="text-[14px] font-semibold text-primary hover:text-primary-deep"
                 >
                   더 찾아보기 →
@@ -438,21 +440,14 @@ function ReportEmpty({
     : "60초 진단을 하면 우리 동네 원픽을 골라드려요.";
 
   const Body = (
-    <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-      <p className="text-[18px] font-extrabold text-ink md:text-[22px]">{title}</p>
-      <p className="mt-2 max-w-[320px] text-[14px] leading-relaxed text-muted md:text-[15px]">{desc}</p>
-      <div className="mt-6 flex flex-col items-stretch gap-2.5">
-        <button
-          onClick={onRetry}
-          className="h-11 rounded-xl bg-primary px-6 text-[14px] font-bold text-white transition-colors hover:bg-primary-deep"
-        >
-          {isError ? "다시 시도" : "60초 진단하기"}
-        </button>
-        <button onClick={onExplore} className="h-11 rounded-xl px-6 text-[14px] font-semibold text-label">
-          탐색 둘러보기
-        </button>
-      </div>
-    </div>
+    <ErrorState
+      // 빈 결과는 경보가 아니다 — 실패일 때만 스크린리더에 즉시 알린다.
+      alert={isError}
+      title={title}
+      desc={desc}
+      action={{ label: isError ? "다시 시도" : "60초 진단하기", onClick: onRetry }}
+      secondary={{ label: "탐색 둘러보기", onClick: onExplore }}
+    />
   );
 
   return (

@@ -16,6 +16,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import {
   mapCultureInfo,
   mapSeoulCulture,
+  mapSeoulJob,
   mapTrail,
   type OppRow,
 } from "./adapters.ts";
@@ -36,6 +37,14 @@ const SERVICE_KEY =
 /** 소스별 최대 적재 건수(1회 실행). 부하·쿼터 보호. */
 const LIMIT = 300;
 
+/**
+ * seoul_jobs만 페이지를 도는 이유: 채택 대상(퇴근후 종료 19시 이상)이 전체 2.5만 건에
+ * 얇게 흩어져 있어 앞 300건으로는 거의 안 잡힌다. 페이지당 1000건(서울 API 상한) ×
+ * 25페이지 = 25,000으로 현재 전량(24,897)을 덮는다. 총량이 늘면 이 수를 올린다.
+ */
+const SEOUL_JOBS_PAGE = 1000;
+const SEOUL_JOBS_MAX_PAGES = 25;
+
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { persistSession: false },
 });
@@ -52,14 +61,25 @@ async function fetchSeoul(
   seoulKey: string,
   service: string,
   path = "",
+  start = 1,
+  end = LIMIT,
+  /**
+   * 페이지 순회용 — 범위를 넘어선 페이지는 row 없이 오는데, 그때 throw하면 runSource가
+   * 소스 전체를 실패로 처리해 **앞서 모은 페이지까지 통째로 버린다**. 순회 호출은
+   * 빈 배열로 받아 루프가 정상 종료되게 한다(첫 페이지 실패는 여전히 throw).
+   */
+  emptyOnNoRow = false,
 ): Promise<Record<string, string>[]> {
   if (!seoulKey) throw new Error("SEOUL_OPENAPI_KEY 없음");
-  const url = `http://openapi.seoul.go.kr:8088/${seoulKey}/json/${service}/1/${LIMIT}/${path}`;
+  const url = `http://openapi.seoul.go.kr:8088/${seoulKey}/json/${service}/${start}/${end}/${path}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${service} HTTP ${res.status}`);
   const json = await res.json();
   const body = json[service];
-  if (!body?.row) throw new Error(`${service}: row 없음 (${body?.RESULT?.MESSAGE ?? "?"})`);
+  if (!body?.row) {
+    if (emptyOnNoRow && start > 1) return [];
+    throw new Error(`${service}: row 없음 (${body?.RESULT?.MESSAGE ?? "?"})`);
+  }
   return body.row;
 }
 
@@ -192,9 +212,31 @@ Deno.serve(async (req) => {
       // 좌표는 GPX 안에만 있다 — 수도권으로 좁힌 뒤에 채운다(전국 152건 fetch 방지).
       return await enrichTrailCoords(rows);
     }),
-    // ⚠️ sports_facility(mapSportsFacility)·seoul_jobs(mapSeoulJob)는 의도적으로 미배선.
-    //    매퍼는 준비됐으나 Raw* 필드명이 추정값(발급 응답 미확정)이라 실호출 시 전량 null 위험.
-    //    데드코드가 아니라 게이팅 상태 — 인증키 발급 후 응답 1건으로 필드 확정하면 여기 runSource 추가.
+    runSource("seoul_jobs", async () => {
+      // 퇴근후(종료 19시 이상) 건은 전체 2.5만 건에 얇게 흩어져 있다 — 앞 300건만 받으면
+      // 서너 건밖에 안 걸리므로 여기서는 페이지를 돈다(서울 API는 페이지당 1000건이 상한).
+      // 실측(2026-08-04): 전체 24,897 → 수도권 시간제 6,294 → 퇴근후 309.
+      const rows: OppRow[] = [];
+      for (let page = 0; page < SEOUL_JOBS_MAX_PAGES; page++) {
+        const start = page * SEOUL_JOBS_PAGE + 1;
+        const raw = await fetchSeoul(
+          seoulKey,
+          "GetJobInfo",
+          "",
+          start,
+          start + SEOUL_JOBS_PAGE - 1,
+          true,
+        );
+        if (raw.length === 0) break; // 마지막 페이지
+        for (const r of raw) {
+          const mapped = mapSeoulJob(r);
+          if (mapped && inMetro(mapped.dong_name)) rows.push(mapped);
+        }
+      }
+      return dedupByKey(rows, (r) => r.external_id);
+    }),
+    // ⚠️ sports_facility(mapSportsFacility)는 여전히 미배선 — Raw* 필드명이 추정값(발급 응답
+    //    미확정)이라 실호출 시 전량 null 위험. 데드코드가 아니라 게이팅 상태다.
   ]);
 
   // 판정은 core의 순수 함수가 한다(테스트 소유는 packages/core/src/adapters/ingest-fetch.test.ts).

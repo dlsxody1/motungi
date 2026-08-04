@@ -46,7 +46,7 @@ function posterSection(): HTMLElement {
  * 갈래 라벨에서 <ul>을 거슬러 올라가 좁힌다.
  */
 function categorySection(): HTMLElement {
-  const first = screen.getByText("공연·연주");
+  const first = screen.getByText("교육·체험");
   const list = first.closest("ul");
   if (!list) throw new Error("갈래 리스트를 찾지 못했다");
   return list;
@@ -74,26 +74,23 @@ describe("WebLanding", () => {
     expect(screen.getByText("하이퍼로컬")).toBeInTheDocument();
   });
 
-  it("카테고리: 문화·여가 갈래 6종을 예시와 함께 렌더한다", () => {
+  it("카테고리: 문화·여가 갈래 6종을 렌더한다", () => {
     render(<WebLanding />);
 
     const categoryList = categorySection();
 
     // 라벨 — 실제 적재된 콘텐츠가 있는 갈래만. 지어낸 갈래를 광고하지 않는다.
+    // (77ab54c에서 DB 실측 기준으로 갱신됨: "걷기길" 0건 → "코스" 등. 죽은 링크 방지.)
     for (const label of [
-      "공연·연주",
-      "전시·예술",
+      "교육·체험",
+      "전시·미술",
       "연극·뮤지컬",
-      "강좌·워크숍",
-      "걷기 코스",
-      "축제·영화",
+      "콘서트",
+      "클래식·국악",
+      "산책·걷기길",
     ]) {
       expect(within(categoryList).getByText(label)).toBeInTheDocument();
     }
-
-    // 예시 카피는 opportunities에 실재하는 제목에서 온 것이어야 한다.
-    expect(within(categoryList).getByText("정기연주회, 실내악, 오페라 워크숍")).toBeInTheDocument();
-    expect(within(categoryList).getByText("서해랑길, DMZ 평화의 길")).toBeInTheDocument();
 
     // 리스트 항목은 정확히 6개
     expect(within(categoryList).getAllByRole("listitem")).toHaveLength(6);
@@ -115,6 +112,18 @@ describe("WebLanding", () => {
 
     // 히어로 검색 버튼 라벨
     expect(screen.getByText("찾기")).toBeInTheDocument();
+  });
+
+  it("두 길: 추천(/location)과 직접 탐색(/explore)을 모두 제시한다", () => {
+    render(<WebLanding />);
+
+    // 랜딩은 더 이상 검색을 부정하지 않는다 — 둘 다 정당한 길로 안내한다.
+    expect(
+      screen.getByRole("link", { name: /동네 활동 둘러보기/ }),
+    ).toHaveAttribute("href", "/explore");
+
+    // 옛 반검색 카피가 남아 있으면 헤더에서 권하고 본문에서 부정하는 모순이 된다.
+    expect(screen.queryByText(/검색하지 마세요/)).not.toBeInTheDocument();
   });
 
   it("실데이터가 없으면 '지금 열리는 활동' 섹션을 아예 렌더하지 않는다", () => {

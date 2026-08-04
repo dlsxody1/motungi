@@ -1,9 +1,8 @@
 "use client";
 
-import type { OpportunityCategory } from "@motungi/core";
 import { nearestAnchorKm, normalizeGu, scoreAll } from "@motungi/core";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer, useWindowVirtualizer } from "@tanstack/react-virtual";
 import { BottomNav } from "@/components/bottom-nav";
 import {
@@ -20,24 +19,24 @@ import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { ExploreCard } from "@/components/explore-card";
 import { ExploreRow } from "@/components/explore-row";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
+import { FILTERS } from "@/lib/explore-filters";
 import { useAppStore } from "@/store/useAppStore";
 
-/** 필터 라벨 → 카테고리. "전체"는 null. 데이터 있는 카테고리만 동적으로 노출된다. */
-const FILTERS: { label: string; category: OpportunityCategory | null }[] = [
-  { label: "전체", category: null },
-  { label: "문화·공연", category: "culture" },
-  { label: "운동·산책", category: "active" },
-  { label: "먹거리·마켓", category: "food" },
-  { label: "클래스", category: "class" },
-  { label: "마켓", category: "market" },
-  { label: "부업", category: "side_job" },
-];
-
-/** B1 · 탐색 (전체 기회) — 반응형 */
+/** B1 · 탐색 (전체 기회) — 반응형. useSearchParams는 Suspense 경계 필요. */
 export default function ExplorePage() {
+  return (
+    <Suspense fallback={null}>
+      <ExploreInner />
+    </Suspense>
+  );
+}
+
+function ExploreInner() {
   useEnsureCatalog();
   const router = useRouter();
-  const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
+  const searchParams = useSearchParams();
+  const homeDong = useAppStore((s) => s.anchors.home?.dongName);
+  const dongName = homeDong ?? "우리 동네";
   const user = useAppStore((s) => s.user);
   const catalog = useAppStore((s) => s.catalog);
   const catalogStatus = useAppStore((s) => s.catalogStatus);
@@ -48,10 +47,19 @@ export default function ExplorePage() {
   // 앵커(선택 동네 좌표)가 있으면 거리순 정렬이 가능하다(진단 전에도).
   const hasAnchor = anchors.home?.point != null || anchors.work?.point != null;
 
-  const [filter, setFilter] = useState("전체");
-  const [query, setQuery] = useState("");
+  /**
+   * q·cat은 URL에서 초기값만 받는다(단방향).
+   * 양방향 동기화를 하면 IME 조합 중 URL 갱신 → 리렌더가 캐럿을 흔든다.
+   * region·sort·easyOnly는 넣지 않는다 — sort는 개인 취향이라 남의 링크가 내 정렬을 덮어쓴다.
+   */
+  const initialCat = searchParams.get("cat");
+  const [filter, setFilter] = useState(() =>
+    // 모르는 라벨이 오면 무시한다 — URL로 존재하지 않는 필터가 활성화되면 칩이 깨진다.
+    initialCat && FILTERS.some((f) => f.label === initialCat) ? initialCat : "전체",
+  );
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   // 필터링은 디바운스된 값으로 — 캐럿은 query로 즉시 반응하되 목록 재계산만 미룬다.
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState(() => searchParams.get("q") ?? "");
   const [easyOnly, setEasyOnly] = useState(false);
   const [region, setRegion] = useState<string | null>(null);
   // 정렬: 추천순(진단 필요) · 거리순(앵커 필요) · 마감임박순(기본).
@@ -91,17 +99,58 @@ export default function ExplorePage() {
     return () => window.clearTimeout(t);
   }, [query]);
 
+  /**
+   * 확정된 값만 URL에 되쓴다(디바운스된 q + cat). replace라 히스토리를 더럽히지 않고,
+   * scroll:false라 목록 위치가 튀지 않는다. 빈 값은 파라미터 자체를 뺀다.
+   */
+  useEffect(() => {
+    const sp = new URLSearchParams();
+    if (debouncedQuery.trim()) sp.set("q", debouncedQuery.trim());
+    if (filter !== "전체") sp.set("cat", filter);
+    const qs = sp.toString();
+    router.replace(qs ? `/explore?${qs}` : "/explore", { scroll: false });
+  }, [debouncedQuery, filter, router]);
+
+  /**
+   * 행별 검색 하이스택. source가 바뀔 때만 만든다 —
+   * list 안에서 만들면 키 입력마다 (행 × 필드) join이 다시 돈다.
+   *
+   * summary는 산문이 아니라 "구 · 장소 · 장르" 조인 문자열이라 지역·장소·장르가 이미 들어있다.
+   * 반면 categoryLabel("동네 문화·공연")은 우리가 붙인 라벨이라 어디에도 없어서
+   * 그대로 치면 0건이 나왔다 — 그래서 라벨과 정규화한 구 이름을 함께 넣는다.
+   *
+   * ponytail: 457행 클라 substring 필터. 코퍼스 5k+ 또는 반경 밖 검색 요구 시
+   * /api/opportunities/search 신설 + title/summary trgm GIN. 기존 catalog 캐시 키에 q를 넣지 말 것.
+   */
+  const haystacks = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const o of source) {
+      m.set(
+        o.id,
+        [o.title, o.summary, o.categoryLabel, o.location?.dongName, normalizeGu(o.location?.dongName)]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
+      );
+    }
+    return m;
+  }, [source]);
+
   const list = useMemo(() => {
     const cat = FILTERS.find((f) => f.label === filter)?.category ?? null;
-    const q = debouncedQuery.trim();
+    // 공백으로 쪼개 AND 매칭 — "망원 재즈"처럼 떨어진 두 단어도 잡는다(연속 부분문자열이 아니라서).
+    const terms = debouncedQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
     return source.filter((o) => {
       if (cat && o.category !== cat) return false;
       if (region && normalizeGu(o.location?.dongName) !== region) return false;
-      if (q && !`${o.title} ${o.summary}`.includes(q)) return false;
+      if (terms.length) {
+        const hay = haystacks.get(o.id) ?? "";
+        if (!terms.every((t) => hay.includes(t))) return false;
+      }
       if (easyOnly && !(o.difficulty != null && o.difficulty <= 0.33)) return false;
       return true;
     });
-  }, [filter, region, debouncedQuery, source, easyOnly]);
+  }, [filter, region, debouncedQuery, source, easyOnly, haystacks]);
 
   // 활성 필터 칩(실제 상태 파생). 선택 없으면 미표시. 전부 해제 가능(죽은 칩 없음).
   const activeChips: { key: string; label: string; clear: () => void }[] = [];
@@ -209,9 +258,9 @@ export default function ExplorePage() {
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  aria-label="활동·키워드 검색"
+                  aria-label="활동 좁히기"
                   className="flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-muted"
-                  placeholder="활동·키워드 검색"
+                  placeholder="동네·활동 이름으로 좁히기"
                 />
               </div>
 
@@ -266,7 +315,7 @@ export default function ExplorePage() {
       </div>
 
       {/* ── 데스크탑 ── */}
-      <DesktopShell active="explore" dongName={dongName} userName={user?.displayName}>
+      <DesktopShell active="explore" dongName={dongName} userName={user?.displayName} hideNeighborhood>
         <WebContainer className="py-8">
           {/* 헤더 */}
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -283,9 +332,9 @@ export default function ExplorePage() {
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  aria-label="활동 검색"
+                  aria-label="활동 좁히기"
                   className="flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-muted"
-                  placeholder="활동 검색"
+                  placeholder="동네·활동 이름으로 좁히기"
                 />
               </div>
               <select
@@ -307,6 +356,17 @@ export default function ExplorePage() {
           <div className="mt-5 grid grid-cols-1 items-start gap-7 lg:grid-cols-[248px_1fr]">
             {/* 사이드바 (스크롤 시 따라오게) */}
             <aside className="rounded-[18px] bg-surface p-5.5 shadow-web lg:sticky lg:top-[88px]">
+              {/* 앵커 변경(재조회+거리 재계산)과 결과 내 지역 필터(클라 필터)를 한 열에 두되
+                  라벨로 갈라놓는다. 헤더 pill은 hideNeighborhood로 뺐다 — 진입점은 여기 하나. */}
+              <p className="text-[14px] font-bold text-ink">내 동네</p>
+              <NeighborhoodMenu
+                // 앵커가 없으면 "우리 동네"는 지명인 척하는 빈 값이다 — 눌러야 할 것을 눌러야 한다고 말한다.
+                dongLabel={homeDong ?? "동네 선택하기"}
+                triggerClassName="mt-3 flex h-10 w-full items-center justify-between gap-1.5 rounded-lg border border-line bg-surface px-3 text-[14px] font-medium text-label hover:bg-bg"
+              />
+
+              <div className="my-4 h-px bg-line-alt" />
+
               <p className="text-[14px] font-bold text-ink">카테고리</p>
               <div className="mt-3 space-y-0.5">
                 {CATEGORIES.map((c) => {

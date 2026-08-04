@@ -43,3 +43,7 @@ android/
 
 # 서드파티 clone (pixel-agents 뷰어) — 이 repo 산출물 아님, 서브모듈로 잡히면 안 됨
 pixel-agents/
+
+# ingest 배포 번들 생성물 — scripts/bundle-ingest.sh가 packages/core에서 매번 복사한다.
+# 원본은 packages/core/src/adapters. 여기를 편집하지 마라.
+supabase/functions/ingest/_shared/

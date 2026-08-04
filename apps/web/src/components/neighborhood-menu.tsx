@@ -104,9 +104,13 @@ export function NeighborhoodMenu({
         aria-haspopup="dialog"
         aria-label="동네 변경"
       >
-        <LocationIcon size={16} className="text-faint" />
-        {dongLabel}
-        <ChevronDownIcon size={16} className="text-faint" />
+        {/* 라벨 묶음과 chevron을 갈라놓는다 — 트리거가 w-full이면 chevron이 오른쪽 끝으로 가고,
+            내용 폭 pill이면 gap만큼만 벌어져 예전 모양 그대로다. */}
+        <span className="flex min-w-0 items-center gap-1.5">
+          <LocationIcon size={16} className="shrink-0 text-faint" />
+          <span className="truncate">{dongLabel}</span>
+        </span>
+        <ChevronDownIcon size={16} className="shrink-0 text-faint" />
       </button>
 
       <dialog

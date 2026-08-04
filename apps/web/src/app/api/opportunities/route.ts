@@ -17,6 +17,7 @@
 import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
 import { fetchOpportunities, type CatalogResult, type MockOpportunity } from "@motungi/core";
+import { apiError, reportError } from "@/lib/api-error";
 import { supabase } from "@/lib/supabase";
 
 /** 앵커가 있을 때 시도하는 반경(km) — 가까운 것부터. 클라이언트에서 그대로 옮겨왔다. */
@@ -114,10 +115,7 @@ export async function GET(request: Request) {
   const lng = num(searchParams.get("lng"));
 
   if (!supabase) {
-    return NextResponse.json(
-      { error: "not_configured", message: "카탈로그가 설정되지 않았습니다." },
-      { status: 503 },
-    );
+    return apiError("not_configured", "카탈로그가 설정되지 않았습니다.", 503);
   }
 
   // 마감 지난 활동은 서버에서 제외 — 기준일은 서버 시계를 쓴다(클라 시계 신뢰 안 함).
@@ -135,8 +133,11 @@ export async function GET(request: Request) {
   let radiusKm: number | null;
   try {
     ({ result, radiusKm } = await loadCatalog(today, point));
-  } catch {
+  } catch (err) {
     // 조회 실패 — 캐시에도, 응답 헤더에도 남기지 않는다. 일시적 장애가 6시간 고정되면 안 된다.
+    // 그래서 여기만 4xx/5xx가 아닌 200 + status:"error"로 나간다(클라이언트는 status로 판별).
+    // 던지지 않고 정상 응답으로 바꾸므로 onRequestError가 못 잡는다 → 직접 남긴다.
+    reportError("api/opportunities", err);
     return NextResponse.json({ items: [], status: "error", radiusKm: null });
   }
 

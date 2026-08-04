@@ -14,6 +14,7 @@
   "dependencies": {
     "@motungi/core": "workspace:*",
     "@motungi/tokens": "workspace:*",
+    "@sentry/nextjs": "^10.69.0",
     "@supabase/supabase-js": "^2.47.10",
     "@tanstack/react-virtual": "^3.14.9",
     "next": "^15.1.4",

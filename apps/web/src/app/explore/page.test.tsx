@@ -3,11 +3,30 @@
  * 올바른 문구/카드를 렌더하는지 검증한다. fetch 경로(useEnsureCatalog)는
  * 스토어를 idle이 아닌 상태로 시딩해서 우회한다.
  */
-import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockOpportunity } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 import ExplorePage from "./page";
+
+/**
+ * 전역 setup의 next/navigation mock은 빈 searchParams를 준다.
+ * URL 시드 동작을 검증하려면 테스트마다 파라미터를 바꿔야 해서 여기서 재정의한다.
+ */
+const searchParamsRef = { current: new URLSearchParams() };
+const replaceSpy = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: (...args: unknown[]) => replaceSpy(...args),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  usePathname: () => "/explore",
+  useSearchParams: () => searchParamsRef.current,
+}));
 
 const ONE_PICK: MockOpportunity = {
   id: "op-1",
@@ -146,15 +165,147 @@ describe("ExplorePage 매칭 랭킹 (M-005)", () => {
   });
 });
 
+/**
+ * 검색 대상 확장 + AND 매칭.
+ * summary는 "구 · 장소 · 장르" 조인 문자열이라 지역·장소는 원래 잡혔지만,
+ * categoryLabel(우리가 붙인 라벨)은 어디에도 없어 그대로 치면 0건이었다.
+ */
+const JAZZ: MockOpportunity = {
+  ...ONE_PICK,
+  id: "op-jazz",
+  title: "카즈미 타테이시 트리오 내한공연",
+  summary: "마포구 · 마포아트센터 아트홀맥 · 재즈",
+  categoryLabel: "동네 문화·공연",
+  location: { dongName: "마포구" },
+};
+
+const TRAIL: MockOpportunity = {
+  ...ONE_PICK,
+  id: "op-trail",
+  category: "active",
+  title: "서해랑길 42코스",
+  summary: "경기 화성시 · 12km · 바다를 따라 걷는 길",
+  categoryLabel: "동네 산책·운동",
+  location: { dongName: "경기 화성시" },
+};
+
+/**
+ * 검색어 입력 후 150ms 디바운스가 반영되길 기다린다.
+ * 모바일·데스크탑 트리가 동시에 마운트되므로(md:hidden / DesktopShell) 제목은 항상 복수다
+ * → queryAllByText로 세고, 걸러졌으면 0이 된다.
+ */
+async function searchFor(text: string) {
+  // 모바일·데스크탑 입력이 같은 state를 공유하므로 아무거나 하나에 넣으면 둘 다 걸린다.
+  const [input] = screen.getAllByLabelText("활동 좁히기");
+  fireEvent.change(input!, { target: { value: text } });
+}
+const countOf = (title: string) => screen.queryAllByText(title).length;
+
+describe("ExplorePage 검색", () => {
+  afterEach(cleanup);
+
+  it("categoryLabel로 검색된다 — summary엔 없는 우리 라벨", async () => {
+    seed("ok", [JAZZ, TRAIL]);
+    render(<ExplorePage />);
+
+    await searchFor("동네 문화·공연");
+
+    await waitFor(() => expect(countOf("서해랑길 42코스")).toBe(0));
+    expect(countOf("카즈미 타테이시 트리오 내한공연")).toBeGreaterThan(0);
+  });
+
+  it("구 이름으로 검색된다", async () => {
+    seed("ok", [JAZZ, TRAIL]);
+    render(<ExplorePage />);
+
+    await searchFor("마포");
+
+    await waitFor(() => expect(countOf("서해랑길 42코스")).toBe(0));
+    expect(countOf("카즈미 타테이시 트리오 내한공연")).toBeGreaterThan(0);
+  });
+
+  it("공백으로 떨어진 두 단어를 AND로 매칭한다", async () => {
+    seed("ok", [JAZZ, TRAIL]);
+    render(<ExplorePage />);
+
+    // 연속 부분문자열이 아니라 예전엔 0건이었다.
+    await searchFor("마포 재즈");
+
+    await waitFor(() => expect(countOf("서해랑길 42코스")).toBe(0));
+    expect(countOf("카즈미 타테이시 트리오 내한공연")).toBeGreaterThan(0);
+  });
+
+  it("두 단어가 서로 다른 행에만 있으면 매칭되지 않는다(AND이므로)", async () => {
+    seed("ok", [JAZZ, TRAIL]);
+    render(<ExplorePage />);
+
+    await searchFor("마포 서해랑길");
+
+    await waitFor(() => expect(countOf("카즈미 타테이시 트리오 내한공연")).toBe(0));
+    expect(countOf("서해랑길 42코스")).toBe(0);
+  });
+});
+
+/**
+ * URL 상태 — q·cat만 직렬화한다(region·sort·easyOnly 제외).
+ * 리포트의 "더 찾아보기"가 ?cat=으로 프리필하는 경로가 여기에 의존한다.
+ */
+describe("ExplorePage URL 상태", () => {
+  afterEach(() => {
+    cleanup();
+    searchParamsRef.current = new URLSearchParams();
+    replaceSpy.mockClear();
+  });
+
+  it("?q=로 진입하면 검색어가 적용된 상태로 시작한다", async () => {
+    searchParamsRef.current = new URLSearchParams("q=마포");
+    seed("ok", [JAZZ, TRAIL]);
+    render(<ExplorePage />);
+
+    await waitFor(() => expect(countOf("서해랑길 42코스")).toBe(0));
+    expect(countOf("카즈미 타테이시 트리오 내한공연")).toBeGreaterThan(0);
+  });
+
+  it("?cat=으로 진입하면 카테고리 필터가 적용된다", async () => {
+    searchParamsRef.current = new URLSearchParams("cat=운동·산책");
+    seed("ok", [JAZZ, TRAIL]);
+    render(<ExplorePage />);
+
+    await waitFor(() => expect(countOf("카즈미 타테이시 트리오 내한공연")).toBe(0));
+    expect(countOf("서해랑길 42코스")).toBeGreaterThan(0);
+  });
+
+  it("모르는 cat 값은 무시하고 '전체'로 둔다", () => {
+    searchParamsRef.current = new URLSearchParams("cat=없는카테고리");
+    seed("ok", [JAZZ, TRAIL]);
+    render(<ExplorePage />);
+
+    // 둘 다 남아야 한다 — 존재하지 않는 필터로 목록이 비면 안 된다.
+    expect(countOf("카즈미 타테이시 트리오 내한공연")).toBeGreaterThan(0);
+    expect(countOf("서해랑길 42코스")).toBeGreaterThan(0);
+  });
+
+  it("검색어를 입력하면 URL에 q를 되쓴다", async () => {
+    seed("ok", [JAZZ, TRAIL]);
+    render(<ExplorePage />);
+
+    await searchFor("재즈");
+
+    await waitFor(() => {
+      expect(replaceSpy).toHaveBeenCalledWith("/explore?q=%EC%9E%AC%EC%A6%88", { scroll: false });
+    });
+  });
+});
+
 describe("ExplorePage a11y (M-013)", () => {
   afterEach(cleanup);
 
   it("검색 input에 접근 가능한 이름(aria-label)이 있다", () => {
     seed("ok", [ONE_PICK]);
     render(<ExplorePage />);
-    // 모바일·데스크탑 각각의 검색 input
-    expect(screen.getByLabelText("활동·키워드 검색")).toBeInTheDocument();
-    expect(screen.getByLabelText("활동 검색")).toBeInTheDocument();
+    // 모바일·데스크탑 각각의 입력. 카피는 "검색"이 아니라 목록 좁히기 어휘다
+    // (랜딩이 검색을 별도의 길로 안내하므로, 탐색 안의 입력은 필터로 읽혀야 한다).
+    expect(screen.getAllByLabelText("활동 좁히기")).toHaveLength(2);
   });
 
   it("필터 칩이 선택 상태를 aria-pressed로 노출한다('전체' 기본 선택)", () => {

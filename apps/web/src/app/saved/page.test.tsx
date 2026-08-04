@@ -13,6 +13,14 @@ import { axe } from "vitest-axe";
 import { toHaveNoViolations } from "vitest-axe/dist/matchers";
 import type { MockOpportunity } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
+
+// 기본은 실패하지 않는다 — 기존 테스트는 카탈로그에 이미 항목이 있어 이 조회를 타지 않는다.
+// 에러 상태 테스트에서만 실패 응답을 돌려준다.
+const fetchOpportunityById = vi.fn();
+vi.mock("@/data/opportunities", () => ({
+  fetchOpportunityById: (id: string) => fetchOpportunityById(id),
+}));
+
 import SavedPage from "./page";
 
 expect.extend({ toHaveNoViolations });
@@ -139,5 +147,60 @@ describe("SavedPage 카드 인터랙션 (M-014)", () => {
     buttons.forEach((btn) => {
       expect(btn.querySelector("button, a, input, [role='button']")).toBeNull();
     });
+  });
+});
+
+/**
+ * 조회 실패를 "저장한 게 없어요"로 보여주던 버그의 회귀 테스트.
+ *
+ * 훅의 status를 페이지가 버리고 있어서, 네트워크가 죽으면 사용자는 저장해둔 활동이
+ * **사라진 것처럼** 봤다. 빈 상태와 실패 상태는 사용자에게 완전히 다른 의미다.
+ */
+describe("SavedPage 조회 실패 상태", () => {
+  beforeEach(() => {
+    // 카탈로그에 없는 id를 저장해둔 상태 → 훅이 단건 조회를 타고, 그 조회가 실패한다.
+    useAppStore.setState({
+      anchors: {},
+      answers: null,
+      results: [],
+      catalog: [],
+      catalogStatus: "ok",
+      savedIds: ["missing-1"],
+      user: null,
+    });
+    fetchOpportunityById.mockResolvedValue({ data: null, status: "error" });
+  });
+
+  it("실패하면 빈 상태 대신 에러 상태를 보여준다", async () => {
+    render(<SavedPage />);
+
+    // 모바일·데스크톱 두 트리에 각각 렌더된다.
+    const errors = await screen.findAllByText("저장한 활동을 불러오지 못했어요");
+    expect(errors.length).toBeGreaterThan(0);
+
+    // 실패를 "없음"으로 표시하면 안 된다 — 이게 고친 버그다.
+    expect(screen.queryByText("아직 저장한 활동이 없어요")).toBeNull();
+    // 0개라고 단언하는 것도 거짓말이다.
+    expect(screen.queryByText("0개")).toBeNull();
+  });
+
+  it("에러 상태는 role=alert 로 알리고 재시도를 제공한다", async () => {
+    render(<SavedPage />);
+    await screen.findAllByText("저장한 활동을 불러오지 못했어요");
+
+    expect(screen.getAllByRole("alert").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "다시 시도" }).length).toBeGreaterThan(0);
+  });
+
+  // 재시도 버튼이 실제로 조회를 다시 태우는지 — 장식이 아닌지 확인한다.
+  it("'다시 시도'는 조회를 다시 실행한다", async () => {
+    render(<SavedPage />);
+    await screen.findAllByText("저장한 활동을 불러오지 못했어요");
+
+    const callsBefore = fetchOpportunityById.mock.calls.length;
+    const [retryButton] = screen.getAllByRole("button", { name: "다시 시도" });
+    await userEvent.click(retryButton!);
+
+    expect(fetchOpportunityById.mock.calls.length).toBeGreaterThan(callsBefore);
   });
 });

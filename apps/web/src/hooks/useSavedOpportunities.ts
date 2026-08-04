@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { MockOpportunity } from "@/data/opportunities";
 import { fetchOpportunityById } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
@@ -11,6 +11,8 @@ export type SavedLoadStatus = "loading" | "ok" | "empty" | "error";
 export interface SavedView {
   items: MockOpportunity[];
   status: SavedLoadStatus;
+  /** 실패한 조회를 다시 시도한다. status가 "error"일 때만 의미가 있다. */
+  retry: () => void;
 }
 
 /**
@@ -33,6 +35,10 @@ export function useSavedOpportunities(): SavedView {
 
   const [resolved, setResolved] = useState<Record<string, MockOpportunity>>({});
   const [failed, setFailed] = useState(false);
+  // 재시도 nonce — missingKey는 실패해도 그대로라(같은 id를 다시 받아야 하므로) 이것 없이는
+  // effect가 다시 돌지 않는다. 즉 nonce가 없으면 "다시 시도" 버튼이 아무 일도 안 하는 장식이 된다.
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   // 조회 대상: 저장됐지만 스토어에도, 이미 받아둔 것에도 없는 id.
   const missing = savedIds.filter((id) => !catalog.some((o) => o.id === id) && !resolved[id]);
@@ -62,17 +68,17 @@ export function useSavedOpportunities(): SavedView {
     return () => {
       cancelled = true;
     };
-  }, [missingKey]);
+  }, [missingKey, attempt]);
 
   // 저장 순서를 유지한 채 해소한다. 아직 못 받은 id는 자리를 비워둔다(로딩 중).
   const items = savedIds
     .map((id) => catalog.find((o) => o.id === id) ?? resolved[id])
     .filter((o): o is MockOpportunity => !!o);
 
-  if (savedIds.length === 0) return { items, status: "empty" };
+  if (savedIds.length === 0) return { items, status: "empty", retry };
   if (items.length < savedIds.length) {
     // 아직 다 못 받았다 — 실패했으면 error, 아니면 로딩 중.
-    return { items, status: failed ? "error" : "loading" };
+    return { items, status: failed ? "error" : "loading", retry };
   }
-  return { items, status: "ok" };
+  return { items, status: "ok", retry };
 }

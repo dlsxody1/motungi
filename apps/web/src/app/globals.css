@@ -223,6 +223,148 @@
   }
 }
 
+/* ════════════════════════════════════════════════════════════
+ * 물감(Gouache) 레이어 — 랜딩 전역 시각 언어.
+ *
+ * 왜: 흰 카드 + 텍스트만 반복하면 "AI가 짠 랜딩"으로 읽힌다. 실제 디자이너가 만든
+ * 랜딩(headroom·letsjive)의 차이는 손으로 칠한 질감과 유기적인 형태다.
+ * 그래서 질감을 한 곳에서 정의하고 5개 섹션이 전부 이걸 공유한다 —
+ * 두세 섹션만 칠하면 "덜 만든 페이지"가 되므로 전역이 원칙이다.
+ *
+ * 구현: SVG feTurbulence(프랙탈 노이즈)를 data-URI로 인라인 → 네트워크 요청 0.
+ * 이미지 자산이 아니라 코드라서 토큰 색이 바뀌면 물감도 같이 따라온다.
+ * ════════════════════════════════════════════════════════════ */
+
+/* 종이 결 — 배경 위에 아주 옅게 깔리는 섬유질. 단독으로는 거의 안 보이지만
+   이게 없으면 배경이 "디지털 평면"으로 남는다. */
+.paint-paper {
+  position: relative;
+  isolation: isolate;
+}
+.paint-paper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23p)' opacity='0.22'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+
+/* 물감 워시 — 붓으로 한 번 쓸어 칠한 색면. 카드 대신 쓰는 배경.
+   --wash: 칠할 색, --wash-2: 번짐 끝 색. 둘 다 섹션에서 토큰으로 넘긴다. */
+.paint-wash {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--wash, var(--color-tint));
+  background-image:
+    radial-gradient(
+      82% 66% at 22% 18%,
+      var(--wash-2, transparent) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      70% 78% at 88% 92%,
+      var(--wash-2, transparent) 0%,
+      transparent 62%
+    );
+}
+/* 물감 얼룩 — 안료가 고르게 안 퍼진 자국. 이게 "칠했다"는 신호의 8할이다. */
+.paint-wash::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.4;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.02' numOctaves='5' seed='7'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.55' intercept='-0.06'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23w)'/%3E%3C/svg%3E");
+  background-size: 340px 340px;
+}
+
+/* 유기적 형태 — 직사각형 카드를 물감 덩어리처럼 보이게 하는 불규칙 반경.
+   완벽한 원이 아니라 어딘가 눌린 모양이라야 손으로 그린 느낌이 난다. */
+.paint-blob-a {
+  border-radius: 62% 38% 46% 54% / 54% 46% 58% 42%;
+}
+.paint-blob-b {
+  border-radius: 38% 62% 58% 42% / 44% 58% 42% 56%;
+}
+/* 물감 덩어리 카드 — blob보다 덜 극단적. 실제 콘텐츠가 들어가는 면. */
+.paint-card {
+  border-radius: 34px 30px 36px 28px;
+}
+
+/* 붓자국 경계 — 섹션 사이를 직선이 아니라 칠한 자국으로 나눈다.
+   why: 직선 경계는 "블록을 쌓았다"는 신호고, 물감 경계는 "한 장에 칠했다"는 신호다. */
+.paint-edge {
+  display: block;
+  width: 100%;
+  height: clamp(40px, 5vw, 72px);
+  pointer-events: none;
+}
+
+/* 붓으로 밑줄 친 강조 — 텍스트 하이라이트. span에 건다. */
+.paint-underline {
+  position: relative;
+  display: inline-block;
+}
+.paint-underline::after {
+  content: "";
+  position: absolute;
+  left: -0.08em;
+  right: -0.08em;
+  bottom: 0.02em;
+  height: 0.36em;
+  z-index: -1;
+  background: var(--underline-color, var(--color-sun));
+  opacity: 0.42;
+  border-radius: 46% 54% 42% 58% / 68% 58% 42% 32%;
+}
+
+/* 물감 덩어리가 아주 느리게 형태를 바꾼다 — 물감이 마르며 번지는 느낌.
+   근거(motion motivated): 정적인 blob은 "도형"으로 읽히고, 미세하게 움직이면
+   "물감"으로 읽힌다. 12초 주기로 거의 인지되지 않을 만큼만. */
+@media (prefers-reduced-motion: no-preference) {
+  .paint-drift {
+    animation: paint-drift 14s ease-in-out infinite alternate;
+  }
+}
+@keyframes paint-drift {
+  from {
+    border-radius: 62% 38% 46% 54% / 54% 46% 58% 42%;
+    transform: rotate(-1.5deg) scale(1);
+  }
+  to {
+    border-radius: 44% 56% 60% 40% / 42% 60% 40% 58%;
+    transform: rotate(1.5deg) scale(1.03);
+  }
+}
+
+/* 여정 경로가 스크롤에 따라 그려진다 — 붓이 지나가는 것처럼.
+   근거(motion motivated): "세 걸음"이 순차라는 걸 그리는 순서로 보여준다.
+   기본값(미지원·reduced-motion)은 "이미 다 그려짐" — 콘텐츠를 절대 안 가린다. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .paint-path-line {
+      stroke-dasharray: 800;
+      animation: paint-draw linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 46%;
+    }
+  }
+}
+@keyframes paint-draw {
+  from {
+    stroke-dashoffset: 800;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 /* 가로 스크롤 열 — 네이티브 스크롤바를 숨긴다(스크롤 기능은 그대로).
    기본 스크롤바가 보이면 어두운 섹션 위에 밝은 막대가 그어져 디자인이 깨진다.
    접근성: 키보드·터치·트랙패드 스크롤과 포커스 이동은 전부 유지된다. */

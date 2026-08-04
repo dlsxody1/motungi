@@ -6,6 +6,7 @@
  *  → { items: [{ admCode, dongName, sigungu, lat, lng }] }
  */
 import { NextResponse } from "next/server";
+import { apiError, reportError } from "@/lib/api-error";
 import { supabase } from "@/lib/supabase";
 
 /** 응답 상한(묶은 뒤) — 드롭다운이 감당할 만큼만. 강남구 전체(묶으면 17개)도 안 잘린다. */
@@ -18,6 +19,15 @@ const SEARCH_LIMIT = 30;
 const RAW_LIMIT = 200;
 
 export async function GET(request: Request) {
+  try {
+    return await handle(request);
+  } catch (err) {
+    reportError("api/neighborhoods", err);
+    return apiError("internal_error", "일시적인 오류가 발생했습니다.", 500);
+  }
+}
+
+async function handle(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() ?? "";
 
@@ -25,10 +35,7 @@ export async function GET(request: Request) {
   if (!q) return NextResponse.json({ items: [] });
 
   if (!supabase) {
-    return NextResponse.json(
-      { error: "not_configured", message: "동네 검색이 설정되지 않았습니다." },
-      { status: 503 },
-    );
+    return apiError("not_configured", "동네 검색이 설정되지 않았습니다.", 503);
   }
 
   // ILIKE 부분일치. %,_ 등 LIKE 메타문자는 리터럴로 이스케이프.
@@ -51,10 +58,8 @@ export async function GET(request: Request) {
     .limit(RAW_LIMIT);
 
   if (error) {
-    return NextResponse.json(
-      { error: "query_error", message: "동네 검색에 실패했습니다." },
-      { status: 502 },
-    );
+    reportError("api/neighborhoods", error);
+    return apiError("query_error", "동네 검색에 실패했습니다.", 502);
   }
 
   // 행정동(개포1~4동)을 사용자가 말하는 단위(개포동)로 묶는다.

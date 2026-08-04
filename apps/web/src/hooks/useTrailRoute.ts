@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { reportError } from "@/lib/api-error";
 
 /**
  * 걷기길 코스 경로 좌표 — /api/trail-route 경유.
@@ -28,8 +29,10 @@ export function useTrailRoute(id: string | null, enabled: boolean): [number, num
         if (!cancelled && Array.isArray(json.points) && json.points.length > 0) {
           setPoints(json.points);
         }
-      } catch {
-        // 경로 없이 마커만 — 조용히 넘어간다.
+      } catch (err) {
+        // UI는 그대로 — 경로 없이 마커만 그린다(의도된 우아한 열화).
+        // 다만 왜 경로가 안 나오는지는 남겨야 진단이 된다.
+        reportError("useTrailRoute", err);
       }
     })();
     return () => {
