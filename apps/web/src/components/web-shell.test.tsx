@@ -84,43 +84,49 @@ describe("TopNav — 공통 네비", () => {
 });
 
 describe("TopNav — variant='app' (기본)", () => {
-  it("동네 pill · 보관함 · 마이 액션을 렌더하고 마케팅 CTA는 없다", () => {
+  it("동네 pill · (게스트) 로그인 액션을 렌더하고 마케팅 CTA는 없다", () => {
     render(<TopNav />);
-    expect(screen.getByRole("link", { name: "동네 변경" })).toHaveAttribute("href", "/location");
-    expect(screen.getByRole("link", { name: "마이" })).toHaveAttribute("href", "/my");
-    // 보관함은 네비 항목(텍스트)과 우측 북마크 아이콘(aria-label) 두 곳에서 /saved 로 연결된다.
-    const savedLinks = screen.getAllByRole("link", { name: "보관함" });
-    expect(savedLinks).toHaveLength(2);
-    for (const l of savedLinks) expect(l).toHaveAttribute("href", "/saved");
-    // 우측 북마크 액션은 아이콘만(텍스트 없음) 렌더된다.
-    const bookmark = savedLinks.find((l) => l.textContent === "");
-    expect(bookmark).toBeDefined();
-    expect(bookmark?.querySelector("svg")).not.toBeNull();
+    // 동네 pill은 이제 드롭다운 트리거(button) — 클릭 시 동네 선택 dialog가 열린다.
+    expect(screen.getByRole("button", { name: "동네 변경" })).toBeInTheDocument();
+    // 게스트(userName 없음)는 아바타 대신 로그인 버튼(→ /my)을 본다.
+    expect(screen.getByRole("link", { name: "로그인" })).toHaveAttribute("href", "/my");
+    expect(screen.queryByRole("link", { name: "마이" })).not.toBeInTheDocument();
     expect(screen.queryByText("시작하기")).not.toBeInTheDocument();
-    expect(screen.queryByText("로그인")).not.toBeInTheDocument();
+  });
+
+  it("보관함 입구는 좌측 네비 하나뿐이다 — 헤더 우측에 같은 /saved 북마크 아이콘을 중복해 두지 않는다", () => {
+    render(<TopNav />);
+    const savedLinks = screen.getAllByRole("link", { name: "보관함" });
+    expect(savedLinks).toHaveLength(1);
+    expect(savedLinks[0]).toHaveAttribute("href", "/saved");
+    // 텍스트 없는(아이콘만) 보관함 링크가 있으면 중복이 되살아난 것이다.
+    expect(savedLinks.find((l) => l.textContent === "")).toBeUndefined();
   });
 
   it("dongName 이 있으면 pill 에 해당 동네명을, 없으면 '동네 설정' 을 표기한다", () => {
     const { unmount } = render(<TopNav dongName="망원동" />);
-    expect(within(screen.getByRole("link", { name: "동네 변경" })).getByText("망원동")).toBeInTheDocument();
+    expect(within(screen.getByRole("button", { name: "동네 변경" })).getByText("망원동")).toBeInTheDocument();
     unmount();
 
     render(<TopNav />);
-    expect(within(screen.getByRole("link", { name: "동네 변경" })).getByText("동네 설정")).toBeInTheDocument();
+    expect(within(screen.getByRole("button", { name: "동네 변경" })).getByText("동네 설정")).toBeInTheDocument();
   });
 
-  it("userName 첫 글자를 아바타에 렌더하고, 없으면 '게'(게스트)로 폴백한다", () => {
+  it("로그인 시 userName 첫 글자를 아바타에 렌더하고, 게스트는 로그인 버튼을 본다", () => {
     const { unmount } = render(<TopNav userName="철수" />);
     expect(within(screen.getByRole("link", { name: "마이" })).getByText("철")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "로그인" })).not.toBeInTheDocument();
     unmount();
 
     render(<TopNav />);
-    expect(within(screen.getByRole("link", { name: "마이" })).getByText("게")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "로그인" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "마이" })).not.toBeInTheDocument();
   });
 
-  it("빈 문자열 userName 은 falsy 이므로 '게'로 폴백한다", () => {
+  it("빈 문자열 userName 은 falsy 이므로 게스트(로그인 버튼)로 폴백한다", () => {
     render(<TopNav userName="" />);
-    expect(within(screen.getByRole("link", { name: "마이" })).getByText("게")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "로그인" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "마이" })).not.toBeInTheDocument();
   });
 });
 
@@ -128,9 +134,10 @@ describe("TopNav — variant='marketing'", () => {
   it("로그인 · 시작하기 CTA를 렌더하고 앱 액션은 없다", () => {
     render(<TopNav variant="marketing" />);
     expect(screen.queryByRole("button", { name: "검색" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "로그인" })).toHaveAttribute("href", "/report");
+    // 로그인은 실제 로그인 화면(/my — 카카오 로그인)으로 간다. 예전엔 /report로 가 있었다(버그).
+    expect(screen.getByRole("link", { name: "로그인" })).toHaveAttribute("href", "/my");
     expect(screen.getByRole("link", { name: "시작하기" })).toHaveAttribute("href", "/location");
-    expect(screen.queryByRole("link", { name: "동네 변경" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "동네 변경" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "마이" })).not.toBeInTheDocument();
   });
 
@@ -174,7 +181,7 @@ describe("DesktopShell", () => {
     const nav = screen.getByRole("navigation");
     const reportLink = within(nav).getByRole("link", { name: "동네 리포트" });
     expect(reportLink.className).toContain("text-ink-dark");
-    expect(within(screen.getByRole("link", { name: "동네 변경" })).getByText("합정동")).toBeInTheDocument();
+    expect(within(screen.getByRole("button", { name: "동네 변경" })).getByText("합정동")).toBeInTheDocument();
     expect(within(screen.getByRole("link", { name: "마이" })).getByText("영")).toBeInTheDocument();
   });
 });

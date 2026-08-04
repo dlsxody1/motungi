@@ -114,10 +114,12 @@ function seedDiagnosed(catalog: MockOpportunity[]) {
 describe("ExplorePage 매칭 랭킹 (M-005)", () => {
   afterEach(cleanup);
 
-  it("진단 전(answers=null): '추천순' 라벨·★ 원픽을 숨긴다", () => {
+  it("진단 전(answers=null): '추천순' 정렬 옵션과 원픽 강조가 없다", () => {
     seed("ok", [ONE_PICK]);
     render(<ExplorePage />);
-    expect(screen.queryByText("추천순")).not.toBeInTheDocument();
+    // 추천순은 진단 시에만 나오는 정렬 옵션 → 진단 전엔 없음
+    expect(screen.queryByRole("option", { name: "추천순" })).not.toBeInTheDocument();
+    // 원픽 강조는 전면 제거됨
     expect(screen.queryByText("★ 원픽")).not.toBeInTheDocument();
   });
 
@@ -127,18 +129,20 @@ describe("ExplorePage 매칭 랭킹 (M-005)", () => {
     expect(screen.queryByText(/매칭 \d+%/)).not.toBeInTheDocument();
   });
 
-  it("진단 후: '추천순' 라벨 + 점수순(관심사 우선) 정렬", () => {
+  it("진단 후: '추천순' 정렬 옵션 + 점수순(관심사 우선) 정렬", () => {
     // 입력 순서는 food 먼저지만, culture가 관심사에 있어 재스코어링 후 앞서야 한다.
     seedDiagnosed([FOOD, ONE_PICK]);
     render(<ExplorePage />);
 
-    expect(screen.getByText("추천순")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "추천순" })).toBeInTheDocument();
 
-    // 데스크탑 첫 카드(★ 원픽)가 culture 항목이어야 한다.
-    const pick = screen.getByText("★ 원픽");
-    const card = pick.closest("button");
-    expect(card).not.toBeNull();
-    expect(within(card!).getByText("망원동 동네 전시")).toBeInTheDocument();
+    // 재스코어링 후 culture(망원동 동네 전시)가 food보다 앞서야 한다.
+    // 데스크탑 그리드 카드 제목만 뽑아 첫 번째가 culture인지 확인.
+    const titles = screen
+      .getAllByRole("button")
+      .map((b) => within(b).queryByText(/망원동 동네 전시|동네 국밥집/)?.textContent)
+      .filter((t): t is string => t != null);
+    expect(titles[0]).toBe("망원동 동네 전시");
   });
 });
 

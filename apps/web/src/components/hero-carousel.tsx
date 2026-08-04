@@ -12,11 +12,8 @@
  */
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  DEFAULT_NEIGHBORHOOD,
-  type MockOpportunity,
-  POPULAR_NEIGHBORHOODS,
-} from "@/data/opportunities";
+import { normalizeGu } from "@motungi/core";
+import { DEFAULT_NEIGHBORHOOD, type MockOpportunity } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 import { LandingPhoto } from "./landing-photo";
 
@@ -125,18 +122,13 @@ function HeroCard({
   );
 }
 
-/** 인기 동네 목록에서 동 이름 → 소속 구("서울 마포구" → "마포구") 룩업. 없으면 undefined. */
-function guOf(dongName: string | undefined): string | undefined {
-  if (!dongName) return undefined;
-  const region = POPULAR_NEIGHBORHOODS.find((p) => p.dongName === dongName)?.region;
-  // region 예: "서울 마포구" / "경기 성남시 분당구" → 마지막 토큰이 구/군.
-  return region?.split(" ").at(-1);
-}
-
 export function HeroCarousel({ items }: { items: MockOpportunity[] }) {
-  // 앵커 동네(사용자가 /location에서 정한 집 기준). 없으면 기본 망원동.
-  const anchorDong = useAppStore((s) => s.anchors.home?.dongName) ?? DEFAULT_NEIGHBORHOOD.dongName;
-  const gu = guOf(anchorDong);
+  // 앵커(사용자가 /location에서 정한 집 기준). 없으면 기본 망원동.
+  // region은 앵커에 실려 온다 — 검색은 bare("마포구"), 인기 칩은 "서울 마포구" 형태라
+  // normalizeGu로 두 형태를 흡수한다(멱등).
+  const home = useAppStore((s) => s.anchors.home);
+  const anchorDong = home?.dongName ?? DEFAULT_NEIGHBORHOOD.dongName;
+  const gu = normalizeGu(home?.region ?? DEFAULT_NEIGHBORHOOD.region);
   // 활동의 dong_name은 구 단위(예: "마포구")라 앵커의 구로 좁힌다. 구를 모르거나 매칭 0건이면
   // 전체를 보여준다(빈 캐러셀 방지) — 라벨은 항상 앵커 동네를 명시한다.
   const nearby = gu ? items.filter((o) => (o.location?.dongName ?? "").includes(gu)) : [];

@@ -99,6 +99,13 @@ describe("createAppStore", () => {
       expect(store.getState().anchors).toEqual({ home: home2, work });
     });
 
+    // region은 히어로 캐러셀의 구 매칭 입력 — 앵커에 실려야 필터가 동작한다.
+    it("setAnchor는 region을 보존한다", () => {
+      const home = { dongName: "역삼동", admCode: "SEO-강남구-역삼동", region: "강남구" };
+      store.getState().setAnchor("home", home);
+      expect(store.getState().anchors.home?.region).toBe("강남구");
+    });
+
     it("setAnswers / setResults / setUser / setSavedIds가 각 슬라이스를 교체한다", () => {
       const answers = {
         interests: ["culture"] as const,

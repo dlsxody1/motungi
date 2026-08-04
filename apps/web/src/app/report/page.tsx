@@ -14,7 +14,7 @@ import { Thumbnail } from "@/components/thumbnail";
 import { MobileScreen, SafeBottom, SafeTop, Tag } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { diagnosisSummaryChips, displayNameOf } from "@motungi/core";
-import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
+import { useReportFallback } from "@/hooks/useReportFallback";
 import { shareContent } from "@/lib/kakao";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -29,7 +29,8 @@ function formatDeadline(iso: string): string | null {
 
 /** A5 · 동네 리포트 (원픽 히어로) — 반응형 */
 export default function ReportPage() {
-  useEnsureCatalog();
+  // 정상 경로에선 results가 이미 차 있어 조회 없음. 직접 진입 시에만 6건 fallback.
+  useReportFallback();
   const router = useRouter();
   const results = useAppStore((s) => s.results);
   const catalog = useAppStore((s) => s.catalog);
@@ -45,8 +46,15 @@ export default function ReportPage() {
   const onePick = list[0];
 
   // 데이터가 없으면(로드 실패/빈결과/아직 안 불러옴) 원픽을 그릴 수 없다 → 상태 화면.
+  const isError = catalogStatus === "error" || catalogStatus === "unconfigured";
   if (!onePick) {
-    return <ReportEmpty status={catalogStatus} onRetry={() => router.push("/loading")} onExplore={() => router.push("/explore")} />;
+    return (
+      <ReportEmpty
+        status={catalogStatus}
+        onRetry={() => router.push(isError ? "/loading" : "/diagnosis")}
+        onExplore={() => router.push("/explore")}
+      />
+    );
   }
 
   const related = list.slice(1);
@@ -106,14 +114,13 @@ export default function ReportPage() {
                 onClick={() => openDetail(onePick.id)}
                 className="block w-full overflow-hidden rounded-2xl bg-surface text-left shadow-card ring-1 ring-primary/25"
               >
-                {onePick.imageUrl && (
-                  <Thumbnail
-                    src={onePick.imageUrl}
-                    tone={onePick.tone === "mint" ? "mint" : "purple"}
-                    rounded="rounded-none"
-                    sizeClass="h-40 w-full"
-                  />
-                )}
+                {/* 이미지가 없어도 Thumbnail이 카테고리 톤 플레이스홀더로 채운다(레이아웃 붕괴 방지). */}
+                <Thumbnail
+                  src={onePick.imageUrl}
+                  tone={onePick.tone === "mint" ? "mint" : "purple"}
+                  rounded="rounded-none"
+                  sizeClass="h-40 w-full"
+                />
                 <div className="bg-tint/50 p-5">
                   <div className="flex flex-wrap items-center gap-2">
                     <Tag>{onePick.categoryLabel}</Tag>
@@ -146,7 +153,7 @@ export default function ReportPage() {
                 </div>
                 <div className="px-5 pb-5">
                   <span className="tap-safe flex h-[50px] w-full items-center justify-center rounded-xl bg-primary text-[16px] font-bold text-white">
-                    자세히 보고 시작하기
+                    자세히 보기
                   </span>
                 </div>
               </button>
@@ -169,7 +176,12 @@ export default function ReportPage() {
                     onClick={() => openDetail(o.id)}
                     className="flex w-full items-start gap-3 py-4 text-left"
                   >
-                    <div className="flex-1">
+                    <Thumbnail
+                      src={o.imageUrl}
+                      tone={o.tone === "mint" ? "mint" : "purple"}
+                      sizeClass="size-16"
+                    />
+                    <div className="min-w-0 flex-1">
                       <p className={`text-[12px] font-bold ${o.tone === "mint" ? "text-mint" : "text-primary"}`}>
                         {o.categoryLabel}
                       </p>
@@ -238,14 +250,13 @@ export default function ReportPage() {
             <div>
               {/* 원픽 히어로 카드 */}
               <div className="overflow-hidden rounded-[22px] border-[1.5px] border-primary/40 bg-surface shadow-web-pick">
-                {onePick.imageUrl && (
-                  <Thumbnail
-                    src={onePick.imageUrl}
-                    tone={onePick.tone === "mint" ? "mint" : "purple"}
-                    rounded="rounded-none"
-                    sizeClass="h-52 w-full"
-                  />
-                )}
+                <Thumbnail
+                  src={onePick.imageUrl}
+                  tone={onePick.tone === "mint" ? "mint" : "purple"}
+                  rounded="rounded-none"
+                  sizeClass="h-52 w-full"
+                />
+
                 <div className="flex flex-col gap-6 p-7 md:flex-row">
                   {/* 좌 */}
                   <div className="flex-1">
@@ -303,7 +314,7 @@ export default function ReportPage() {
                         onClick={() => openDetail(onePick.id)}
                         className="flex h-12 flex-1 items-center justify-center rounded-xl bg-primary text-[15px] font-bold text-white hover:bg-primary-deep"
                       >
-                        자세히
+                        자세히 보기
                       </button>
                     </div>
                   </div>

@@ -63,6 +63,7 @@ export interface Database {
           external_id: string | null;
           title: string;
           summary: string;
+          description: string | null;
           cost_krw: number | null;
           difficulty: number | null;
           adm_code: string | null;
@@ -78,6 +79,13 @@ export interface Database {
           time_end_hour: number | null;
           lat: number | null;
           lng: number | null;
+          // 걷기길 코스 안내(0013). trail 전용 — 그 외 소스는 null.
+          course_start: string | null;
+          course_end: string | null;
+          course_notes: string | null;
+          duration_min: number | null;
+          is_loop: boolean | null;
+          gpx_url: string | null;
         };
         Insert: {
           id?: string;
@@ -86,6 +94,7 @@ export interface Database {
           external_id?: string | null;
           title: string;
           summary: string;
+          description?: string | null;
           cost_krw?: number | null;
           difficulty?: number | null;
           adm_code?: string | null;
@@ -101,6 +110,12 @@ export interface Database {
           time_end_hour?: number | null;
           lat?: number | null;
           lng?: number | null;
+          course_start?: string | null;
+          course_end?: string | null;
+          course_notes?: string | null;
+          duration_min?: number | null;
+          is_loop?: boolean | null;
+          gpx_url?: string | null;
         };
         Update: {
           id?: string;
@@ -109,6 +124,7 @@ export interface Database {
           external_id?: string | null;
           title?: string;
           summary?: string;
+          description?: string | null;
           cost_krw?: number | null;
           difficulty?: number | null;
           adm_code?: string | null;
@@ -124,6 +140,12 @@ export interface Database {
           time_end_hour?: number | null;
           lat?: number | null;
           lng?: number | null;
+          course_start?: string | null;
+          course_end?: string | null;
+          course_notes?: string | null;
+          duration_min?: number | null;
+          is_loop?: boolean | null;
+          gpx_url?: string | null;
         };
       };
       profiles: {
@@ -178,6 +200,10 @@ export interface Database {
           sido: string;
           sigungu: string;
           dong_name: string;
+          /** 검색용 정규화 동 이름(생성 컬럼, 0012) — 숫자·'제' 제거. 역삼1동 → 역삼동. */
+          dong_base: string;
+          /** 표시용 동 이름(생성 컬럼, 0014) — 숫자·제·가·본 제거. 금호1가동 → 금호동. */
+          dong_display: string;
           lat: number;
           lng: number;
           coord_level: string; // 'seed' | 'sigungu' | 'dong'

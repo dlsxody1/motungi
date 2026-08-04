@@ -22,6 +22,8 @@ export default function LoadingScreen() {
     void (async () => {
       const { data: candidates } = await fetchOpportunities({
         categories: answers?.interests,
+        // 원픽은 거리로 스코어링하므로 후보도 앵커 주변에서 뽑는다.
+        near: anchors.home?.point ? { point: anchors.home.point, radiusKm: 10 } : undefined,
         limit: 30,
       });
       if (cancelled) return;

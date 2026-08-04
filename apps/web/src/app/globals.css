@@ -99,6 +99,16 @@
   }
 }
 
+/* native select 화살표를 죽이고(appearance-none) faint 색 chevron을 오른쪽 패딩 안에 그린다.
+   기본 select은 화살표가 테두리에 붙어 좌우 패딩이 비대칭으로 보이는 문제를 해결. */
+.select-chevron {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23807970' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.25rem;
+}
+
 /* ────────────────────────────────────────────────────────────
  * 스크롤 인뷰 리빌 — 랜딩 섹션이 뷰포트에 들어올 때 부드럽게 등장.
  * 근거(motion motivated): 콘텐츠를 순서대로 드러내 "이렇게 골라준다"는
@@ -117,12 +127,111 @@
 @keyframes reveal-in {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(38px) scale(0.985);
   }
   to {
     opacity: 1;
     transform: none;
   }
+}
+
+/* ────────────────────────────────────────────────────────────
+ * 3D 레이어 — CSS perspective 기반. 랜딩에서만 쓴다.
+ * 근거(motion motivated): "가까운 것/먼 것"이라는 물리적 깊이로 정보 우선순위를
+ * 만든다. 원픽은 앞으로 나오고, 보조 정보는 뒤로 물러난다.
+ * WebGL(포스터 링)과 역할이 다르다 — 저기는 물량감, 여기는 위계.
+ * ──────────────────────────────────────────────────────────── */
+
+/* 자식들이 3D 공간을 공유하는 무대. */
+.stage-3d {
+  perspective: 1400px;
+  perspective-origin: 50% 42%;
+}
+
+/* 카드가 살짝 누워 있다가 호버 시 정면으로 일어선다(=만질 수 있다는 신호). */
+.tilt-3d {
+  transform-style: preserve-3d;
+  transform: rotateX(6deg) rotateY(-7deg) translateZ(0);
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (hover: hover) {
+  .tilt-3d:hover,
+  .tilt-3d:focus-within {
+    transform: rotateX(0deg) rotateY(0deg) translateZ(26px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tilt-3d {
+    transform: none;
+    transition: none;
+  }
+}
+
+/* 스크롤에 따라 깊이에서 떠오르는 리빌. .reveal의 3D 버전.
+   scroll-driven animation만 사용 — 스크롤 이벤트 리스너 없음. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal-depth {
+      animation: reveal-depth-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 32%;
+    }
+    /* 히어로 포스터 스테이지: 스크롤하면 뒤로 물러나며 페이드(패럴랙스 깊이감). */
+    .hero-recede {
+      animation: hero-recede linear both;
+      animation-timeline: view();
+      animation-range: exit 0% exit 100%;
+    }
+  }
+}
+@keyframes reveal-depth-in {
+  from {
+    opacity: 0;
+    transform: perspective(1200px) translate3d(0, 34px, -90px) rotateX(7deg);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1200px) translate3d(0, 0, 0) rotateX(0deg);
+  }
+}
+@keyframes hero-recede {
+  to {
+    opacity: 0.25;
+    transform: perspective(1200px) translate3d(0, -30px, -160px);
+  }
+}
+
+/* 포스터 열 — 섹션이 들어오는 동안 카드가 옆에서 밀려들어온다.
+   근거: "계속 이어진다"는 가로 목록의 성격을 진입 방향으로 미리 알려준다. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal-slide {
+      animation: reveal-slide-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+  }
+}
+@keyframes reveal-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(56px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 가로 스크롤 열 — 네이티브 스크롤바를 숨긴다(스크롤 기능은 그대로).
+   기본 스크롤바가 보이면 어두운 섹션 위에 밝은 막대가 그어져 디자인이 깨진다.
+   접근성: 키보드·터치·트랙패드 스크롤과 포커스 이동은 전부 유지된다. */
+.scroll-row {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* 구형 Edge */
+}
+.scroll-row::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 @keyframes corner-spin {

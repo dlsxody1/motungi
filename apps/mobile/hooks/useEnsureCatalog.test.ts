@@ -11,10 +11,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * 언마운트되면 cancelled 가드로 setCatalog를 호출하지 않음(레이스 방지), (4) fetch가
  * error/empty 등 비정상 status를 반환해도 그 값을 그대로 setCatalog에 전달.
  */
+type Anchors = { home?: { point: { lat: number; lng: number } }; work?: { point: { lat: number; lng: number } } };
+
 const { fetchOpportunitiesMock, setCatalogMock, state } = vi.hoisted(() => ({
   fetchOpportunitiesMock: vi.fn(),
   setCatalogMock: vi.fn(),
-  state: { catalogStatus: "idle" as string },
+  // anchors는 반경 조회의 입력이다. 기본은 앵커 없음(반경 없이 넓게 받는 경로).
+  state: { catalogStatus: "idle" as string, anchors: {} as Anchors },
 }));
 
 vi.mock("@/data/opportunities", () => ({
@@ -23,7 +26,11 @@ vi.mock("@/data/opportunities", () => ({
 
 vi.mock("@/store/useAppStore", () => ({
   useAppStore: (selector: (s: unknown) => unknown) =>
-    selector({ catalogStatus: state.catalogStatus, setCatalog: setCatalogMock }),
+    selector({
+      catalogStatus: state.catalogStatus,
+      setCatalog: setCatalogMock,
+      anchors: state.anchors,
+    }),
 }));
 
 import { useEnsureCatalog } from "./useEnsureCatalog";
@@ -32,6 +39,7 @@ beforeEach(() => {
   fetchOpportunitiesMock.mockReset();
   setCatalogMock.mockReset();
   state.catalogStatus = "idle";
+  state.anchors = {};
 });
 
 describe("useEnsureCatalog", () => {
@@ -93,5 +101,51 @@ describe("useEnsureCatalog", () => {
 
     await waitFor(() => expect(setCatalogMock).toHaveBeenCalledTimes(1));
     expect(setCatalogMock).toHaveBeenCalledWith([], "error");
+  });
+});
+
+/** n건짜리 ok 응답 — 개수만 쓰는 테스트용. */
+const okResult = (n: number) => ({
+  data: Array.from({ length: n }, (_, i) => ({ id: `op-${i}` })),
+  status: "ok",
+});
+
+const HOME_POINT = { lat: 37.5006, lng: 127.0364 };
+
+describe("useEnsureCatalog — 앵커 반경 조회(확대 루프)", () => {
+  it("앵커가 없으면 반경 없이 한 번만 조회한다", async () => {
+    fetchOpportunitiesMock.mockResolvedValue(okResult(50));
+
+    renderHook(() => useEnsureCatalog());
+
+    await waitFor(() => expect(fetchOpportunitiesMock).toHaveBeenCalledTimes(1));
+    expect(fetchOpportunitiesMock.mock.calls[0]![0]!.near).toBeUndefined();
+  });
+
+  it("5km에서 충분히 나오면 더 넓히지 않는다", async () => {
+    state.anchors = { home: { point: HOME_POINT } };
+    fetchOpportunitiesMock.mockResolvedValue(okResult(44));
+
+    renderHook(() => useEnsureCatalog());
+
+    await waitFor(() => expect(fetchOpportunitiesMock).toHaveBeenCalledTimes(1));
+    expect(fetchOpportunitiesMock.mock.calls[0]![0]!.near).toEqual({
+      point: HOME_POINT,
+      radiusKm: 5,
+    });
+  });
+
+  it("5km가 모자라면 10km·20km로 넓힌다", async () => {
+    state.anchors = { home: { point: HOME_POINT } };
+    fetchOpportunitiesMock
+      .mockResolvedValueOnce(okResult(3))
+      .mockResolvedValueOnce(okResult(11))
+      .mockResolvedValueOnce(okResult(60));
+
+    renderHook(() => useEnsureCatalog());
+
+    await waitFor(() => expect(fetchOpportunitiesMock).toHaveBeenCalledTimes(3));
+    expect(fetchOpportunitiesMock.mock.calls.map((c) => c[0]!.near!.radiusKm)).toEqual([5, 10, 20]);
+    expect(setCatalogMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -52,7 +52,7 @@ export interface ScoredOpportunity {
 }
 
 /** haversine 거리(km). point 없으면 null. */
-function distanceKm(a?: Location, b?: Location): number | null {
+export function distanceKm(a?: Location, b?: Location): number | null {
   if (!a?.point || !b?.point) return null;
   const R = 6371;
   const dLat = ((b.point.lat - a.point.lat) * Math.PI) / 180;
@@ -66,7 +66,7 @@ function distanceKm(a?: Location, b?: Location): number | null {
 }
 
 /** 집·회사 두 앵커 중 가까운 쪽 거리(km). 둘 다 없으면 null. */
-function nearestAnchorKm(anchors: UserAnchors, target?: Location): number | null {
+export function nearestAnchorKm(anchors: UserAnchors, target?: Location): number | null {
   const dists = [
     distanceKm(anchors.home, target),
     distanceKm(anchors.work, target),

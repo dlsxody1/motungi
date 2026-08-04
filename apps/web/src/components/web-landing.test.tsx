@@ -28,6 +28,30 @@ function makeItem(over: Partial<MockOpportunity> & { id: string }): MockOpportun
   } as MockOpportunity;
 }
 
+/**
+ * "지금 열리는 활동" 포스터 열 섹션을 잡는다.
+ * jsdom엔 WebGL이 없어 히어로 3D 링이 HeroCarousel로 폴백하므로, 같은 활동 제목이
+ * 히어로에도 렌더된다 → 제목 단언은 반드시 이 섹션 안으로 좁혀야 한다.
+ */
+function posterSection(): HTMLElement {
+  const heading = screen.getByText(/지금 이 순간에도/);
+  const section = heading.closest("section");
+  if (!section) throw new Error("포스터 열 섹션을 찾지 못했다");
+  return section;
+}
+
+/**
+ * 갈래(카테고리) 리스트를 잡는다.
+ * 랜딩엔 <ul>이 여러 개(포스터 열 등) 있어 getByRole("list")는 첫 번째를 집어버린다 —
+ * 갈래 라벨에서 <ul>을 거슬러 올라가 좁힌다.
+ */
+function categorySection(): HTMLElement {
+  const first = screen.getByText("공연·연주");
+  const list = first.closest("ul");
+  if (!list) throw new Error("갈래 리스트를 찾지 못했다");
+  return list;
+}
+
 describe("WebLanding", () => {
   // globals:false 환경이라 RTL 자동 cleanup이 등록되지 않는다 → 수동으로 DOM을 비운다.
   afterEach(() => {
@@ -50,31 +74,29 @@ describe("WebLanding", () => {
     expect(screen.getByText("하이퍼로컬")).toBeInTheDocument();
   });
 
-  it("카테고리: 문화·여가 갈래 5종을 예시와 함께 렌더한다", () => {
+  it("카테고리: 문화·여가 갈래 6종을 예시와 함께 렌더한다", () => {
     render(<WebLanding />);
 
-    const categoryList = screen
-      .getByRole("list")
-      // 카테고리 섹션의 <ul>만 대상으로 좁힌다
-      ;
+    const categoryList = categorySection();
 
-    // 라벨
+    // 라벨 — 실제 적재된 콘텐츠가 있는 갈래만. 지어낸 갈래를 광고하지 않는다.
     for (const label of [
-      "문화·공연",
-      "운동·산책",
-      "먹거리·마켓",
-      "클래스·배움",
-      "퇴근후 부업",
+      "공연·연주",
+      "전시·예술",
+      "연극·뮤지컬",
+      "강좌·워크숍",
+      "걷기 코스",
+      "축제·영화",
     ]) {
       expect(within(categoryList).getByText(label)).toBeInTheDocument();
     }
 
-    // 예시 카피(문화·여가 성격)
-    expect(within(categoryList).getByText("한강 야간 재즈, 동네 소극장")).toBeInTheDocument();
-    expect(within(categoryList).getByText("경의선숲길, 새벽 러닝 크루")).toBeInTheDocument();
+    // 예시 카피는 opportunities에 실재하는 제목에서 온 것이어야 한다.
+    expect(within(categoryList).getByText("정기연주회, 실내악, 오페라 워크숍")).toBeInTheDocument();
+    expect(within(categoryList).getByText("서해랑길, DMZ 평화의 길")).toBeInTheDocument();
 
-    // 리스트 항목은 정확히 5개
-    expect(within(categoryList).getAllByRole("listitem")).toHaveLength(5);
+    // 리스트 항목은 정확히 6개
+    expect(within(categoryList).getAllByRole("listitem")).toHaveLength(6);
   });
 
   it("CTA: 위치 검색과 마무리 CTA가 모두 /location으로 연결된다", () => {
@@ -95,13 +117,15 @@ describe("WebLanding", () => {
     expect(screen.getByText("찾기")).toBeInTheDocument();
   });
 
-  it("가격 표기는 여가 무료 톤 — 폴백 원픽 카드에 '무료'가 노출된다", () => {
-    // props 없음 → 캐러셀 폴백(사진 목업). 참가비 무료 톤이 카드에 노출된다.
+  it("실데이터가 없으면 '지금 열리는 활동' 섹션을 아예 렌더하지 않는다", () => {
+    // 빈 DB에서 가짜 활동을 지어내지 않는다 — 섹션 자체가 사라진다.
     render(<WebLanding />);
-    expect(screen.getAllByText("무료").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/지금 이 순간에도/)).not.toBeInTheDocument();
+    // 카피 섹션(정적)은 그대로 남는다.
+    expect(screen.getByText("하이퍼로컬")).toBeInTheDocument();
   });
 
-  it("heroPicks(≥4)를 주면 실 활동 캐러셀을 렌더한다(제목·링크)", () => {
+  it("heroPicks(≥4)를 주면 실제 활동을 제목·상세링크와 함께 렌더한다", () => {
     const picks = [
       makeItem({
         id: "a",
@@ -115,25 +139,40 @@ describe("WebLanding", () => {
     ];
     render(<WebLanding heroPicks={picks} />);
 
-    // 캐러셀 헤더는 기준 동네(앵커 없으면 기본 망원동)를 명시한다.
-    expect(screen.getAllByText("망원동").length).toBeGreaterThan(0);
-    expect(screen.getByText(/열리는 활동|골라본 활동/)).toBeInTheDocument();
-    // 실 제목이 카드에 노출.
-    expect(screen.getByText("안도 타다오 건축을 읽다")).toBeInTheDocument();
+    // 실 활동 섹션이 뜨고, 실제 제목이 노출된다.
+    // jsdom엔 WebGL이 없어 히어로 3D 링은 캐러셀로 폴백한다 → 같은 제목이 히어로에도 있다.
+    // 그래서 포스터 열 섹션으로 범위를 좁혀 단언한다.
+    const section = posterSection();
+    expect(screen.getByText(/지금 이 순간에도/)).toBeInTheDocument();
+    expect(within(section).getByText("안도 타다오 건축을 읽다")).toBeInTheDocument();
 
     // 카드는 우리 사이트 내부 활동 상세(/opportunity?id=…)로 연결된다.
-    const link = screen.getByText("안도 타다오 건축을 읽다").closest("a");
+    const link = within(section).getByText("안도 타다오 건축을 읽다").closest("a");
     expect(link).toHaveAttribute("href", "/opportunity?id=a");
 
-    // 목업 폴백(한강 재즈)은 캐러셀이 뜨면 사라진다.
-    expect(screen.queryByText(/망원 한강 야간 재즈/)).not.toBeInTheDocument();
+    // 전체 보기는 탐색으로.
+    expect(screen.getByRole("link", { name: /전체 보기/ })).toHaveAttribute("href", "/explore");
   });
 
-  it("heroPicks가 부족하면(<4) 기존 목업으로 폴백한다", () => {
+  it("실데이터가 4개 미만이면 '지금 열리는 활동' 섹션을 숨긴다", () => {
     render(<WebLanding heroPicks={[makeItem({ id: "a" })]} />);
-    // 캐러셀 헤더 없음, 사진 목업(한강 재즈) 유지
-    expect(screen.queryByText(/열리는 활동|골라본 활동/)).not.toBeInTheDocument();
-    expect(screen.getByText(/망원 한강 야간 재즈/)).toBeInTheDocument();
+    expect(screen.queryByText(/지금 이 순간에도/)).not.toBeInTheDocument();
+  });
+
+  it("이미지 없는 활동은 포스터 열에서 제외된다(빈 카드 방지)", () => {
+    const picks = [
+      makeItem({ id: "a", title: "포스터 있는 공연" }),
+      makeItem({ id: "b", title: "포스터 있는 전시" }),
+      makeItem({ id: "c", title: "포스터 있는 강연" }),
+      makeItem({ id: "d", title: "포스터 있는 연주회" }),
+      makeItem({ id: "e", title: "포스터 없는 러닝크루", imageUrl: undefined }),
+    ];
+    render(<WebLanding heroPicks={picks} />);
+
+    const section = posterSection();
+    expect(within(section).getByText("포스터 있는 공연")).toBeInTheDocument();
+    // 이미지 없는 활동은 어디에도(히어로 폴백 포함) 포스터 카드로 서지 않는다.
+    expect(within(section).queryByText("포스터 없는 러닝크루")).not.toBeInTheDocument();
   });
 
   it("옛 '부업·수익' 톤(월 수익/부수입/N만원 벌기 등)이 남아있지 않다", () => {

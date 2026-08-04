@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Logo, SafeBottom, SafeTop } from "@/components/ui";
-import { HeroCarousel } from "@/components/hero-carousel";
+import { HeroPosterStage } from "@/components/hero-poster-stage";
 import { DesktopShell } from "@/components/web-shell";
 import { WebLanding } from "@/components/web-landing";
 import { fetchOpportunities } from "@/data/opportunities";
@@ -42,10 +42,11 @@ export default async function Home() {
                 </p>
               </div>
 
-              {/* 실 활동 캐러셀 — 앵커 동네 기준(1.5초 자동 전환·탭하면 활동 상세) */}
+              {/* 실 활동 3D 포스터 링 — 데스크탑과 동일 컴포넌트.
+                  WebGL이 안 되는 기기(구형·저사양)에서는 내부에서 캐러셀로 자동 폴백한다. */}
               {heroPicks.length >= 4 && (
                 <div className="mt-7">
-                  <HeroCarousel items={heroPicks} />
+                  <HeroPosterStage items={heroPicks} variant="mobile" />
                 </div>
               )}
 

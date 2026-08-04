@@ -1,13 +1,50 @@
-import type { OpportunityCategory } from "@motungi/core";
+import type { Opportunity, OpportunityCategory } from "@motungi/core";
 import { scoreAll } from "@motungi/core";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { memo, useCallback, useMemo, useState } from "react";
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
 import { Chip, Txt } from "@/ui/components";
 import { ChevronDown, Search } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
+
+/** 탐색 목록에 들어가는 활동 뷰 모델 — catalog 원소 또는 scoreAll 결과(matchScore 부여)에 뷰 필드가 붙은 형태. */
+type ActivityRow = Opportunity & {
+  categoryLabel: string;
+  costLabel: string;
+  tone?: "mint" | string;
+  matchScore?: number;
+};
+
+/**
+ * 활동 카드 한 줄. React.memo로 감싸 FlatList 스크롤 중 보이는 행만 재렌더되게 한다.
+ * (onPress는 부모에서 useCallback으로 고정 → props가 안 바뀌면 memo가 재렌더를 건너뛴다.)
+ */
+const ActivityItem = memo(function ActivityItem({
+  item,
+  first,
+  onPress,
+}: {
+  item: ActivityRow;
+  first: boolean;
+  onPress: (id: string) => void;
+}) {
+  const accent = item.tone === "mint" ? C.mint : C.primary;
+  return (
+    <Pressable onPress={() => onPress(item.id)} style={[styles.item, !first && styles.itemBorder]}>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.cat, { color: accent }]}>{item.categoryLabel}</Text>
+        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.summary}>{item.summary}</Text>
+      </View>
+      <View style={{ alignItems: "flex-end" }}>
+        <Text style={[styles.cost, { color: accent }]}>{item.costLabel}</Text>
+        <Text style={styles.match}>자세히 →</Text>
+      </View>
+    </Pressable>
+  );
+});
 
 /** 필터 라벨 → 카테고리. "전체"는 null. 데이터 있는 카테고리만 동적으로 노출된다. */
 const FILTERS: { label: string; category: OpportunityCategory | null }[] = [
@@ -61,11 +98,15 @@ export default function ExploreScreen() {
     [source],
   );
 
-  const openDetail = (id: string) => router.push({ pathname: "/opportunity", params: { id } });
+  const openDetail = useCallback(
+    (id: string) => router.push({ pathname: "/opportunity", params: { id } }),
+    [router],
+  );
 
-  return (
-    <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={styles.content}>
-      {/* 헤더 */}
+  // 헤더(제목·검색·필터)는 리스트 스크롤을 함께 타도록 ListHeaderComponent로 넘긴다.
+  // FlatList 안에 또 다른 세로 스크롤을 중첩하지 않기 위해, 리스트 자체가 화면 스크롤을 담당한다.
+  const header = (
+    <>
       <View style={styles.header}>
         <Txt preset="h1" style={{ fontSize: 24 }}>탐색</Txt>
         <Pressable
@@ -80,7 +121,6 @@ export default function ExploreScreen() {
         </Pressable>
       </View>
 
-      {/* 검색 */}
       <View style={styles.search}>
         <Search size={20} color={C.muted} />
         <TextInput
@@ -92,47 +132,39 @@ export default function ExploreScreen() {
         />
       </View>
 
-      {/* 필터 */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }} contentContainerStyle={{ gap: 8, paddingRight: 20 }}>
         {visibleFilters.map((f) => (
           <Chip key={f.label} label={f.label} active={filter === f.label} onPress={() => setFilter(f.label)} />
         ))}
       </ScrollView>
+      <View style={{ height: 8 }} />
+    </>
+  );
 
-      {/* 목록 */}
-      <View style={{ marginTop: 8 }}>
-        {list.length === 0 && (
-          <Text style={styles.empty}>
-            {source.length === 0
-              ? catalogStatus === "error" || catalogStatus === "unconfigured"
-                ? "활동을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
-                : "아직 등록된 활동이 없어요. 곧 채워질 거예요."
-              : "조건에 맞는 활동이 아직 없어요."}
-          </Text>
-        )}
-        {list.map((o, i) => (
-          <Pressable
-            key={o.id}
-            onPress={() => openDetail(o.id)}
-            style={[styles.item, i > 0 && styles.itemBorder]}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.cat, { color: o.tone === "mint" ? C.mint : C.primary }]}>
-                {o.categoryLabel}
-              </Text>
-              <Text style={styles.title}>{o.title}</Text>
-              <Text style={styles.summary}>{o.summary}</Text>
-            </View>
-            <View style={{ alignItems: "flex-end" }}>
-              <Text style={[styles.cost, { color: o.tone === "mint" ? C.mint : C.primary }]}>
-                {o.costLabel}
-              </Text>
-              <Text style={styles.match}>자세히 →</Text>
-            </View>
-          </Pressable>
-        ))}
-      </View>
-    </ScrollView>
+  return (
+    <FlatList
+      style={{ flex: 1, backgroundColor: C.bg }}
+      contentContainerStyle={styles.content}
+      data={list}
+      keyExtractor={(o) => o.id}
+      ListHeaderComponent={header}
+      renderItem={({ item, index }) => (
+        <ActivityItem item={item} first={index === 0} onPress={openDetail} />
+      )}
+      ListEmptyComponent={
+        <Text style={styles.empty}>
+          {source.length === 0
+            ? catalogStatus === "error" || catalogStatus === "unconfigured"
+              ? "활동을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
+              : "아직 등록된 활동이 없어요. 곧 채워질 거예요."
+            : "조건에 맞는 활동이 아직 없어요."}
+        </Text>
+      }
+      keyboardShouldPersistTaps="handled"
+      initialNumToRender={8}
+      windowSize={7}
+      removeClippedSubviews
+    />
   );
 }
 

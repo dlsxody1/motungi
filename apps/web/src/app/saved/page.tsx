@@ -11,23 +11,18 @@ import {
 import { Thumbnail } from "@/components/thumbnail";
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
-import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
+import { useSavedOpportunities } from "@/hooks/useSavedOpportunities";
 import { useAppStore } from "@/store/useAppStore";
 
 /** A7 · 보관함 / 홈 — 반응형 */
 export default function SavedPage() {
-  useEnsureCatalog();
   const router = useRouter();
-  const savedIds = useAppStore((s) => s.savedIds);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
-  const catalog = useAppStore((s) => s.catalog);
   const user = useAppStore((s) => s.user);
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
 
-  // 저장 id를 서버 카탈로그에서 해소. 카탈로그에 없는(상위 200건 밖) 항목은 조용히 빠진다.
-  const items = savedIds
-    .map((id) => catalog.find((o) => o.id === id))
-    .filter((o): o is NonNullable<typeof o> => !!o);
+  // 저장 id를 id 조회로 해소한다 — 300건 창 밖이라고 사라지지 않는다(useSavedOpportunities 주석).
+  const { items } = useSavedOpportunities();
   const openDetail = (id: string) => router.push(`/opportunity?id=${id}`);
 
   return (

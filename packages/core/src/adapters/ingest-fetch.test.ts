@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { dedupByKey, inMetro, parseJsonItems, parseXmlItems } from "./ingest-fetch";
+import {
+  dedupByKey,
+  inMetro,
+  isCronAuthorized,
+  judgeIngest,
+  parseJsonItems,
+  parseXmlItems,
+  type IngestSourceResult,
+} from "./ingest-fetch";
 
 describe("parseXmlItems", () => {
   it("CDATA 포함 태그를 값으로 추출", () => {
@@ -62,6 +70,24 @@ describe("inMetro", () => {
   });
 });
 
+describe("isCronAuthorized — M-026 cron 시크릿 검증", () => {
+  it("헤더 값이 서버 시크릿과 일치하면 true", () => {
+    expect(isCronAuthorized("s3cr3t", "s3cr3t")).toBe(true);
+  });
+  it("헤더 값이 다르면 false", () => {
+    expect(isCronAuthorized("s3cr3t", "wrong")).toBe(false);
+  });
+  it("헤더가 없으면(null/undefined) false", () => {
+    expect(isCronAuthorized("s3cr3t", null)).toBe(false);
+    expect(isCronAuthorized("s3cr3t", undefined)).toBe(false);
+  });
+  it("서버 시크릿이 미설정(빈 값)이면 헤더가 무엇이든 항상 false — '시크릿 없음=통과' 금지", () => {
+    expect(isCronAuthorized(undefined, "anything")).toBe(false);
+    expect(isCronAuthorized(null, "anything")).toBe(false);
+    expect(isCronAuthorized("", "")).toBe(false);
+  });
+});
+
 describe("dedupByKey", () => {
   it("같은 key가 반복되면 두 번째부터 제외", () => {
     const items = [{ id: "a", v: 1 }, { id: "a", v: 2 }, { id: "b", v: 3 }];
@@ -73,5 +99,58 @@ describe("dedupByKey", () => {
 
   it("빈 배열은 빈 배열", () => {
     expect(dedupByKey<{ id: string }>([], (i) => i.id)).toEqual([]);
+  });
+});
+
+describe("judgeIngest — 적재 결과 판정", () => {
+  const ok = (source: string, n: number): IngestSourceResult => ({
+    source,
+    fetched: n,
+    upserted: n,
+    error: undefined,
+  });
+  const fail = (source: string, msg: string): IngestSourceResult => ({
+    source,
+    fetched: 0,
+    upserted: 0,
+    error: msg,
+  });
+
+  it("전 소스 실패면 allFailed — 이게 ok:true로 나가면 실패가 성공처럼 보인다(M-040)", () => {
+    // 실제로 겪은 상황: 키 secret이 비어 cron이 매일 '성공'을 반환하며 아무것도 적재하지 않았다.
+    const r = judgeIngest([
+      fail("seoul_culture", "SEOUL_OPENAPI_KEY 없음"),
+      fail("culture_info", "DATA_GO_KR_SERVICE_KEY 없음"),
+      fail("trail", "DATA_GO_KR_SERVICE_KEY 없음"),
+    ]);
+    expect(r.allFailed).toBe(true);
+    expect(r.total).toBe(0);
+    expect(r.failedSources).toEqual(["seoul_culture", "culture_info", "trail"]);
+  });
+
+  it("일부만 실패하면 allFailed가 아니다 — 나머지는 갱신됐으므로 정상 경로로 둔다", () => {
+    const r = judgeIngest([ok("seoul_culture", 300), fail("trail", "HTTP 500")]);
+    expect(r.allFailed).toBe(false);
+    expect(r.failedSources).toEqual(["trail"]);
+    expect(r.total).toBe(300);
+  });
+
+  it("전부 성공이면 실패 목록이 비어 있다", () => {
+    const r = judgeIngest([ok("seoul_culture", 300), ok("culture_info", 234), ok("trail", 19)]);
+    expect(r.allFailed).toBe(false);
+    expect(r.failedSources).toEqual([]);
+    expect(r.total).toBe(553); // 2026-08-03 실측 적재량
+  });
+
+  it("빈 배열은 allFailed가 아니다 — '실행할 소스가 없음'과 '전부 실패'는 다르다", () => {
+    const r = judgeIngest([]);
+    expect(r.allFailed).toBe(false);
+    expect(r.total).toBe(0);
+  });
+
+  it("성공했지만 0건인 소스는 실패가 아니다(그날 신규 활동이 없을 수 있다)", () => {
+    const r = judgeIngest([ok("trail", 0)]);
+    expect(r.allFailed).toBe(false);
+    expect(r.failedSources).toEqual([]);
   });
 });

@@ -1,20 +1,31 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Linking, Pressable, ScrollView, Share as RNShare, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  ScrollView,
+  Share as RNShare,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { displayNameOf, whyReasons } from "@motungi/core";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
+import { useOpportunity } from "@/hooks/useOpportunity";
 import { useAppStore } from "@/store/useAppStore";
-import { Button, Screen, Tag } from "@/ui/components";
-import { Bookmark, CheckCircle, ChevronLeft, ExternalLink, Location, Share } from "@/ui/icons";
+import { Button, FlowHeader, Screen, Tag } from "@/ui/components";
+import { Bookmark, CheckCircle, ExternalLink, Location, Share } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
+
+const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://motungi.app";
 
 /** A6 · 기회 상세 */
 export default function OpportunityScreen() {
   useEnsureCatalog();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const catalog = useAppStore((s) => s.catalog);
-  // 요청 id 우선, 없으면 카탈로그 첫 항목. 카탈로그 자체가 비면 not-found.
-  const o = catalog.find((x) => x.id === id) ?? catalog[0];
+  // 상세는 카탈로그 전량을 받지 않는다 — id로 1건만(이미 스토어에 있으면 재사용).
+  const { opportunity: o, status } = useOpportunity(id ?? null);
 
   const savedIds = useAppStore((s) => s.savedIds);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
@@ -22,13 +33,20 @@ export default function OpportunityScreen() {
   const user = useAppStore((s) => s.user);
 
   if (!o) {
+    // 아직 불러오는 중(idle/loading)이면 "없음"이 아니라 로딩 스피너.
+    if (status === "idle" || status === "loading") {
+      return (
+        <Screen>
+          <FlowHeader />
+          <View style={styles.notFound}>
+            <ActivityIndicator size="large" color={C.primary} />
+          </View>
+        </Screen>
+      );
+    }
     return (
       <Screen>
-        <View style={styles.topbar}>
-          <Pressable onPress={() => router.back()} hitSlop={8} style={styles.iconBtn}>
-            <ChevronLeft size={24} />
-          </Pressable>
-        </View>
+        <FlowHeader />
         <View style={styles.notFound}>
           <Text style={styles.nfTitle}>활동을 찾을 수 없어요</Text>
           <Text style={styles.nfDesc}>
@@ -49,20 +67,20 @@ export default function OpportunityScreen() {
   const hasLink = !!o.ctaUrl && o.ctaUrl !== "#";
 
   const onShare = () => {
-    RNShare.share({ message: `${o.title}\n모퉁이에서 발견한 우리 동네 활동` }).catch(() => {});
+    RNShare.share({
+      message: `${o.title}\n모퉁이에서 발견한 우리 동네 활동\n${SITE_URL}/opportunity?id=${o.id}`,
+    }).catch(() => {});
   };
 
   return (
     <Screen>
-      {/* 상단 바 */}
-      <View style={styles.topbar}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.iconBtn}>
-          <ChevronLeft size={24} />
-        </Pressable>
-        <Pressable hitSlop={8} style={styles.iconBtn} onPress={onShare}>
-          <Share size={22} />
-        </Pressable>
-      </View>
+      <FlowHeader
+        right={
+          <Pressable hitSlop={8} style={styles.iconBtn} onPress={onShare} accessibilityLabel="공유">
+            <Share size={22} />
+          </Pressable>
+        }
+      />
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}>
         <Tag label={o.categoryLabel} />
@@ -155,8 +173,7 @@ export default function OpportunityScreen() {
 }
 
 const styles = StyleSheet.create({
-  topbar: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 4 },
-  iconBtn: { width: 44, height: 44, justifyContent: "center" },
+  iconBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
   nfTitle: { fontSize: 20, fontWeight: "800", color: C.ink, textAlign: "center" },
   nfDesc: { marginTop: 8, fontSize: 14, lineHeight: 21, color: C.muted, textAlign: "center", maxWidth: 320 },

@@ -3,19 +3,18 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppStore } from "@/store/useAppStore";
-import { Screen, Txt } from "@/ui/components";
-import { CheckCircle, ChevronLeft } from "@/ui/icons";
+import { FlowHeader, Screen, Txt } from "@/ui/components";
+import { CheckCircle } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
 
 type Option = { value: string; title: string; desc: string; soon?: boolean };
-type Question = { eyebrow: string; title: string; hint: string; auto: boolean; options: Option[] };
+type Question = { eyebrow: string; title: string; hint: string; options: Option[] };
 
 const QUESTIONS: Question[] = [
   {
     eyebrow: "Q1. 관심사",
     title: "퇴근하고 뭐 하고 싶으세요?",
     hint: "끌리는 걸 하나 골라주세요. 그쪽부터 골라드려요.",
-    auto: false,
     options: [
       { value: "culture", title: "문화·공연", desc: "전시 · 공연 · 영화" },
       { value: "active", title: "운동·산책", desc: "러닝 · 걷기길 · 클래스" },
@@ -27,18 +26,16 @@ const QUESTIONS: Question[] = [
     eyebrow: "Q2. 시간대",
     title: "주로 언제 시간이 나세요?",
     hint: "퇴근 후·주말 중 즐기기 좋은 걸 맞춰드려요.",
-    auto: true,
     options: [
       { value: "weekday_evening", title: "평일 저녁", desc: "퇴근 후 2~3시간" },
       { value: "weekend", title: "주말", desc: "토·일 오전/오후" },
-      { value: "flexible", title: "유연하게", desc: "그때그때 가능한 시간" },
+      { value: "flexible", title: "유동적", desc: "그때그때 가능한 시간" },
     ],
   },
   {
     eyebrow: "Q3. 에너지",
     title: "요즘 에너지는 어떠세요?",
     hint: "무리 없는 강도로 맞춰드려요.",
-    auto: false,
     options: [
       { value: "drained", title: "방전형", desc: "가볍게 · 앉아서 쉬듯" },
       { value: "moderate", title: "보통", desc: "적당한 활동까지 OK" },
@@ -76,16 +73,14 @@ export default function DiagnosisScreen() {
   const pick = (value: string, soon?: boolean) => {
     if (soon) return;
     setAnswers((a) => ({ ...a, [step]: value }));
-    if (q.auto) setTimeout(goNext, 260);
   };
 
   return (
     <Screen>
+      <FlowHeader title="60초 진단" onBack={goBack} />
+
       {/* 진행바 */}
       <View style={styles.progressRow}>
-        <Pressable onPress={goBack} hitSlop={8} style={{ width: 36, marginLeft: -8 }}>
-          <ChevronLeft size={22} />
-        </Pressable>
         <View style={styles.track}>
           <View style={[styles.fill, { width: `${((step + 1) / total) * 100}%` }]} />
         </View>
@@ -132,17 +127,13 @@ export default function DiagnosisScreen() {
         </View>
 
         <View style={{ marginTop: "auto", paddingBottom: 16 }}>
-          {q.auto ? (
-            <Text style={styles.autoHint}>선택하면 다음 질문으로 넘어가요</Text>
-          ) : (
-            <Pressable
-              onPress={goNext}
-              disabled={!selected}
-              style={[styles.resultBtn, { opacity: selected ? 1 : 0.4 }]}
-            >
-              <Text style={styles.resultLabel}>결과 보기</Text>
-            </Pressable>
-          )}
+          <Pressable
+            onPress={goNext}
+            disabled={!selected}
+            style={[styles.resultBtn, { opacity: selected ? 1 : 0.4 }]}
+          >
+            <Text style={styles.resultLabel}>{step === total - 1 ? "결과 보기" : "다음"}</Text>
+          </Pressable>
         </View>
       </View>
     </Screen>
@@ -167,7 +158,6 @@ const styles = StyleSheet.create({
   optDesc: { marginTop: 2, fontSize: 13, color: C.muted },
   soon: { backgroundColor: C.surface, borderRadius: R.md, paddingHorizontal: 8, paddingVertical: 4 },
   soonLabel: { fontSize: 11, fontWeight: "600", color: C.muted },
-  autoHint: { textAlign: "center", fontSize: 13, color: C.muted },
   resultBtn: { height: 52, borderRadius: R.lg, backgroundColor: C.primary, alignItems: "center", justifyContent: "center" },
   resultLabel: { fontSize: 16, fontWeight: "700", color: C.white },
 });

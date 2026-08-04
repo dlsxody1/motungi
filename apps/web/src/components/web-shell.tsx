@@ -5,7 +5,7 @@
  */
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { BookmarkIcon, ChevronDownIcon, LocationIcon } from "./icons";
+import { NeighborhoodMenu } from "./neighborhood-menu";
 
 /* ────────────────────────────────────────────────────────────
  * 로고 (그라데이션 마크 + 워드마크)
@@ -53,7 +53,7 @@ export function WebLogo({
 /* ────────────────────────────────────────────────────────────
  * 상단 네비게이션 (스티키)
  *  - variant "marketing": 검색 · 로그인 · 시작하기 CTA (랜딩)
- *  - variant "app":        동네 pill · 북마크 · 아바타 (앱 내부)
+ *  - variant "app":        동네 pill · 로그인/아바타 (앱 내부)
  * ──────────────────────────────────────────────────────────── */
 type NavKey = "home" | "explore" | "report" | "saved" | "my";
 
@@ -78,7 +78,6 @@ export function TopNav({
   userName?: string;
 }) {
   const dongLabel = dongName ?? "동네 설정";
-  const avatarChar = userName ? userName.slice(0, 1) : "게";
   return (
     <header className="sticky top-0 z-50 hidden h-[72px] items-center justify-between border-b border-line-alt bg-surface px-10 md:flex">
       <div className="flex items-center gap-9">
@@ -101,7 +100,7 @@ export function TopNav({
 
       {variant === "marketing" ? (
         <div className="flex items-center gap-5">
-          <Link href="/report" className="text-[15px] font-semibold text-nav-link hover:text-ink-dark">
+          <Link href="/my" className="text-[15px] font-semibold text-nav-link hover:text-ink-dark">
             로그인
           </Link>
           <Link
@@ -113,25 +112,28 @@ export function TopNav({
         </div>
       ) : (
         <div className="flex items-center gap-[18px]">
-          <Link
-            href="/location"
-            className="flex items-center gap-1.5 rounded-pill border border-primary/28 bg-tint px-3.5 py-2 text-[13px] font-semibold text-primary-deep"
-            aria-label="동네 변경"
-          >
-            <LocationIcon size={16} />
-            {dongLabel}
-            <ChevronDownIcon size={16} />
-          </Link>
-          <Link href="/saved" className="grid size-8 place-items-center text-nav-link" aria-label="보관함">
-            <BookmarkIcon size={22} />
-          </Link>
-          <Link
-            href="/my"
-            className="grid size-9 place-items-center rounded-full bg-tint text-[13px] font-bold text-primary-deep"
-            aria-label="마이"
-          >
-            {avatarChar}
-          </Link>
+          <NeighborhoodMenu
+            dongLabel={dongLabel}
+            triggerClassName="flex items-center gap-1.5 rounded-pill border border-line bg-surface px-3.5 py-2 text-[13px] font-semibold text-label shadow-card"
+          />
+          {/* 보관함 입구는 좌측 내비의 "보관함" 하나로 충분하다 — 같은 /saved로 가는
+              북마크 아이콘을 헤더에 또 두지 않는다(입구 중복). */}
+          {userName ? (
+            <Link
+              href="/my"
+              className="grid size-9 place-items-center rounded-full bg-tint text-[13px] font-bold text-primary-deep"
+              aria-label="마이"
+            >
+              {userName.slice(0, 1)}
+            </Link>
+          ) : (
+            <Link
+              href="/my"
+              className="flex h-9 items-center rounded-pill border border-line bg-surface px-4 text-[13px] font-semibold text-label shadow-card hover:border-faint"
+            >
+              로그인
+            </Link>
+          )}
         </div>
       )}
     </header>

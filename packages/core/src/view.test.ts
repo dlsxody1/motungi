@@ -8,6 +8,8 @@ import {
   diagnosisSummaryChips,
   displayNameOf,
   ENERGY_LABEL,
+  normalizeDong,
+  normalizeGu,
   type OpportunityRow,
   rowToOpportunity,
   timeRangeLabel,
@@ -172,6 +174,11 @@ describe("rowToOpportunity — 부분 필드", () => {
       source_label: null,
       time_start_hour: null,
       time_end_hour: null,
+      course_start: null,
+      course_end: null,
+      course_notes: null,
+      duration_min: null,
+      is_loop: null,
       ...over,
     };
   }
@@ -263,5 +270,93 @@ describe("deadlineLabel", () => {
 
   it("타임존 무관하게 UTC 자정 기준 일수차만 센다(월경계)", () => {
     expect(deadlineLabel("2026-08-01", "2026-07-31")).toMatchObject({ dday: 1, date: "8월 1일" });
+  });
+});
+
+describe("normalizeDong — 행정동 → 사용자가 말하는 동네 이름", () => {
+  // 규칙은 마이그레이션 0014의 SQL과 반드시 같아야 한다(GPS 결과와 검색 결과 표기 일치).
+  it("번호를 뗀다", () => {
+    expect(normalizeDong("개포1동")).toBe("개포동");
+    expect(normalizeDong("역삼2동")).toBe("역삼동");
+    expect(normalizeDong("상계10동")).toBe("상계동");
+  });
+
+  it("'제'와 중점 표기도 뗀다", () => {
+    expect(normalizeDong("신사제1동")).toBe("신사동");
+    expect(normalizeDong("상계3·4동")).toBe("상계동");
+    expect(normalizeDong("면목제3·8동")).toBe("면목동");
+  });
+
+  it("'가'가 붙은 행정동도 동네 단위로 만든다", () => {
+    expect(normalizeDong("금호1가동")).toBe("금호동");
+    expect(normalizeDong("금호2·3가동")).toBe("금호동");
+    expect(normalizeDong("성수1가제1동")).toBe("성수동");
+  });
+
+  it("'본동'은 '동'으로 바꿔 같은 동네로 묶는다", () => {
+    expect(normalizeDong("중계본동")).toBe("중계동");
+    expect(normalizeDong("일원본동")).toBe("일원동");
+  });
+
+  it("번호가 없는 이름은 그대로 둔다", () => {
+    expect(normalizeDong("청담동")).toBe("청담동");
+    expect(normalizeDong("망원동")).toBe("망원동");
+    // 가회동의 '가'는 접미사가 아니라 이름의 일부 — 건드리면 안 된다.
+    expect(normalizeDong("가회동")).toBe("가회동");
+  });
+
+  it("멱등이다", () => {
+    for (const n of ["개포1동", "금호1가동", "중계본동", "청담동"]) {
+      expect(normalizeDong(normalizeDong(n))).toBe(normalizeDong(n));
+    }
+  });
+});
+
+describe("normalizeGu — 지역 표기 병합", () => {
+  it("null/빈값/공백은 null", () => {
+    expect(normalizeGu(null)).toBeNull();
+    expect(normalizeGu(undefined)).toBeNull();
+    expect(normalizeGu("  ")).toBeNull();
+  });
+
+  it("'서울 ' 접두어를 걷어 같은 구로 병합", () => {
+    expect(normalizeGu("종로구")).toBe("종로구");
+    expect(normalizeGu("서울 종로구")).toBe("종로구");
+    expect(normalizeGu("서울특별시 종로구")).toBe("종로구");
+  });
+
+  // 앵커 region으로 실제 유입되는 두 형태(히어로 캐러셀 구 매칭의 입력).
+  // 검색 결과는 neighborhoods.sigungu 그대로라 bare, 인기 칩은 "서울 마포구" 형태.
+  it("앵커 region의 두 유입 형태를 같은 구로 흡수한다", () => {
+    expect(normalizeGu("마포구")).toBe("마포구"); // /api/neighborhoods sigungu
+    expect(normalizeGu("서울 마포구")).toBe("마포구"); // POPULAR_NEIGHBORHOODS.region
+  });
+
+  it("수도권 시/군은 지자체명 유지", () => {
+    expect(normalizeGu("경기 김포시")).toBe("김포시");
+    expect(normalizeGu("인천 강화군")).toBe("강화군");
+  });
+
+  it("접두어만 있으면 그대로(구 없는 행)", () => {
+    expect(normalizeGu("서울")).toBe("서울");
+  });
+
+  it("멱등 — 두 번 적용해도 동일", () => {
+    expect(normalizeGu(normalizeGu("서울 마포구"))).toBe(normalizeGu("서울 마포구"));
+  });
+});
+
+describe("normalizeDong — 분리동 번호 제거", () => {
+  it("번호가 붙은 분리동은 번호를 걷어낸다", () => {
+    expect(normalizeDong("역삼1동")).toBe("역삼동");
+    expect(normalizeDong("논현2동")).toBe("논현동");
+  });
+
+  it("번호가 없으면 그대로", () => {
+    expect(normalizeDong("망원동")).toBe("망원동");
+  });
+
+  it("멱등 — 두 번 적용해도 동일", () => {
+    expect(normalizeDong(normalizeDong("역삼1동"))).toBe(normalizeDong("역삼1동"));
   });
 });

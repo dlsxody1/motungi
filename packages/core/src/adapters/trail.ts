@@ -6,6 +6,7 @@
  * 좌표는 gpxpath(GPX 파일)라 어댑터에서 채우지 않는다(적재 계층이 필요시 파싱).
  */
 import type { Opportunity } from "../types";
+import { joinDescription } from "./util";
 
 /** Durunubi courseList item (실제 필드명). */
 export interface RawTrail {
@@ -23,6 +24,8 @@ export interface RawTrail {
   crsSummary?: string;
   /** 상세 내용 */
   crsContents?: string;
+  /** 주변 관광정보 */
+  crsTourInfo?: string;
   /** 지역 "부산 중구" */
   sigun?: string;
   /** GPX 경로 파일 URL */
@@ -54,6 +57,9 @@ export function normalizeTrail(raw: RawTrail): Opportunity | null {
     category: "active",
     title,
     summary: summaryParts.join(" · ") || title,
+    // 두루누비는 산문 3종이 100% 채워져 온다(실측 2026-08-03, 100건 표본).
+    // summary는 "지역 · 거리 · 요약"으로 잘려 들어가므로, 검색·LLM용 원문은 따로 보존한다.
+    description: joinDescription([raw.crsSummary, raw.crsContents, raw.crsTourInfo]),
     costKrw: 0, // 걷기길은 무료
     difficulty: levelToDifficulty(raw.crsLevel),
     location: raw.sigun ? { dongName: raw.sigun } : undefined,

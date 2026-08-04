@@ -25,7 +25,7 @@
 import type { OpportunityRow } from "./view";
 import type { OpportunityCategory } from "./types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchOpportunities, fetchOpportunityById, rowToMock } from "./catalog";
+import { boundingBox, fetchOpportunities, fetchOpportunityById, rowToMock } from "./catalog";
 
 type FakeClient = {
   from: ReturnType<typeof vi.fn>;
@@ -33,6 +33,8 @@ type FakeClient = {
   or: ReturnType<typeof vi.fn>;
   in: ReturnType<typeof vi.fn>;
   not: ReturnType<typeof vi.fn>;
+  gte: ReturnType<typeof vi.fn>;
+  lte: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
   limit: ReturnType<typeof vi.fn>;
 };
@@ -51,16 +53,30 @@ function makeClient(result: { data: unknown; error: unknown }): FakeClient {
     or: ReturnType<typeof vi.fn>;
     in: ReturnType<typeof vi.fn>;
     not: ReturnType<typeof vi.fn>;
+    gte: ReturnType<typeof vi.fn>;
+    lte: ReturnType<typeof vi.fn>;
     order: ReturnType<typeof vi.fn>;
     limit: typeof limit;
-  } = { or: vi.fn(), in: vi.fn(), not: vi.fn(), order: vi.fn(), limit };
+  } = { or: vi.fn(), in: vi.fn(), not: vi.fn(), gte: vi.fn(), lte: vi.fn(), order: vi.fn(), limit };
   chain.or.mockReturnValue(chain);
   chain.in.mockReturnValue(chain);
   chain.not.mockReturnValue(chain);
+  chain.gte.mockReturnValue(chain);
+  chain.lte.mockReturnValue(chain);
   chain.order.mockReturnValue(chain);
   const select = vi.fn(() => chain);
   const from = vi.fn(() => ({ select }));
-  return { from, select, or: chain.or, in: chain.in, not: chain.not, order: chain.order, limit };
+  return {
+    from,
+    select,
+    or: chain.or,
+    in: chain.in,
+    not: chain.not,
+    gte: chain.gte,
+    lte: chain.lte,
+    order: chain.order,
+    limit,
+  };
 }
 
 function asClient(fake: FakeClient): SupabaseClientLike {
@@ -85,6 +101,11 @@ const ROW: OpportunityRow = {
   source_label: "서울문화포털",
   time_start_hour: 19,
   time_end_hour: 21,
+  course_start: null,
+  course_end: null,
+  course_notes: null,
+  duration_min: null,
+  is_loop: null,
 };
 
 /** 최소 필드만 채운 row 팩토리 — 테스트별로 필요한 필드만 override. */
@@ -106,6 +127,11 @@ function makeRow(over: Partial<OpportunityRow> & { category: OpportunityCategory
     source_label: null,
     time_start_hour: null,
     time_end_hour: null,
+    course_start: null,
+    course_end: null,
+    course_notes: null,
+    duration_min: null,
+    is_loop: null,
     ...over,
   };
 }
@@ -342,6 +368,63 @@ describe("fetchOpportunities — Supabase 쿼리 계약", () => {
     await fetchOpportunities(asClient(client), { withImageOnly: true });
 
     expect(client.not).toHaveBeenCalledWith("image_url", "is", null);
+  });
+
+  it("near를 주면 lat/lng 바운딩 박스로 서버에서 좁힌다", async () => {
+    const client = makeClient({ data: [makeRow({ category: "culture" })], error: null });
+    // 역삼동 좌표 기준 5km.
+    const point = { lat: 37.5006, lng: 127.0364 };
+
+    await fetchOpportunities(asClient(client), { near: { point, radiusKm: 5 } });
+
+    const box = boundingBox(point, 5);
+    expect(client.gte).toHaveBeenCalledWith("lat", box.minLat);
+    expect(client.lte).toHaveBeenCalledWith("lat", box.maxLat);
+    expect(client.gte).toHaveBeenCalledWith("lng", box.minLng);
+    expect(client.lte).toHaveBeenCalledWith("lng", box.maxLng);
+  });
+
+  it("near가 없으면 좌표 필터를 걸지 않는다(기존 동작 유지)", async () => {
+    const client = makeClient({ data: [makeRow({ category: "culture" })], error: null });
+
+    await fetchOpportunities(asClient(client), { limit: 30 });
+
+    expect(client.gte).not.toHaveBeenCalled();
+    expect(client.lte).not.toHaveBeenCalled();
+  });
+});
+
+describe("boundingBox — 반경(km) → 위경도 박스", () => {
+  const SEOUL = { lat: 37.5, lng: 127.0 };
+
+  it("위도 폭은 반경/111.32도다", () => {
+    const box = boundingBox(SEOUL, 5);
+    // 위/아래로 각각 5/111.32도씩.
+    expect(box.maxLat - SEOUL.lat).toBeCloseTo(5 / 111.32, 6);
+    expect(SEOUL.lat - box.minLat).toBeCloseTo(5 / 111.32, 6);
+  });
+
+  it("경도 폭은 cos(위도)만큼 위도 폭보다 넓다", () => {
+    const box = boundingBox(SEOUL, 5);
+    const latSpan = box.maxLat - box.minLat;
+    const lngSpan = box.maxLng - box.minLng;
+    // 서울(위도 37.5)에서 cos≈0.793 → 경도는 같은 km를 담으려고 약 1.26배 넓어진다.
+    expect(lngSpan).toBeGreaterThan(latSpan);
+    expect(lngSpan / latSpan).toBeCloseTo(1 / Math.cos((37.5 * Math.PI) / 180), 4);
+  });
+
+  it("반경이 커지면 박스도 비례해 커진다", () => {
+    const small = boundingBox(SEOUL, 5);
+    const big = boundingBox(SEOUL, 20);
+    expect(big.maxLat - big.minLat).toBeCloseTo((small.maxLat - small.minLat) * 4, 6);
+  });
+
+  it("박스는 중심점을 포함한다", () => {
+    const box = boundingBox(SEOUL, 5);
+    expect(SEOUL.lat).toBeGreaterThan(box.minLat);
+    expect(SEOUL.lat).toBeLessThan(box.maxLat);
+    expect(SEOUL.lng).toBeGreaterThan(box.minLng);
+    expect(SEOUL.lng).toBeLessThan(box.maxLng);
   });
 });
 

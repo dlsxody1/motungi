@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { color } from "@motungi/tokens";
 import { LocationIcon, ExternalLinkIcon } from "@/components/icons";
 
 /**
@@ -18,13 +19,24 @@ interface NaverLatLng {
   lat: number;
   lng: number;
 }
+interface NaverMapInstance {
+  fitBounds(bounds: unknown): void;
+}
 interface NaverMapsAPI {
   LatLng: new (lat: number, lng: number) => NaverLatLng;
+  LatLngBounds: new (sw: NaverLatLng, ne: NaverLatLng) => unknown;
   Map: new (
     el: HTMLElement,
     opts: { center: NaverLatLng; zoom: number; draggable?: boolean; scrollWheel?: boolean },
-  ) => unknown;
+  ) => NaverMapInstance;
   Marker: new (opts: { position: NaverLatLng; map: unknown }) => unknown;
+  Polyline: new (opts: {
+    map: unknown;
+    path: NaverLatLng[];
+    strokeColor?: string;
+    strokeWeight?: number;
+    strokeOpacity?: number;
+  }) => unknown;
 }
 declare global {
   interface Window {
@@ -37,6 +49,7 @@ export function VenueMap({
   lng,
   title,
   placeName,
+  routePoints,
 }: {
   lat?: number | null;
   lng?: number | null;
@@ -44,6 +57,11 @@ export function VenueMap({
   title: string;
   /** 장소명(있으면 딥링크 검색어로 사용, 없으면 title) */
   placeName?: string;
+  /**
+   * 걷기길 코스 경로 [[lat, lng], ...]. 주어지면 선을 그리고 전체가 보이게 맞춘다.
+   * 없으면 기존 단일 마커 동작 그대로 — 다른 호출부는 영향 없음.
+   */
+  routePoints?: [number, number][];
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [rendered, setRendered] = useState(false);
@@ -74,6 +92,27 @@ export function VenueMap({
         scrollWheel: false,
       });
       new maps.Marker({ position: center, map });
+
+      // 코스 경로가 있으면 선을 긋고 전체가 화면에 들어오게 맞춘다(시점 마커는 그대로 유지).
+      if (routePoints && routePoints.length >= 2) {
+        const path = routePoints.map(([la, ln]) => new maps.LatLng(la, ln));
+        new maps.Polyline({
+          map,
+          path,
+          // SDK가 CSS 변수를 못 읽어 토큰 값을 직접 넘긴다(하드코딩 아님 — @motungi/tokens 출처).
+          strokeColor: color.brand.primary,
+          strokeWeight: 4,
+          strokeOpacity: 0.85,
+        });
+        const lats = routePoints.map((p) => p[0]);
+        const lngs = routePoints.map((p) => p[1]);
+        map.fitBounds(
+          new maps.LatLngBounds(
+            new maps.LatLng(Math.min(...lats), Math.min(...lngs)),
+            new maps.LatLng(Math.max(...lats), Math.max(...lngs)),
+          ),
+        );
+      }
       setRendered(true);
     };
 
@@ -81,7 +120,7 @@ export function VenueMap({
     return () => {
       cancelled = true;
     };
-  }, [hasCoords, lat, lng]);
+  }, [hasCoords, lat, lng, routePoints]);
 
   if (!hasCoords) return null;
 

@@ -40,3 +40,6 @@ android/
 
 # impeccable skill 산출물 (캐시/라이브 프리뷰)
 .impeccable/
+
+# 서드파티 clone (pixel-agents 뷰어) — 이 repo 산출물 아님, 서브모듈로 잡히면 안 됨
+pixel-agents/

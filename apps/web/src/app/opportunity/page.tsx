@@ -20,7 +20,16 @@ import { NaverMapSDK } from "@/components/naver-map-sdk";
 import { Thumbnail } from "@/components/thumbnail";
 import { VenueMap } from "@/components/venue-map";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
-import { CATEGORY_LABEL, deadlineLabel, displayNameOf, timeRangeLabel, whyReasons } from "@motungi/core";
+import {
+  CATEGORY_LABEL,
+  deadlineLabel,
+  displayNameOf,
+  isWeekendOuting,
+  timeRangeLabel,
+  whyReasons,
+} from "@motungi/core";
+import { CourseGuide } from "@/components/course-guide";
+import { useTrailRoute } from "@/hooks/useTrailRoute";
 import { useOpportunity } from "@/hooks/useOpportunity";
 import { shareContent } from "@/lib/kakao";
 import { useAppStore } from "@/store/useAppStore";
@@ -41,6 +50,8 @@ function OpportunityInner() {
   const id = useSearchParams().get("id");
   // 상세는 카탈로그 전량을 받지 않는다 — id로 1건만(이미 스토어에 있으면 재사용).
   const { opportunity: o, status } = useOpportunity(id);
+  // 걷기길이면 코스 경로를 받아 지도에 선으로 그린다(그 외 소스는 요청하지 않음).
+  const routePoints = useTrailRoute(id, o?.source === "trail");
 
   const savedIds = useAppStore((s) => s.savedIds);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
@@ -127,8 +138,13 @@ function OpportunityInner() {
                 sizeClass="aspect-[16/9] w-full"
                 className="mb-4 shadow-card"
               />
-              <div>
+              <div className="flex flex-wrap items-center gap-2">
                 <Tag>{o.categoryLabel}</Tag>
+                {isWeekendOuting(o) && (
+                  <span className="rounded-md bg-info-bg px-2 py-0.5 text-[11px] font-semibold text-muted">
+                    주말 나들이
+                  </span>
+                )}
               </div>
               <h1 className="mt-3 text-[23px] font-extrabold leading-snug tracking-[-0.01em] text-ink">
                 {o.title}
@@ -184,6 +200,8 @@ function OpportunityInner() {
                 </dl>
               )}
 
+              <CourseGuide opportunity={o} className="mt-5" />
+
               {o.location?.point && (
                 <div className="mt-5">
                   <h2 className="mb-2.5 text-[15px] font-bold text-ink">위치</h2>
@@ -192,29 +210,30 @@ function OpportunityInner() {
                     lng={o.location.point.lng}
                     title={o.title}
                     placeName={o.summary}
+                    routePoints={routePoints ?? undefined}
                   />
                 </div>
               )}
 
-              {o.steps && o.steps.length > 0 && (
-                <>
-                  <h2 className="mb-3 mt-6 text-[17px] font-bold text-ink">즐기는 방법</h2>
-                  <ol className="space-y-4">
-                    {o.steps.map((s, i) => (
-                      <li key={i} className="flex gap-3">
-                        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-bold text-white">
-                          {i + 1}
-                        </span>
-                        <span className="text-[14px] leading-relaxed text-label">{s}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </>
-              )}
+              {/* 왜 맞을까요 */}
+              <div className="mt-5 rounded-xl bg-surface p-4 shadow-card">
+                <p className="flex items-center gap-2 text-[15px] font-bold text-ink">
+                  <InsightsIcon size={18} className="text-primary" />
+                  왜 {displayName}님께 맞을까요?
+                </p>
+                <ul className="mt-3 space-y-2.5">
+                  {why.map((w) => (
+                    <li key={w} className="flex items-start gap-2 text-[13px] leading-relaxed text-label">
+                      <CheckCircleIcon size={16} className="mt-0.5 shrink-0 text-primary" />
+                      {w}
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
               <p className="mt-6 rounded-lg bg-surface-alt px-3.5 py-3 text-[12px] leading-relaxed text-muted">
-                자세히 보기를 누르면 주최·출처 채널로 이동해요. 모퉁이는 공공·제휴 정보를
-                모아 소개할 뿐, 예약·주최 당사자가 아니에요.
+                보러 가기를 누르면 주최·출처 채널로 이동해요. 모퉁이는 공공·제휴 정보를 모아
+                소개할 뿐, 예약·주최 당사자가 아니에요.
               </p>
             </div>
 
@@ -276,7 +295,14 @@ function OpportunityInner() {
                 sizeClass="aspect-[21/9] w-full"
                 className="mb-6 shadow-web"
               />
-              <Tag>{o.categoryLabel}</Tag>
+              <div className="flex flex-wrap items-center gap-2">
+                <Tag>{o.categoryLabel}</Tag>
+                {isWeekendOuting(o) && (
+                  <span className="rounded-md bg-info-bg px-2 py-0.5 text-[11px] font-semibold text-muted">
+                    주말 나들이
+                  </span>
+                )}
+              </div>
               <h1 className="mt-3 text-[34px] font-extrabold leading-[1.28] tracking-[-0.03em] text-ink">
                 {o.title}
               </h1>
@@ -308,25 +334,7 @@ function OpportunityInner() {
                 </ul>
               </div>
 
-              {/* 즐기는 방법 타임라인 (스텝이 있을 때만) */}
-              {o.steps && o.steps.length > 0 && (
-                <>
-                  <h2 className="mb-4 mt-8 text-[19px] font-bold text-ink">즐기는 방법</h2>
-                  <ol className="space-y-0">
-                    {o.steps.map((s, i, arr) => (
-                      <li key={i} className="flex gap-4">
-                        <div className="flex flex-col items-center">
-                          <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-primary text-[13px] font-bold text-white">
-                            {i + 1}
-                          </span>
-                          {i < arr.length - 1 && <span className="w-0.5 flex-1 bg-line" />}
-                        </div>
-                        <span className="pb-6 pt-1 text-[15px] leading-relaxed text-label">{s}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </>
-              )}
+              <CourseGuide opportunity={o} className="mt-8" />
 
               {o.location?.point && (
                 <>
@@ -337,6 +345,7 @@ function OpportunityInner() {
                       lng={o.location.point.lng}
                       title={o.title}
                       placeName={o.summary}
+                      routePoints={routePoints ?? undefined}
                     />
                   </div>
                 </>
@@ -345,8 +354,8 @@ function OpportunityInner() {
               <div className="flex items-start gap-2.5 rounded-xl bg-info-bg px-4.5 py-4">
                 <InfoIcon size={18} className="mt-0.5 shrink-0 text-muted" />
                 <p className="text-[13px] leading-relaxed text-muted">
-                  자세히 보기를 누르면 주최·출처 채널로 이동해요. 모퉁이는 공공·제휴 정보를
-                  모아 소개할 뿐, 예약·주최 당사자가 아니에요.
+                  보러 가기를 누르면 주최·출처 채널로 이동해요. 모퉁이는 공공·제휴 정보를 모아
+                  소개할 뿐, 예약·주최 당사자가 아니에요.
                 </p>
               </div>
             </div>

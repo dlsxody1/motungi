@@ -8,7 +8,7 @@
  *    필드 매핑 규칙(mapSeoulCulture 등)은 이 파일이 SoT — core adapters(seoul-culture.ts 등)와
  *    필드명이 다르므로 함께 수정할 것.
  */
-import { hashKey, parseFeeKrw, parseHour, parsePoint, toIsoDate } from "../../../packages/core/src/adapters/util.ts";
+import { hashKey, joinDescription, parseFeeKrw, parseHour, parsePoint, parseTrailGuide, toIsoDate } from "../../../packages/core/src/adapters/util.ts";
 
 /** DB opportunities row (upsert 페이로드). */
 export interface OppRow {
@@ -17,6 +17,11 @@ export interface OppRow {
   external_id: string;
   title: string;
   summary: string;
+  /**
+   * 설명 원문(산문). 마이그레이션 0015. summary(메타데이터 조인)와 별개.
+   * 소스별 채움률이 크게 달라 없는 게 정상 — 실측 trail 100% / seoul_culture 약 20% / culture_info 0%.
+   */
+  description?: string | null;
   cost_krw: number | null;
   difficulty: number | null;
   dong_name: string | null;
@@ -28,6 +33,13 @@ export interface OppRow {
   source_label: string;
   time_start_hour: number | null;
   time_end_hour: number | null;
+  /** 걷기길 코스 안내(trail 전용, 그 외 소스는 미지정). 마이그레이션 0013. */
+  course_start?: string | null;
+  course_end?: string | null;
+  course_notes?: string | null;
+  duration_min?: number | null;
+  is_loop?: boolean | null;
+  gpx_url?: string | null;
 }
 
 // ── 서울시 문화행사 → culture ──────────────────────────────
@@ -45,6 +57,10 @@ export function mapSeoulCulture(raw: Record<string, string>): OppRow | null {
     external_id: externalId,
     title,
     summary: [raw.GUNAME, raw.PLACE, raw.CODENAME].filter(Boolean).join(" · ") || title,
+    // PROGRAM(프로그램 소개)·PLAYER(출연진)·ETC_DESC(기타 안내)는 응답에 오는데 여태 버려졌다.
+    // 채움률은 낮다 — 실측 2026-08-03 300건: PROGRAM 14% · PLAYER 11% · ETC_DESC 3%.
+    // 그래도 있는 행은 유일하게 "무슨 공연인지"를 담고 있어 검색·LLM 입력으로 값이 크다.
+    description: joinDescription([raw.PROGRAM, raw.PLAYER, raw.ETC_DESC]) ?? null,
     cost_krw: cost ?? null,
     difficulty: null,
     dong_name: raw.GUNAME || null,
@@ -100,23 +116,40 @@ export function mapTrail(raw: Record<string, string>): OppRow | null {
     [raw.sigun, km ? `${km}km` : undefined, raw.crsSummary?.replace(/<[^>]+>/g, "").trim()]
       .filter(Boolean)
       .join(" · ") || title;
+  // 두루누비엔 이미지가 없다(courseList 16개 필드에 image 계열 0개) — 대신 시점·종점·교통편이
+  // 오므로 코스 안내로 채운다. 형식이 두 가지라 parseTrailGuide가 구분한다(수도권 실측 7/11/1).
+  const guide = parseTrailGuide(raw.travelerinfo);
+  const durationMin = Number(raw.crsTotlRqrmHour);
   return {
     source: "trail",
     category: "active",
     external_id: id,
     title,
     summary,
+    // 두루누비는 산문 3종이 100% 채워져 온다(실측 2026-08-03, 100건 표본:
+    // crsSummary 중앙값 104자 · crsContents 97자 · crsTourInfo 115자).
+    // summary는 "지역 · 거리 · 요약"으로 잘리므로 검색·LLM용 원문은 따로 보존한다.
+    description: joinDescription([raw.crsSummary, raw.crsContents, raw.crsTourInfo]) ?? null,
     cost_krw: 0,
     difficulty,
     dong_name: raw.sigun || null,
+    // lat/lng는 여기서 못 채운다 — 좌표가 GPX 파일 안에 있어 fetch가 필요하다.
+    // 적재 계층(index.ts)의 enrichTrailCoords가 GPX 첫 trkpt로 채운다.
     lat: null,
     lng: null,
-    cta_url: raw.gpxpath || null,
+    // cta_url은 두루누비 코스 페이지로. gpx_url과 분리하지 않으면 "보러 가기"가 파일 다운로드가 된다.
+    cta_url: `https://www.durunubi.kr/trail-course-detail.do?crsIdx=${encodeURIComponent(id)}`,
     image_url: null,
     deadline: null,
     source_label: "두루누비",
     time_start_hour: null,
     time_end_hour: null,
+    course_start: guide.start ?? null,
+    course_end: guide.end ?? null,
+    course_notes: guide.notes?.length ? guide.notes.join("\n") : null,
+    duration_min: Number.isFinite(durationMin) && durationMin > 0 ? durationMin : null,
+    is_loop: raw.crsCycle ? raw.crsCycle.includes("순환") && !raw.crsCycle.includes("비순환") : null,
+    gpx_url: raw.gpxpath || null,
   };
 }
 

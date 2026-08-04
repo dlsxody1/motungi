@@ -45,6 +45,60 @@ export function inMetro(dong?: string | null): boolean {
   return METRO_PREFIXES.some((p) => dong.startsWith(p));
 }
 
+/** 소스별 적재 결과(성공 건수 또는 에러). ingest 함수의 runSource 반환 형태. */
+export interface IngestSourceResult {
+  source: string;
+  fetched: number;
+  upserted: number;
+  error?: string;
+}
+
+/** 적재 1회 실행의 판정 결과. */
+export interface IngestOutcome {
+  /** 전 소스가 실패했는가 — 이때는 5xx로 응답하고 purge를 건너뛴다. */
+  allFailed: boolean;
+  /** 실패한 소스 이름들(부분 실패 표기용). */
+  failedSources: string[];
+  /** upsert된 총 건수. */
+  total: number;
+}
+
+/**
+ * 적재 결과 판정 (순수 함수).
+ *
+ * 왜 분리했나: Edge Function 본문은 Deno·네트워크·DB에 묶여 테스트가 어렵다.
+ * 반면 "전부 실패했는가 / 몇 건 들어갔는가"는 순수 판정이라 여기서 테스트한다.
+ *
+ * 이 판정이 중요한 이유(M-040): 예전엔 전 소스가 실패해도 `ok: true`를 반환해
+ * **실패가 성공처럼 보였다**. 키 secret이 비어 있는 동안 cron이 매일 "성공"을 반환하며
+ * 아무것도 적재하지 않았고 아무도 알아채지 못했다.
+ *
+ * 빈 배열은 allFailed=false — 실행할 소스가 없었던 것과 전부 실패한 것은 다르다.
+ */
+export function judgeIngest(results: IngestSourceResult[]): IngestOutcome {
+  const failedSources = results.filter((r) => r.error != null).map((r) => r.source);
+  return {
+    allFailed: results.length > 0 && failedSources.length === results.length,
+    failedSources,
+    total: results.reduce((s, r) => s + r.upserted, 0),
+  };
+}
+
+/**
+ * cron 시크릿 검증 (순수 함수, M-026).
+ *
+ * Edge Function은 SERVICE_ROLE 키로 동작해 upsert/delete 권한을 갖는다. 인증 없이 배포되면
+ * URL을 아는 누구나 임의 시점에 적재를 트리거할 수 있는 confused-deputy 경로가 된다(M-026).
+ * 서버 시크릿이 비어 있으면(미설정) 항상 거부한다 — "시크릿 없음=통과"를 허용하지 않는다.
+ */
+export function isCronAuthorized(
+  serverSecret: string | undefined | null,
+  headerValue: string | undefined | null,
+): boolean {
+  if (!serverSecret) return false;
+  return headerValue === serverSecret;
+}
+
 /** key가 이미 등장한 이후 항목을 제거(첫 등장만 유지). */
 export function dedupByKey<T>(items: T[], keyFn: (item: T) => string): T[] {
   const seen = new Set<string>();

@@ -5,9 +5,11 @@
  * 각 소스는 독립 try/catch로 격리 — 한 소스가 실패해도 나머지는 적재된다.
  * upsert 키: (source, external_id) unique.
  *
- * 키 해석 우선순위: Edge Function secret(env) → 요청 body.
- *   - Cron 자동 실행: secret 등록 필요 (SEOUL_OPENAPI_KEY, DATA_GO_KR_SERVICE_KEY).
- *   - 수동/초기 검증: POST body { seoulKey, dataGoKrKey }로 전달 가능.
+ * 인증(M-026): 이 함수는 SERVICE_ROLE 권한(upsert/delete)으로 동작하므로 verify_jwt=false여도
+ * 애플리케이션 레벨에서 호출자를 검증한다. 요청 헤더 `x-cron-secret`이 Edge Function secret
+ * `INGEST_CRON_SECRET`과 일치해야 실행되고, 불일치·미설정이면 401을 반환한다.
+ * 외부 API 키 해석: SEOUL_OPENAPI_KEY / DATA_GO_KR_SERVICE_KEY는 서버 env(secret)만 신뢰한다
+ * (요청 body로 대체 불가 — 과거엔 body 폴백이 있었으나 인증 없는 임의 키 주입 경로였다).
  * Supabase 접속: SUPABASE_URL + SERVICE_ROLE_KEY(자동 주입).
  */
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -20,6 +22,8 @@ import {
 import {
   dedupByKey,
   inMetro,
+  isCronAuthorized,
+  judgeIngest,
   parseJsonItems,
   parseXmlItems,
 } from "../../../packages/core/src/adapters/ingest-fetch.ts";
@@ -75,6 +79,49 @@ async function fetchDataGoKrXml(url: string): Promise<Record<string, string>[]> 
   return parseXmlItems(xml);
 }
 
+/**
+ * 걷기길 시점 좌표 — GPX 파일 첫 trkpt.
+ *
+ * 두루누비 courseList는 좌표를 주지 않고 GPX 파일 경로(gpxpath)만 준다. 좌표가 없으면
+ * 거리 스코어가 중립(0.5)로 떨어져 "동네" 큐레이션에서 사실상 빠지므로 적재 때 한 번 채운다.
+ * 실패(네트워크·형식)는 null로 삼키고 넘어간다 — 좌표 하나 때문에 적재 전체를 막지 않는다.
+ */
+async function fetchTrailStartCoord(
+  gpxUrl?: string | null,
+): Promise<{ lat: number; lng: number } | null> {
+  if (!gpxUrl) return null;
+  try {
+    const res = await fetch(gpxUrl, { redirect: "follow" });
+    if (!res.ok) return null;
+    const xml = await res.text();
+    const m = xml.match(/<trkpt\b[^>]*>/);
+    if (!m) return null;
+    const lat = Number(m[0].match(/\blat="([^"]+)"/)?.[1]);
+    const lng = Number(m[0].match(/\blon="([^"]+)"/)?.[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
+  } catch {
+    return null;
+  }
+}
+
+/** GPX는 수백 KB라 동시성을 제한한다(수도권 19건 기준 3라운드). */
+const TRAIL_GPX_CONCURRENCY = 8;
+
+async function enrichTrailCoords(rows: OppRow[]): Promise<OppRow[]> {
+  for (let i = 0; i < rows.length; i += TRAIL_GPX_CONCURRENCY) {
+    const chunk = rows.slice(i, i + TRAIL_GPX_CONCURRENCY);
+    const coords = await Promise.all(chunk.map((r) => fetchTrailStartCoord(r.gpx_url)));
+    coords.forEach((c, j) => {
+      if (c) {
+        chunk[j]!.lat = c.lat;
+        chunk[j]!.lng = c.lng;
+      }
+    });
+  }
+  return rows;
+}
+
 /** OppRow[] → opportunities upsert. (source, external_id) 충돌 시 갱신. */
 async function upsertRows(rows: OppRow[]): Promise<number> {
   if (!rows.length) return 0;
@@ -101,14 +148,16 @@ async function runSource(
 }
 
 Deno.serve(async (req) => {
-  // 키 해석: env(secret) 우선, 없으면 요청 body.
-  let body: { seoulKey?: string; dataGoKrKey?: string } = {};
-  try {
-    if (req.method === "POST") body = await req.json();
-  } catch { /* body 없음 허용 */ }
+  // 인증(M-026): 시크릿 불일치·미설정이면 소스 fetch·DB 접근 전에 즉시 401로 차단한다.
+  if (!isCronAuthorized(Deno.env.get("INGEST_CRON_SECRET"), req.headers.get("x-cron-secret"))) {
+    return new Response(
+      JSON.stringify({ ok: false, error: "unauthorized" }, null, 2),
+      { status: 401, headers: { "content-type": "application/json" } },
+    );
+  }
 
-  const seoulKey = (Deno.env.get("SEOUL_OPENAPI_KEY") ?? body.seoulKey ?? "").trim();
-  const dataGoKrKey = (Deno.env.get("DATA_GO_KR_SERVICE_KEY") ?? body.dataGoKrKey ?? "").trim();
+  const seoulKey = (Deno.env.get("SEOUL_OPENAPI_KEY") ?? "").trim();
+  const dataGoKrKey = (Deno.env.get("DATA_GO_KR_SERVICE_KEY") ?? "").trim();
   const enc = encodeURIComponent(dataGoKrKey);
 
   const results = await Promise.all([
@@ -137,17 +186,50 @@ Deno.serve(async (req) => {
       if (!dataGoKrKey) throw new Error("DATA_GO_KR_SERVICE_KEY 없음");
       const url = `https://apis.data.go.kr/B551011/Durunubi/courseList?serviceKey=${enc}&numOfRows=${LIMIT}&pageNo=1&MobileOS=ETC&MobileApp=motungi&_type=json`;
       const raw = await fetchDataGoKrJson(url);
-      return raw.map(mapTrail).filter((r): r is OppRow => r != null && inMetro(r.dong_name));
+      const rows = raw
+        .map(mapTrail)
+        .filter((r): r is OppRow => r != null && inMetro(r.dong_name));
+      // 좌표는 GPX 안에만 있다 — 수도권으로 좁힌 뒤에 채운다(전국 152건 fetch 방지).
+      return await enrichTrailCoords(rows);
     }),
     // ⚠️ sports_facility(mapSportsFacility)·seoul_jobs(mapSeoulJob)는 의도적으로 미배선.
     //    매퍼는 준비됐으나 Raw* 필드명이 추정값(발급 응답 미확정)이라 실호출 시 전량 null 위험.
     //    데드코드가 아니라 게이팅 상태 — 인증키 발급 후 응답 1건으로 필드 확정하면 여기 runSource 추가.
   ]);
 
-  const total = results.reduce((s, r) => s + r.upserted, 0);
+  // 판정은 core의 순수 함수가 한다(테스트 소유는 packages/core/src/adapters/ingest-fetch.test.ts).
+  const { allFailed, failedSources, total } = judgeIngest(results);
+
+  /**
+   * 전 소스 실패 = 적재 자체가 안 된 것. 예전엔 이때도 `ok: true`를 반환해서
+   * **실패가 성공처럼 보였다** — 실제로 키 secret이 비어 있는 동안 cron이 매일
+   * "성공"을 반환하며 아무것도 적재하지 않았고, 아무도 알아채지 못했다(M-040).
+   * 이제 5xx로 응답해 호출자(cron 로그·수동 확인)가 실패를 알 수 있게 한다.
+   *
+   * 또한 이 경우 **purge를 건너뛴다**. 새로 적재된 게 없는데 마감 지난 행만 지우면
+   * 카탈로그가 조용히 비어간다 — 적재 실패가 데이터 손실로 번지는 걸 막는다.
+   */
+  if (allFailed) {
+    return new Response(
+      JSON.stringify(
+        {
+          ok: false,
+          error: "all_sources_failed",
+          message: "전 소스 적재 실패 — 키(secret) 등록 여부를 확인하라.",
+          total: 0,
+          purged: 0,
+          results,
+        },
+        null,
+        2,
+      ),
+      { status: 500, headers: { "content-type": "application/json" } },
+    );
+  }
 
   // 마감 지난 활동 정리: 새로 적재한 뒤 오래된 것을 치운다. 상시(deadline null)·미래 마감은
-  // 보존 — deadline이 있고 오늘보다 과거인 것만 삭제. 각 소스 실패와 무관하게 항상 실행.
+  // 보존 — deadline이 있고 오늘보다 과거인 것만 삭제.
+  // 일부 소스만 실패한 경우는 그대로 진행한다(그 소스의 신규분만 빠질 뿐 카탈로그는 갱신됐다).
   const today = new Date().toISOString().slice(0, 10);
   let purged = 0;
   try {
@@ -165,7 +247,10 @@ Deno.serve(async (req) => {
     );
   }
 
-  return new Response(JSON.stringify({ ok: true, total, purged, results }, null, 2), {
-    headers: { "content-type": "application/json" },
-  });
+  // 일부 실패는 200으로 두되 어떤 소스가 실패했는지 남긴다 — 부분 성공을 실패로 취급해
+  // 재시도 루프를 유발하지 않으면서도 조용히 넘어가지 않게.
+  return new Response(
+    JSON.stringify({ ok: true, total, purged, failedSources, results }, null, 2),
+    { headers: { "content-type": "application/json" } },
+  );
 });
