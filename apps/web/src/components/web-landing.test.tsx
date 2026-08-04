@@ -46,7 +46,7 @@ function posterSection(): HTMLElement {
  * 갈래 라벨에서 <ul>을 거슬러 올라가 좁힌다.
  */
 function categorySection(): HTMLElement {
-  const first = screen.getByText("공연·연주");
+  const first = screen.getByText("교육·체험");
   const list = first.closest("ul");
   if (!list) throw new Error("갈래 리스트를 찾지 못했다");
   return list;
@@ -80,13 +80,14 @@ describe("WebLanding", () => {
     const categoryList = categorySection();
 
     // 라벨 — 실제 적재된 콘텐츠가 있는 갈래만. 지어낸 갈래를 광고하지 않는다.
+    // (77ab54c에서 DB 실측 기준으로 갱신됨: "걷기길" 0건 → "코스" 등. 죽은 링크 방지.)
     for (const label of [
-      "공연·연주",
-      "전시·예술",
+      "교육·체험",
+      "전시·미술",
       "연극·뮤지컬",
-      "강좌·워크숍",
-      "걷기 코스",
-      "축제·영화",
+      "콘서트",
+      "클래식·국악",
+      "산책·걷기길",
     ]) {
       expect(within(categoryList).getByText(label)).toBeInTheDocument();
     }

@@ -35,7 +35,8 @@ function ExploreInner() {
   useEnsureCatalog();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
+  const homeDong = useAppStore((s) => s.anchors.home?.dongName);
+  const dongName = homeDong ?? "우리 동네";
   const user = useAppStore((s) => s.user);
   const catalog = useAppStore((s) => s.catalog);
   const catalogStatus = useAppStore((s) => s.catalogStatus);
@@ -314,7 +315,7 @@ function ExploreInner() {
       </div>
 
       {/* ── 데스크탑 ── */}
-      <DesktopShell active="explore" dongName={dongName} userName={user?.displayName}>
+      <DesktopShell active="explore" dongName={dongName} userName={user?.displayName} hideNeighborhood>
         <WebContainer className="py-8">
           {/* 헤더 */}
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -355,6 +356,17 @@ function ExploreInner() {
           <div className="mt-5 grid grid-cols-1 items-start gap-7 lg:grid-cols-[248px_1fr]">
             {/* 사이드바 (스크롤 시 따라오게) */}
             <aside className="rounded-[18px] bg-surface p-5.5 shadow-web lg:sticky lg:top-[88px]">
+              {/* 앵커 변경(재조회+거리 재계산)과 결과 내 지역 필터(클라 필터)를 한 열에 두되
+                  라벨로 갈라놓는다. 헤더 pill은 hideNeighborhood로 뺐다 — 진입점은 여기 하나. */}
+              <p className="text-[14px] font-bold text-ink">내 동네</p>
+              <NeighborhoodMenu
+                // 앵커가 없으면 "우리 동네"는 지명인 척하는 빈 값이다 — 눌러야 할 것을 눌러야 한다고 말한다.
+                dongLabel={homeDong ?? "동네 선택하기"}
+                triggerClassName="mt-3 flex h-10 w-full items-center justify-between gap-1.5 rounded-lg border border-line bg-surface px-3 text-[14px] font-medium text-label hover:bg-bg"
+              />
+
+              <div className="my-4 h-px bg-line-alt" />
+
               <p className="text-[14px] font-bold text-ink">카테고리</p>
               <div className="mt-3 space-y-0.5">
                 {CATEGORIES.map((c) => {
