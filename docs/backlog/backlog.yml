@@ -566,7 +566,7 @@ backlog:
   - id: M-027
     title: "packages/core catalog.ts가 Supabase 응답을 Database 제네릭 없이 unchecked cast로 신뢰"
     priority: high
-    status: todo
+    status: doing
     scope: [packages/core]
     done_when:
       - "fetchOpportunities/fetchOpportunityById(catalog.ts:135-205)의 client 파라미터 타입을 SupabaseClient<Database>로 바인딩한다(apps/web/src/lib/supabase.ts:16-26의 패치된 Database 타입 재사용 또는 동등한 것을 core에 둔다)"
