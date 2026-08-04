@@ -86,9 +86,7 @@ export function HeroPosterStage({
       {/* 안내 문구 — 선택 전에는 조작법을, 선택 후에는 선택 UI가 대신한다. */}
       {!picked && (
         <p className="mt-1 text-center text-[13px] font-medium text-white/85">
-          {mobile
-            ? `좌우로 밀어 넘기고, 탭하면 크게 봐요 · 지금 ${items.length}개`
-            : `좌우로 끌어 둘러보고, 클릭하면 크게 봐요 · 지금 ${items.length}개`}
+          {mobile ? "밀어서 둘러보고, 탭해서 자세히" : "끌어서 둘러보고, 클릭해서 자세히"}
         </p>
       )}
 

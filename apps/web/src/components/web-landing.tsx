@@ -25,21 +25,6 @@ const STEPS = [
   { n: "03", verb: "동네 리포트", desc: "오늘의 원픽과 활동 목록. 고민 없이 바로 나가면 돼요." },
 ];
 
-/** 갈래 미리보기 — 실제 적재된 활동에서 뽑은 예시만 쓴다.
- *
- *  이 목록은 한 번 크게 틀렸었다: "경의선숲길·새벽 러닝 크루·원데이 도예·플리마켓 셀러"는
- *  DB에 0건인, 지어낸 예시였다. 없는 콘텐츠를 광고하면 첫 검색에서 바로 들통난다.
- *  아래 예시는 전부 opportunities 테이블에 실제로 있는 제목에서 가져왔다.
- *  갈래를 늘리려면 먼저 적재부터 하고, 그 다음 여기에 추가한다. */
-const CATEGORIES = [
-  { label: "공연·연주", ex: "정기연주회, 실내악, 오페라 워크숍" },
-  { label: "전시·예술", ex: "미술관 기획전, 아트센터 전시" },
-  { label: "연극·뮤지컬", ex: "대학로 연극, 음악극" },
-  { label: "강좌·워크숍", ex: "예술 교육 프로그램, 시민 아카데미" },
-  { label: "걷기 코스", ex: "서해랑길, DMZ 평화의 길" },
-  { label: "축제·영화", ex: "동네 축제, 시네마 상영회" },
-];
-
 export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }) {
   // 벤토 주인공 셀에 세울 실제 원픽. 없으면(로컬/빈 DB) 톤 그라데이션 폴백으로 내려간다.
   const featured = heroPicks.find((o) => o.imageUrl);
@@ -206,9 +191,9 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
         </WebContainer>
       </section>
 
-      {/* ── 지금 열리는 실제 활동 — 주장이 아니라 증거.
+      {/* ── 지금 열리는 실제 활동 — 주장이 아니라 증거. 랜딩의 마지막 섹션이다.
              다른 섹션과 레이아웃 계열이 겹치지 않게 가로 스크롤 포스터 열로 짠다.
-             (앞: 사진 벤토 / 3스텝 행 / 여기: 가로 스크롤 / 뒤: 썸네일 그리드) ── */}
+             (앞: 사진 벤토 / 3스텝 행 / 여기: 가로 스크롤) ── */}
       {realPicks.length >= 4 && (
         <section className="overflow-hidden bg-ink-dark py-[76px]">
           <WebContainer>
@@ -254,52 +239,6 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
           </ul>
         </section>
       )}
-
-      {/* ── 카테고리 미리보기(사진 썸네일) + 마무리 CTA ── */}
-      <section className="bg-surface py-[76px]">
-        <WebContainer>
-          <div className="reveal">
-            <h2 className="text-[26px] font-bold leading-tight tracking-[-0.02em] text-ink">
-              동네엔 생각보다 많은 게 있어요.
-            </h2>
-            <p className="mt-2 text-[16px] text-label">
-              오늘의 컨디션에 맞는 갈래에서 골라드려요.
-            </p>
-          </div>
-
-          {/* 갈래 리스트 — 라벨 자체를 갈래 색으로 칠해 구분한다.
-              (색 스트로크 테두리·컬러 점 같은 장식 대신 글자에 색을 준다.) */}
-          <ul className="reveal-depth stage-3d mt-8 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-            {CATEGORIES.map((c) => (
-              <li
-                key={c.label}
-                className="wcard-hover overflow-hidden rounded-[16px] border border-line-alt bg-bg p-5"
-              >
-                <span className="block text-[16px] font-bold text-ink">{c.label}</span>
-                <span className="mt-1 block text-[13.5px] leading-[1.5] text-label">{c.ex}</span>
-              </li>
-            ))}
-          </ul>
-
-          {/* 마무리 CTA — 히어로와 동일 intent 유지 */}
-          <div className="reveal mt-12 flex flex-col items-center gap-5 rounded-[24px] bg-tint px-8 py-11 text-center">
-            <h2 className="text-[26px] font-extrabold leading-tight tracking-[-0.02em] text-primary-deep text-balance">
-              오늘 저녁, 뭐 할지 아직 안 정했다면.
-            </h2>
-            <Link
-              href="/location"
-              className="flex h-[54px] items-center gap-2 rounded-[13px] bg-primary px-8 text-[16px] font-bold text-white transition-[background-color,transform] hover:bg-primary-deep active:scale-[0.98]"
-            >
-              내 동네에서 찾기
-              <ArrowMiniIcon size={18} />
-            </Link>
-            <p className="flex items-center gap-1.5 text-[13px] text-muted">
-              <CheckMiniIcon size={15} className="text-mint" />
-              로그인 없이 바로 시작 · 저장할 때만 가입
-            </p>
-          </div>
-        </WebContainer>
-      </section>
     </>
   );
 }

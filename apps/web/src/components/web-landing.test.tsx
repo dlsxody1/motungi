@@ -74,7 +74,7 @@ describe("WebLanding", () => {
     expect(screen.getByText("하이퍼로컬")).toBeInTheDocument();
   });
 
-  it("카테고리: 문화·여가 갈래 6종을 예시와 함께 렌더한다", () => {
+  it("카테고리: 문화·여가 갈래 6종을 렌더한다", () => {
     render(<WebLanding />);
 
     const categoryList = categorySection();
@@ -90,10 +90,6 @@ describe("WebLanding", () => {
     ]) {
       expect(within(categoryList).getByText(label)).toBeInTheDocument();
     }
-
-    // 예시 카피는 opportunities에 실재하는 제목에서 온 것이어야 한다.
-    expect(within(categoryList).getByText("정기연주회, 실내악, 오페라 워크숍")).toBeInTheDocument();
-    expect(within(categoryList).getByText("서해랑길, DMZ 평화의 길")).toBeInTheDocument();
 
     // 리스트 항목은 정확히 6개
     expect(within(categoryList).getAllByRole("listitem")).toHaveLength(6);
