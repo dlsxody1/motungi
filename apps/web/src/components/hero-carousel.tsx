@@ -5,7 +5,7 @@
  *
  * 넘기기: (1) 좌·우 화살표 버튼 (2) 터치/포인터 스와이프 (3) 하단 도트. 그리고 1.5초 자동 전환.
  *  - hover/focus/스와이프 중: 자동 전환 일시정지.
- *  - click: 우리 사이트 내부 활동 상세(/opportunity?id=…)로 이동.
+ *  - click: 우리 사이트 내부 활동 상세(/opportunity/…)로 이동.
  *  - prefers-reduced-motion: 자동 전환만 끔(수동 넘기기는 유지).
  *
  * 웹(히어로 우측)·모바일(CTA 위) 공용. 장식 아이콘 없음(화살표는 기능적 예외).
@@ -86,7 +86,7 @@ function HeroCard({
 
   return (
     <Link
-      href={`/opportunity?id=${item.id}`}
+      href={`/opportunity/${item.id}`}
       aria-hidden={state === "idle"}
       tabIndex={state === "active" ? 0 : -1}
       draggable={false}

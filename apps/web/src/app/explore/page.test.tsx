@@ -45,7 +45,11 @@ const ONE_PICK: MockOpportunity = {
   tone: "brand",
 };
 
-function seed(catalogStatus: "ok" | "empty" | "error" | "unconfigured", catalog: MockOpportunity[] = []) {
+function seed(
+  // "idle" = 조회 전/중. 이 상태를 시드해야 로딩 UI를 검증할 수 있다.
+  catalogStatus: "idle" | "ok" | "empty" | "error" | "unconfigured",
+  catalog: MockOpportunity[] = [],
+) {
   // 데이터 슬라이스를 매 테스트마다 완전히 덮어써 이전 테스트의 잔여 상태를 제거한다
   // (액션 함수는 그대로 유지되므로 partial merge로 충분하다).
   useAppStore.setState({
@@ -72,6 +76,19 @@ describe("ExplorePage", () => {
     expect(screen.getAllByText("망원동 동네 전시").length).toBeGreaterThan(0);
     expect(screen.getAllByText("무료").length).toBeGreaterThan(0);
     expect(screen.queryByText(/불러오지 못했어요/)).not.toBeInTheDocument();
+  });
+
+  /**
+   * idle(=조회 중)에 "아직 등록된 활동이 없어요"가 뜨던 버그의 회귀 테스트.
+   * empty와 idle은 사용자에게 정반대의 사실이다 — 없는 것과 오는 중인 것.
+   */
+  it("idle 상태(조회 중) → 빈 문구 대신 로딩을 알린다", () => {
+    seed("idle", []);
+
+    render(<ExplorePage />);
+
+    expect(screen.queryByText("아직 등록된 활동이 없어요. 곧 채워질 거예요.")).toBeNull();
+    expect(screen.getAllByText("활동을 불러오는 중").length).toBeGreaterThan(0);
   });
 
   it("empty 상태(조회 성공, 0건) → 빈 카탈로그 안내 문구를 렌더한다", () => {

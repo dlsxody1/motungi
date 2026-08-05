@@ -305,7 +305,7 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
           <ul className="scroll-row reveal-slide relative mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-[max(1.5rem,calc((100vw-1280px)/2))] pb-2">
             {realPicks.map((o) => (
               <li key={o.id} className="w-[210px] shrink-0 snap-start">
-                <Link href={`/opportunity?id=${o.id}`} className="group block">
+                <Link href={`/opportunity/${o.id}`} className="group block">
                   {/* 포스터는 잘리면 안 되는 '작품'이다 — object-contain으로 전체를 보여주고,
                       남는 여백은 뒤에 깔린 어두운 톤이 받아준다(비율이 제각각이라 크롭하면 제목이 잘림). */}
                   <LandingPhoto

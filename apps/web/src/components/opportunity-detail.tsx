@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useRouter } from "next/navigation";
 import {
   BookmarkIcon,
   ChevronLeftIcon,
@@ -16,7 +15,7 @@ import {
   ShareIcon,
 } from "@/components/icons";
 import { ErrorState } from "@/components/error-state";
-import { MobileScreen, SafeBottom, SafeTop, Tag } from "@/components/ui";
+import { MobileScreen, SafeBottom, SafeTop, Skeleton, Tag } from "@/components/ui";
 import { NaverMapSDK } from "@/components/naver-map-sdk";
 import { Thumbnail } from "@/components/thumbnail";
 import { VenueMap } from "@/components/venue-map";
@@ -30,6 +29,7 @@ import {
   whyReasons,
 } from "@motungi/core";
 import { CourseGuide } from "@/components/course-guide";
+import type { MockOpportunity } from "@/data/opportunities";
 import { useTrailRoute } from "@/hooks/useTrailRoute";
 import { useOpportunity } from "@/hooks/useOpportunity";
 import { shareContent } from "@/lib/kakao";
@@ -37,20 +37,29 @@ import { useAppStore } from "@/store/useAppStore";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://motungi.app";
 
-/** A6 · 기회 상세 — 반응형. useSearchParams는 Suspense 경계 필요. */
-export default function OpportunityPage() {
-  return (
-    <Suspense fallback={null}>
-      <OpportunityInner />
-    </Suspense>
-  );
-}
-
-function OpportunityInner() {
+/**
+ * A6 · 기회 상세 (본문) — 반응형.
+ *
+ * id를 **prop으로** 받는다(예전엔 useSearchParams로 직접 읽었다). 정식 경로가
+ * `/opportunity/[id]`(서버 컴포넌트)로 바뀌면서, 그 서버 컴포넌트가 이미 아는 id를
+ * 그대로 내려주면 되기 때문이다. 이 컴포넌트는 여전히 클라이언트다 —
+ * 저장 토글·지도·공유처럼 브라우저가 필요한 기능이 본문 전체에 걸쳐 있다.
+ *
+ * `initial`은 서버가 이미 조회해둔 1건이다. 있으면 훅이 재조회 없이 즉시 렌더하므로
+ * 첫 화면에 스켈레톤이 스치지 않는다(SSR 마크업과 하이드레이션 결과가 같다).
+ */
+export function OpportunityDetail({
+  id,
+  initial,
+}: {
+  id: string | null;
+  initial?: MockOpportunity;
+}) {
   const router = useRouter();
-  const id = useSearchParams().get("id");
   // 상세는 카탈로그 전량을 받지 않는다 — id로 1건만(이미 스토어에 있으면 재사용).
-  const { opportunity: o, status } = useOpportunity(id);
+  const { opportunity: fetched, status } = useOpportunity(id);
+  // 서버가 준 1건이 우선 — 하이드레이션 시점에 훅은 아직 idle이라 비어 있다.
+  const o = initial ?? fetched;
   // 걷기길이면 코스 경로를 받아 지도에 선으로 그린다(그 외 소스는 요청하지 않음).
   const routePoints = useTrailRoute(id, o?.source === "trail");
 
@@ -80,7 +89,12 @@ function OpportunityInner() {
           </MobileScreen>
         </div>
         <DesktopShell active="report">
-          <div className="flex min-h-[60vh] flex-col">{body}</div>
+          {/* 스켈레톤은 본문 폭에 맞춰 위에서부터, 상태 화면은 가운데 — 성격이 달라 래퍼를 나눈다. */}
+          {loading ? (
+            <div className="mx-auto w-full max-w-[720px] px-6 py-9">{body}</div>
+          ) : (
+            <div className="flex min-h-[60vh] flex-col">{body}</div>
+          )}
         </DesktopShell>
       </>
     );
@@ -101,7 +115,7 @@ function OpportunityInner() {
     void shareContent({
       title: o.title,
       description: "모퉁이에서 발견한 우리 동네 활동",
-      url: `${SITE_URL}/opportunity?id=${o.id}`,
+      url: `${SITE_URL}/opportunity/${o.id}`,
     });
   };
 
@@ -496,12 +510,26 @@ function DdayPill({ deadline }: { deadline: { dday: number; past: boolean } }) {
   );
 }
 
-/** 카탈로그를 아직 불러오는 중(카드에서 직접 진입 등)일 때의 로딩 화면. */
+/**
+ * 카탈로그를 아직 불러오는 중(카드에서 직접 진입 등)일 때의 로딩 화면.
+ *
+ * 가운데 스피너에서 스켈레톤으로 바꿨다. 스피너는 "기다려라"만 말하고 화면이 빈 채로 있다가
+ * 도착 순간 전체가 튀어나온다. 상세는 골격(배너 → 태그 → 제목 → 위치 → 본문 → CTA)이
+ * 고정이라 미리 깔아둘 수 있고, 그러면 내용만 채워진다.
+ */
 function OpportunityLoading() {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-8 text-center" aria-live="polite" aria-busy="true">
-      <div className="corner-spinner size-11 rounded-full border-[3px] border-tint border-t-primary md:size-14 md:border-4" />
-      <p className="mt-5 text-[14px] font-medium text-muted md:text-[15px]">활동을 불러오는 중…</p>
+    <div className="flex flex-1 flex-col px-5 pb-4 md:px-0" aria-live="polite" aria-busy="true">
+      <span className="sr-only">활동을 불러오는 중</span>
+      <Skeleton className="mb-4 aspect-[16/9] w-full rounded-2xl" />
+      <Skeleton className="h-[22px] w-24" />
+      <Skeleton className="mt-3 h-7 w-[90%]" />
+      <Skeleton className="mt-2 h-7 w-2/3" />
+      <Skeleton className="mt-3 h-4 w-32" />
+      <Skeleton className="mt-4 h-3.5 w-full" />
+      <Skeleton className="mt-2 h-3.5 w-[88%]" />
+      <Skeleton className="mt-2 h-3.5 w-3/5" />
+      <Skeleton className="mt-6 h-[52px] w-full rounded-xl" />
     </div>
   );
 }

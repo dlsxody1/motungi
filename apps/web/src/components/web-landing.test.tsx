@@ -155,9 +155,9 @@ describe("WebLanding", () => {
     expect(screen.getByText(/지금 이 순간에도/)).toBeInTheDocument();
     expect(within(section).getByText("안도 타다오 건축을 읽다")).toBeInTheDocument();
 
-    // 카드는 우리 사이트 내부 활동 상세(/opportunity?id=…)로 연결된다.
+    // 카드는 우리 사이트 내부 활동 상세(/opportunity/…)로 연결된다.
     const link = within(section).getByText("안도 타다오 건축을 읽다").closest("a");
-    expect(link).toHaveAttribute("href", "/opportunity?id=a");
+    expect(link).toHaveAttribute("href", "/opportunity/a");
 
     // 전체 보기는 탐색으로.
     expect(screen.getByRole("link", { name: /전체 보기/ })).toHaveAttribute("href", "/explore");
