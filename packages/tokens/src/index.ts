@@ -41,7 +41,7 @@ export const radius = {
 export const color = {
   brand: {
     /** 메인 로즈 — 주요 CTA·강조 */
-    primary: "#e25067",
+    primary: "#d42f4a",
     /** 진한 로즈 — hover/press, 진지한 강조 */
     primaryDeep: "#b0344e",
     /** 연한 로즈 틴트 — 배경·칩 */
