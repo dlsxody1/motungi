@@ -10,7 +10,6 @@
  *     - paint-wash   : 붓으로 칠한 색면(카드 대신)
  *     - PaintEdge    : 섹션 사이 붓자국 경계(직선 경계 제거)
  *     - paint-blob-a/b + paint-drift : 물감 얼룩(CSS만. 3D는 히어로 하나로 충분하다)
- *     - PaintPath    : 3스텝을 잇는 손그림 경로(카드 3개를 대체)
  *   프리미티브는 globals.css와 paint-*.tsx에 한 번만 정의된다.
  *
  * redesign-preserve: 트와일라잇 로즈 토큰·브랜드·copy voice·IA·링크 구조 전부 유지.
@@ -24,7 +23,7 @@ import { ArrowMiniIcon, CheckMiniIcon } from "./landing-icons";
 import { LandingLocationLink } from "./landing-location-link";
 import { LandingPhoto } from "./landing-photo";
 import { PaintEdge } from "./paint-edge";
-import { PaintPath } from "./paint-path";
+import { PreviewDiagnosis, PreviewLocation, PreviewReport } from "./step-previews";
 import { WebContainer } from "./web-shell";
 
 /**
@@ -135,7 +134,7 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
         </WebContainer>
 
         {/* 아래 섹션(surface)이 히어로를 위로 침범한다 — 직선 경계 제거 */}
-        <PaintEdge color="var(--color-surface)" direction="up" className="absolute inset-x-0 bottom-0" />
+        <PaintEdge color="var(--color-surface)" direction="up" grain className="absolute inset-x-0 bottom-0" />
       </section>
 
       {/* ══ 2. 왜 모퉁이 — 물감 벤토 ══
@@ -225,11 +224,15 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
         </WebContainer>
       </section>
 
-      {/* ══ 3. 이렇게 찾아드려요 — 물감 경로 ══
-          이전: 동일한 카드 3개 + 01/02/03 + 회색 화살표. 템플릿 티가 가장 심했던 자리.
-          지금: 손으로 그린 경로 하나가 세 지점을 잇는다. 카드도 번호도 없다. */}
+      {/* ══ 3. 이렇게 찾아드려요 — 세 화면의 미니어처 ══
+          이전 1차: 카드 3개 + 01/02/03. 이전 2차: 손그림 경로(형태가 내용을 이김).
+          지금: 각 걸음의 실제 화면 실루엣을 축소해 얹는다. 세 실루엣이 서로 달라서,
+          "세 걸음이 각각 다른 일"이 카피를 읽기 전에 형태로 먼저 전달된다.
+          면은 베이지 유지 — 위 섹션(2)이 흰 면이라 여기까지 희게 하면 둘이 한 덩어리로 붙는다.
+          "가독성이 떨어진다"의 실제 원인은 대비가 아니라(ink/베이지 15.3:1, label 8.4:1 — AA 통과)
+          베이지 위에 아무것도 없어서 면 전체가 납작하게 읽힌 것. 흰 미니어처가 그 면을 깨뜨린다. */}
       <section className="paint-paper relative bg-bg pt-[68px] pb-[84px]">
-        <PaintEdge color="var(--color-surface)" direction="down" className="absolute inset-x-0 top-0" />
+        <PaintEdge color="var(--color-surface)" direction="down" grain className="absolute inset-x-0 top-0" />
         <WebContainer className="relative">
           <div className="reveal max-w-[46ch]">
             <h2 className="break-keep text-[27px] font-bold leading-tight tracking-[-0.02em] text-ink">
@@ -238,35 +241,32 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
             <p className="mt-2 text-[16px] text-label">세 걸음이면 오늘 저녁이 정해져요.</p>
           </div>
 
-          <div className="relative mt-14">
-            {/* 경로는 스텝 뒤에 깔린다. 데스크탑에서만 — 모바일은 세로라 경로가 의미 없다.
-                높이 44px = 지점(h-11)과 같게, top-0으로 맞춰 선이 지점 한가운데를 지난다.
-                (이전엔 120px 띠를 -top-6에 둬서 선이 지점 한참 아래로 지나갔다.) */}
-            <PaintPath className="pointer-events-none absolute inset-x-0 top-0 hidden h-11 w-full md:block" />
-
-            {/* ol — 순서가 의미를 갖는 목록이다. 번호 라벨은 지웠지만 시맨틱은 유지. */}
-            <ol className="relative grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
-              {STEPS.map((s, i) => (
-                <li key={s.verb} className="reveal relative">
-                  {/* 경로 위의 지점 — 물감이 뭉친 자국. 번호를 대신해 위치를 표시한다. */}
-                  <span
-                    aria-hidden
-                    className="paint-blob-a block h-11 w-11"
-                    style={{
-                      background:
-                        i === 0
-                          ? "linear-gradient(140deg, var(--color-sun), var(--color-primary))"
-                          : i === 1
-                            ? "linear-gradient(140deg, var(--color-primary), var(--color-purple))"
-                            : "linear-gradient(140deg, #7fc9b8, var(--color-mint))",
-                    }}
-                  />
-                  <h3 className="mt-4 text-[18px] font-bold text-ink">{s.verb}</h3>
-                  <p className="mt-1.5 max-w-[26ch] text-[14px] leading-[1.6] text-label">{s.desc}</p>
+          {/* ol — 순서가 의미를 갖는 목록. group/호버로 미니어처가 조립된다.
+              items-stretch + flex-col: 미니어처 높이가 서로 달라도(내용 길이가 다르니 당연하다)
+              액자가 행 높이까지 늘어나서 아래 01/02/03·제목이 같은 선에 놓인다. */}
+          <ol className="mt-12 grid grid-cols-1 items-stretch gap-10 md:grid-cols-3 md:gap-7">
+            {STEPS.map((s, i) => {
+              return (
+                <li key={s.verb} className="reveal group flex flex-col">
+                  {/* 리포트 미니어처만 실데이터를 받는다 — 지어낸 활동명 금지(step-previews.tsx 참조). */}
+                  {i === 0 ? (
+                    <PreviewLocation />
+                  ) : i === 1 ? (
+                    <PreviewDiagnosis />
+                  ) : (
+                    <PreviewReport picks={heroPicks} />
+                  )}
+                  <div className="mt-4 border-t border-line pt-3.5">
+                    <span className="text-[13px] font-semibold tabular-nums text-primary">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <h3 className="mt-2 text-[18px] font-bold text-ink">{s.verb}</h3>
+                    <p className="mt-1.5 max-w-[26ch] text-[14px] leading-[1.6] text-label">{s.desc}</p>
+                  </div>
                 </li>
-              ))}
-            </ol>
-          </div>
+              );
+            })}
+          </ol>
         </WebContainer>
       </section>
 
@@ -274,8 +274,21 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
           레이아웃 계열이 앞 섹션들과 겹치지 않는 가로 스크롤 열.
           다크 면이라 물감 얼룩은 밝은 쪽으로 얹는다(어두운 면 위 어두운 얼룩은 안 보임). */}
       {realPicks.length >= 4 && (
-        <section className="relative overflow-hidden bg-ink-dark py-[80px]">
-          <PaintEdge color="var(--color-bg)" direction="down" className="absolute inset-x-0 top-0 z-10" />
+        /* pb에 파도 높이(clamp 40~72px)를 더해 아래 물결이 콘텐츠를 덮지 않게 한다. */
+        <section className="relative overflow-hidden bg-ink-dark pt-[80px] pb-[calc(80px+clamp(40px,5vw,72px))]">
+          <PaintEdge color="var(--color-bg)" direction="down" grain className="absolute inset-x-0 top-0 z-10" />
+          {/* 아래 물결을 이 섹션이 직접 그린다 — 다음 섹션의 면색(bg)으로 위를 덮는 방식.
+              why: 이전엔 다음 섹션이 flat var(--color-ink-dark)로 물결을 칠했다. 그런데 이 다크
+              면은 flat이 아니라 노이즈가 mix-blend-screen으로 밝혀진 면이라, 물결만 순수
+              #2e2a24로 남아 경계에 선이 그어지고 그라데이션도 거기서 끊겼다.
+              지금은 물결이 곧 다음 섹션의 색(bg)이라 이어지는 쪽에 색 차이가 없다.
+              z-10으로 노이즈 위에 둔다 — 노이즈가 이 베이지까지 밝히면 다음 섹션과 또 어긋난다. */}
+          <PaintEdge
+            color="var(--color-bg)"
+            direction="up"
+            grain
+            className="absolute inset-x-0 bottom-0 z-10"
+          />
           <span
             aria-hidden
             className="pointer-events-none absolute inset-0 opacity-[0.22] mix-blend-screen"
@@ -336,10 +349,9 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
           갈래는 죽은 라벨 6개가 아니라 /explore?q=로 들어가는 실제 진입점이다.
           (검색어는 DB 실측으로 골랐다: 교육/체험 131 · 전시 105 · 연극 65 · 콘서트 53 ·
            클래식 42 · 코스 30. "걷기길"은 0건이라 "코스"로 바꿨다 — 죽은 링크 방지.) */}
+      {/* 위 다크 섹션과의 경계는 그 섹션이 직접 그린다(노이즈가 물결까지 덮어야 이음매가 없다).
+          여기서 다시 칠하면 flat 색이 겹쳐 선이 생긴다 — 그래서 PaintEdge 없음. */}
       <section className="paint-paper relative bg-bg pt-[74px] pb-[96px]">
-        {realPicks.length >= 4 && (
-          <PaintEdge color="var(--color-ink-dark)" direction="down" className="absolute inset-x-0 top-0" />
-        )}
         <WebContainer className="relative grid grid-cols-1 items-start gap-14 lg:grid-cols-[1fr_0.85fr] lg:gap-24">
           {/* 좌 — 결론과 행동 */}
           <div className="reveal relative">

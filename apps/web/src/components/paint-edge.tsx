@@ -10,7 +10,6 @@
  *
  * 접근성: 순수 장식이므로 aria-hidden. 스크린리더는 섹션 제목으로 경계를 안다.
  */
-
 /** 붓자국 형태 — 위/아래 어느 쪽을 칠할지에 따라 두 벌. */
 const PATHS = {
   /* 아래 색면이 위로 번져 올라간 자국 */
@@ -25,12 +24,21 @@ export function PaintEdge({
   color,
   /** 번지는 방향. up = 아래 섹션 색이 위로, down = 위 섹션 색이 아래로 */
   direction = "up",
+  /**
+   * 종이 결을 얹을지. 맞닿는 섹션이 .paint-paper면 true —
+   * 결이 있는 면과 없는 물결이 만나면 그 차이가 곧 경계선으로 보인다.
+   */
+  grain = false,
   className = "",
 }: {
   color: string;
   direction?: "up" | "down";
+  grain?: boolean;
   className?: string;
 }) {
+  // id는 direction으로 충분하다 — 결의 내용이 방향별로 하나뿐이라 같은 방향끼리는 공유해도 된다.
+  // (전역 카운터나 useId는 SSR에서 값이 어긋날 위험만 늘리고 여기선 얻는 게 없다.)
+  const uid = `paint-edge-${direction}`;
   return (
     <svg
       className={`paint-edge ${className}`}
@@ -40,6 +48,27 @@ export function PaintEdge({
       focusable="false"
     >
       <path d={PATHS[direction]} fill={color} />
+      {grain && (
+        <>
+          {/* 결을 물결 모양으로 잘라낸다 — 물결 밖(=맞은편 섹션)까지 덮으면 안 된다. */}
+          <clipPath id={`${uid}c`}>
+            <path d={PATHS[direction]} />
+          </clipPath>
+          <filter id={`${uid}f`}>
+            <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves={4} stitchTiles="stitch" />
+            <feColorMatrix type="saturate" values="0" />
+          </filter>
+          <g clipPath={`url(#${uid}c)`}>
+            <rect
+              className="paint-edge-grain"
+              width="1440"
+              height="80"
+              filter={`url(#${uid}f)`}
+              opacity={0.11}
+            />
+          </g>
+        </>
+      )}
     </svg>
   );
 }
