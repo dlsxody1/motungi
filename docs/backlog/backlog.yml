@@ -618,7 +618,7 @@ backlog:
   - id: M-030
     title: "웹 primary 버튼 색상 WCAG AA 대비 미달 (#e25067 on white ≈ 3.77:1)"
     priority: high
-    status: todo
+    status: doing
     scope: [packages/tokens, apps/web]
     done_when:
       - "packages/tokens/src/index.ts:44의 brand.primary(#e25067) 또는 그 위에 얹는 텍스트 색을 WCAG AA(일반 텍스트 4.5:1, 18.66px 굵게 이상은 3:1) 충족하도록 조정한다(톤 다크닝 또는 텍스트/보더 조합 변경)"
@@ -681,7 +681,7 @@ backlog:
   - id: M-034
     title: "apps/web 핵심 서버 로직 테스트 공백: auth.ts(promoteLocalToAccount) + api/geo route"
     priority: high
-    status: todo
+    status: doing
     scope: [apps/web]
     done_when:
       - "apps/web/src/lib/auth.test.ts를 신설해 promoteLocalToAccount(auth.ts:33-61)의 savedIds/홈앵커 병합 upsert, onConflict 키, `if (!supabase) return` 가드 분기를 테스트한다"
