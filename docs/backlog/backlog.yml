@@ -1003,3 +1003,33 @@ backlog:
       북마크 accessibilityLabel 없음, 상세 메타데이터(마감 D-day·출처·시간대) 미표시.
       **이 이슈는 조사·분류용이다** — 여기서 구현하지 말고 개별 이슈로 쪼갤 것.
       우선순위는 사람이 정한다: 하이퍼로컬 제품에서 지도 부재가 제일 크다는 의견이 있었다.
+
+  - id: M-049
+    title: "진단 Q1(관심사) 다중선택 — core는 이미 배열인데 UI만 단일선택"
+    priority: medium
+    status: todo
+    scope: [packages/core/src/diagnosis.ts, apps/web/src/app/diagnosis/page.tsx, apps/mobile/app/diagnosis.tsx]
+    done_when:
+      - "Q1에서 관심사를 2개 이상 고를 수 있고, 고른 것이 모두 DiagnosisAnswers.interests에 담긴다"
+      - "0개 선택 상태로는 다음으로 못 넘어간다(현재의 '다음' 비활성 규칙 유지)"
+      - "web·mobile 두 화면이 같은 방식으로 동작한다 — 한쪽만 고치지 말 것"
+      - "선택된 개수가 UI로 드러난다(체크 표시가 여러 개 켜지는 것으로 충분)"
+      - "draftToAnswers가 다중값을 받는 테스트가 있다: 2개 선택·전체 선택·0개(→null)·유효하지 않은 값 섞임(→걸러짐)"
+      - "기존 단일선택 draft도 계속 통과한다(하위호환) 또는 호출부를 모두 고쳤음이 테스트로 보장된다"
+    notes: >
+      사용자 요청(2026-08-05). Q2(시간대)·Q3(에너지)는 단일선택 유지 — 요청은 Q1 관심사에 대한 것이다.
+      **이미 절반은 돼 있다**: packages/core/src/diagnosis.ts:19의 `interests: Interest[]`가 배열이고,
+      DIAGNOSIS_STEPS(diagnosis.ts:26)에는 `{ key: "interests", autoAdvance: false }` 옆에
+      "다중선택 → 명시적 다음"이라는 주석까지 이미 달려 있다. 스코어링도
+      packages/core/src/scoring.ts:94가 `answers.interests.includes(...)`라 배열 원소가 늘어도 그대로 동작한다.
+      막고 있는 건 **UI와 draftToAnswers 시그니처**뿐이다:
+      - draftToAnswers(diagnosis.ts:67)는 `Record<number, string | undefined>`를 받아 draft[0] 문자열
+        하나를 `[interest]`로 감싼다(diagnosis.ts:88). 주석(diagnosis.ts:63)도 "UI가 단일 선택이라"라고
+        현 상태를 명시한다. Q1 값만 `string[]`을 받도록 넓히되, Q2·Q3는 문자열 그대로 둔다.
+      - 화면 상태가 양쪽 다 `Record<number, string>` 단일값이다:
+        apps/web/src/app/diagnosis/page.tsx:63, apps/mobile/app/diagnosis.tsx:49.
+        선택 판정도 `selected === o.value`(web page.tsx:125,254 / mobile은 동일 패턴)라 토글로 바꿔야 한다.
+      - 호출부는 딱 2곳(web page.tsx:76, mobile diagnosis.tsx:64)이라 범위가 좁다.
+      함정: web은 데스크톱·모바일 두 트리에 옵션 렌더가 **중복**돼 있다(page.tsx:125와 254). 한쪽만
+      고치면 반쪽만 다중선택이 된다. mobile은 React Native라 web 컴포넌트를 복사하지 말 것.
+      `side_job`(가벼운 부업)은 옛 일자리 기획 잔재로 보이나 이 이슈에서 건드리지 않는다 — 별건이다.
