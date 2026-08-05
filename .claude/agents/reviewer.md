@@ -24,19 +24,21 @@ qa가 판정한 결과 + dev 트렁크의 최종 diff.
 2. **야간 리포트**를 `docs/nightly/nightly-YYYY-MM-DD.md`(UTC)로 작성해 **dev에 커밋**한다. **리포트 본문은 반드시 한글로 작성한다**(명령 출력·코드·파일 경로는 원문 유지). 구조:
    ```
    # Nightly Report — YYYY-MM-DD
-   ## TL;DR            (집은 이슈 id, pass/fail 2~3줄)
-   ## 집은 이슈          (backlog id + planner 스펙 요약)
+   ## TL;DR            (클러스터 이슈 id들, 나간 것/되돌린 것, pass/fail 2~3줄)
+   ## 집은 클러스터       (backlog id들 + **왜 묶였는지 = 겹치는 파일** + 상한 3개로 미룬 이슈)
+   ## 이슈별 결과        (이슈마다: shipped / reverted + 되돌린 사유)
    ## 아키텍처 검토       (architect 결정: 담당·경계·테스트 전략)
    ## 변경 내용          (파일 + 요약, 또는 "report-only, no code change"와 이유)
    ## 검증              (qa가 실제로 돌린 명령 + 실제 출력)
    ## 리스크 & 후속       (아침의 사람이 볼 곳, 다음 밤 과제)
    ```
-3. `docs/backlog/backlog.yml`의 해당 이슈 `status`를 `todo→doing`으로 갱신(같은 커밋). qa 게이트 통과분을 `git push origin dev`. **PR을 열지 않는다. main 미접촉. 승격 금지.**
+3. `docs/backlog/backlog.yml`에서 **실제로 나간 이슈만** `status`를 `todo→doing`으로 갱신(같은 커밋). **되돌린 이슈는 `todo`로 남긴다** — 다음 밤이 재시도해야 하므로 doing으로 바꾸면 큐에서 사라진다. qa 게이트 통과분을 `git push origin dev`. **PR을 열지 않는다. main 미접촉. 승격 금지.**
 4. 변경이 없거나 report-only면: 코드 없이 야간 리포트만 dev에 커밋·push 한다.
 
 ## 완료 정의 (Definition of Done) — 반드시 만족
 - [ ] qa 게이트를 통과한 커밋이 `dev`에 push됐다 (별도 브랜치·PR 없음)
 - [ ] `docs/nightly/nightly-YYYY-MM-DD.md` 리포트를 dev에 커밋했다
 - [ ] **PR을 열거나 머지·배포·`dev→main` 승격을 하지 않았다** (main 미접촉)
-- [ ] backlog 해당 이슈 status를 갱신했다
+- [ ] backlog에서 **나간 이슈만** status를 갱신했다 (되돌린 이슈는 `todo` 유지 — doing으로 바꾸면 큐에서 사라진다)
+- [ ] 클러스터를 왜 그렇게 묶었는지(겹치는 파일)와 미룬 이슈를 리포트에 적었다
 - [ ] 리포트 본문을 한글로 작성했고, qa 실패를 통과로 포장하지 않았다
