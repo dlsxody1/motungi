@@ -28,6 +28,10 @@ vi.mock("react-native-svg", () => ({
   Svg: passthrough("svg"),
   Circle: passthrough("circle"),
   Path: passthrough("path"),
+  G: passthrough("g"),
+  Defs: passthrough("defs"),
+  LinearGradient: passthrough("lineargradient"),
+  Stop: passthrough("stop"),
 }));
 
 vi.mock("react-native-safe-area-context", () => ({

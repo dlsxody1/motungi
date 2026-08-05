@@ -129,7 +129,8 @@ describe("SavedPage 카드 인터랙션 (M-014)", () => {
     const detailButton = mobile.getByRole("button", { name: `${PICK.title} 상세 보기` });
     await user.click(detailButton);
 
-    expect(push).toHaveBeenCalledWith(`/opportunity?id=${PICK.id}`);
+    // 정식 경로는 path 형태다(쿼리 파라미터 URL은 SEO상 색인이 안 돼 옮겼다).
+    expect(push).toHaveBeenCalledWith(`/opportunity/${PICK.id}`);
   });
 
   it("토글 버튼은 aria-label '저장 취소'와 aria-pressed='true'를 노출한다", () => {
@@ -147,6 +148,38 @@ describe("SavedPage 카드 인터랙션 (M-014)", () => {
     buttons.forEach((btn) => {
       expect(btn.querySelector("button, a, input, [role='button']")).toBeNull();
     });
+  });
+});
+
+/**
+ * 조회 **중**을 "저장한 게 없어요"로 보여주던 버그의 회귀 테스트.
+ *
+ * 실패(위 describe)와 같은 부류의 거짓말이다: 아직 안 온 것과 없는 것은 다르다.
+ * 로딩 중엔 스켈레톤으로 "곧 여기 채워진다"를 형태로 알린다.
+ */
+describe("SavedPage 조회 중 상태", () => {
+  it("조회 중엔 빈 상태가 아니라 로딩을 알린다", async () => {
+    useAppStore.setState({
+      anchors: {},
+      answers: null,
+      results: [],
+      catalog: [],
+      catalogStatus: "ok",
+      savedIds: ["pending-1", "pending-2"],
+      user: null,
+    });
+    // 영원히 안 끝나는 조회 — 로딩 상태에 화면을 묶어둔다.
+    fetchOpportunityById.mockReturnValue(new Promise(() => {}));
+
+    render(<SavedPage />);
+
+    // 이게 고친 버그: 받는 중인데 "없어요"라고 단언하면 안 된다.
+    expect(screen.queryByText("아직 저장한 활동이 없어요")).toBeNull();
+    // 스크린리더에도 로딩임을 알린다.
+    expect(screen.getAllByText("저장한 활동을 불러오는 중").length).toBeGreaterThan(0);
+    // 개수는 저장 id 수(2개)로 확정 — items.length(0)를 쓰면 "0개"라는 거짓말이 된다.
+    expect(screen.getAllByText("2개").length).toBeGreaterThan(0);
+    expect(screen.queryByText("0개")).toBeNull();
   });
 });
 

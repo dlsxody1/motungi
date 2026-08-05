@@ -99,7 +99,7 @@ export function HeroPosterStage({
           </p>
           <div className="mt-3 flex items-center gap-2">
             <Link
-              href={`/opportunity?id=${picked.id}`}
+              href={`/opportunity/${picked.id}`}
               className="flex h-10 flex-1 items-center justify-center rounded-[11px] bg-white text-[14px] font-bold text-primary-deep"
             >
               자세히 보기
@@ -129,7 +129,7 @@ export function HeroPosterStage({
           <p className="mt-1 text-[13px] text-white/75">무엇을 할까요?</p>
           <div className="mt-3 space-y-2">
             <Link
-              href={`/opportunity?id=${picked.id}`}
+              href={`/opportunity/${picked.id}`}
               className="tap-safe flex h-12 w-full items-center justify-center rounded-xl bg-white text-[15px] font-bold text-primary-deep"
             >
               이 활동 자세히 보기

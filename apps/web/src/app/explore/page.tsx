@@ -18,6 +18,7 @@ import { Chip, MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { ExploreCard } from "@/components/explore-card";
 import { ExploreRow } from "@/components/explore-row";
+import { ExploreCardSkeleton, ExploreRowSkeleton } from "@/components/explore-skeleton";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { FILTERS } from "@/lib/explore-filters";
 import { useAppStore } from "@/store/useAppStore";
@@ -44,6 +45,11 @@ function ExploreInner() {
   const anchors = useAppStore((s) => s.anchors);
   // 진단 완료 시에만 매칭 랭킹 활성화. 진단 전에는 카탈로그 원본(매칭 % 미표기).
   const matchActive = answers != null;
+  /**
+   * 로딩 중. catalogStatus는 조회가 끝나야 ok/empty/error로 바뀌므로 "idle"이 곧 로딩이다.
+   * 이걸 구분하지 않으면 조회 중에도 "아직 등록된 활동이 없어요"가 떠서 **없다고 거짓말**을 한다.
+   */
+  const isLoading = catalogStatus === "idle";
   // 앵커(선택 동네 좌표)가 있으면 거리순 정렬이 가능하다(진단 전에도).
   const hasAnchor = anchors.home?.point != null || anchors.work?.point != null;
 
@@ -185,7 +191,7 @@ function ExploreInner() {
   }, [source]);
 
   // memo된 카드가 실제로 걸리려면 콜백이 렌더마다 새로 만들어지면 안 된다.
-  const openDetail = useCallback((id: string) => router.push(`/opportunity?id=${id}`), [router]);
+  const openDetail = useCallback((id: string) => router.push(`/opportunity/${id}`), [router]);
 
   // ── 가상화 ──
   // 모바일은 스크롤 컨테이너가 window가 아니라 아래 div, 데스크톱은 페이지 스크롤이다.
@@ -277,14 +283,24 @@ function ExploreInner() {
                 ))}
               </div>
 
-              {list.length === 0 && (
-                <p className="py-10 text-center text-[14px] text-muted">
-                  {source.length === 0
-                    ? catalogStatus === "error" || catalogStatus === "unconfigured"
-                      ? "활동을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
-                      : "아직 등록된 활동이 없어요. 곧 채워질 거예요."
-                    : "조건에 맞는 활동이 아직 없어요."}
-                </p>
+              {/* 로딩 중엔 "없음" 문구 대신 스켈레톤 — 곧 목록이 온다는 걸 형태로 알린다. */}
+              {isLoading ? (
+                <div className="mt-2" aria-busy="true" aria-live="polite">
+                  <span className="sr-only">활동을 불러오는 중</span>
+                  {Array.from({ length: 6 }, (_, i) => (
+                    <ExploreRowSkeleton key={i} />
+                  ))}
+                </div>
+              ) : (
+                list.length === 0 && (
+                  <p className="py-10 text-center text-[14px] text-muted">
+                    {source.length === 0
+                      ? catalogStatus === "error" || catalogStatus === "unconfigured"
+                        ? "활동을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
+                        : "아직 등록된 활동이 없어요. 곧 채워질 거예요."
+                      : "조건에 맞는 활동이 아직 없어요."}
+                  </p>
+                )
               )}
               {/* 가상화: 보이는 행만 마운트한다. 높이는 measureElement로 실측 보정. */}
               <div
@@ -444,14 +460,29 @@ function ExploreInner() {
                 </div>
               )}
 
-              {list.length === 0 && (
-                <p className="py-12 text-center text-[14px] text-muted">
-                  {source.length === 0
-                    ? catalogStatus === "error" || catalogStatus === "unconfigured"
-                      ? "활동을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
-                      : "아직 등록된 활동이 없어요. 곧 채워질 거예요."
-                    : "조건에 맞는 활동이 아직 없어요."}
-                </p>
+              {isLoading ? (
+                // 실제 그리드와 같은 열 수로 깔아야 도착 시 카드가 옆으로 밀리지 않는다.
+                <div
+                  className="grid gap-4"
+                  style={{ gridTemplateColumns: `repeat(${lanes}, minmax(0, 1fr))` }}
+                  aria-busy="true"
+                  aria-live="polite"
+                >
+                  <span className="sr-only">활동을 불러오는 중</span>
+                  {Array.from({ length: lanes * 2 }, (_, i) => (
+                    <ExploreCardSkeleton key={i} />
+                  ))}
+                </div>
+              ) : (
+                list.length === 0 && (
+                  <p className="py-12 text-center text-[14px] text-muted">
+                    {source.length === 0
+                      ? catalogStatus === "error" || catalogStatus === "unconfigured"
+                        ? "활동을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
+                        : "아직 등록된 활동이 없어요. 곧 채워질 거예요."
+                      : "조건에 맞는 활동이 아직 없어요."}
+                  </p>
+                )
               )}
               {/* 행 단위 가상화 — 각 가상 항목이 한 행(카드 lanes개)을 담는다. */}
               <div

@@ -7,6 +7,13 @@ import userEvent from "@testing-library/user-event";
 import * as navigation from "next/navigation";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useAppStore } from "@/store/useAppStore";
+
+// idle 시딩은 useReportFallback의 실제 조회를 태운다 — 끝나지 않게 막아 로딩 상태에 고정한다.
+vi.mock("@/data/opportunities", () => ({
+  fetchOpportunities: () => new Promise(() => {}),
+  fetchOpportunityById: () => new Promise(() => {}),
+}));
+
 import ReportPage from "./page";
 
 // vitest.config.ts 의 `globals: false` 로 인해 @testing-library/react 가
@@ -43,6 +50,27 @@ function mockRouter() {
 }
 
 describe("ReportPage", () => {
+  /**
+   * idle(=fallback 조회 중)에 "아직 추천할 활동이 없어요"가 뜨던 버그의 회귀 테스트.
+   * 없는 게 아니라 오는 중이므로, 원픽 자리를 스켈레톤으로 잡아둔다.
+   */
+  it("idle 상태(조회 중) → 빈 문구 대신 로딩을 알린다", () => {
+    useAppStore.setState({
+      anchors: {},
+      answers: null,
+      results: [],
+      catalog: [],
+      catalogStatus: "idle",
+      savedIds: [],
+      user: null,
+    });
+
+    render(<ReportPage />);
+
+    expect(screen.queryByText("아직 추천할 활동이 없어요")).toBeNull();
+    expect(screen.getAllByText("동네 리포트를 불러오는 중").length).toBeGreaterThan(0);
+  });
+
   it("empty 상태(진단 전/추천 없음) → 60초 진단 유도 문구를 렌더한다", () => {
     seedEmpty("empty");
 

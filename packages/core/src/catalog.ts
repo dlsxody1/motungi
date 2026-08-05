@@ -8,7 +8,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GeoPoint, Opportunity, OpportunityCategory } from "./types";
-import { isOpportunityCategory, isSourceKind } from "./database.types";
+import type { Database } from "./database.types";
+import { isOpportunityRow } from "./database.types";
 import {
   buildMeta,
   categoryTone,
@@ -177,7 +178,7 @@ export interface FetchOpportunitiesOptions {
  * @param options 카테고리·오늘(마감 필터)·상한. 생략 시 기존 동작.
  */
 export async function fetchOpportunities(
-  client: SupabaseClient | null,
+  client: SupabaseClient<Database> | null,
   options: FetchOpportunitiesOptions = {},
 ): Promise<CatalogResult> {
   if (!client) return { data: [], status: "unconfigured" };
@@ -203,11 +204,10 @@ export async function fetchOpportunities(
     .limit(options.limit ?? DEFAULT_LIMIT);
   if (error) return { data: [], status: "error" };
   if (!data || data.length === 0) return { data: [], status: "empty" };
-  // DB의 category/source enum에는 앱이 모르는 레거시 값이 남아있을 수 있다(§database.types.ts) —
-  // 가드로 검증된 row만 남기고 캐스팅 없이 OpportunityRow로 좁힌다(M-011).
-  const rows: OpportunityRow[] = data.filter(
-    (row): row is OpportunityRow => isOpportunityCategory(row.category) && isSourceKind(row.source),
-  );
+  // DB의 category/source enum에는 앱이 모르는 레거시 값이 남아있을 수 있고, 스키마 드리프트로
+  // 나머지 필드도 기대와 어긋날 수 있다(§database.types.ts) — row 전체를 구조적으로 검증된
+  // row만 남기고 캐스팅 없이 OpportunityRow로 좁힌다(M-011, 전체 필드 검증은 M-027).
+  const rows: OpportunityRow[] = data.filter(isOpportunityRow);
   // 원본 조회는 1건 이상이었지만 전부 레거시 값이라 필터링되면 "empty"로 취급한다 —
   // status==="ok"는 항상 1건 이상 렌더 가능한 데이터를 의미하는 계약(위 CatalogStatus 주석)을 지킨다.
   if (rows.length === 0) return { data: [], status: "empty" };
@@ -239,7 +239,7 @@ export interface OpportunityResult {
  * @param id 활동 id(opportunities.id).
  */
 export async function fetchOpportunityById(
-  client: SupabaseClient | null,
+  client: SupabaseClient<Database> | null,
   id: string,
 ): Promise<OpportunityResult> {
   if (!client) return { data: null, status: "unconfigured" };
@@ -250,9 +250,10 @@ export async function fetchOpportunityById(
     .maybeSingle();
   if (error) return { data: null, status: "error" };
   if (!data) return { data: null, status: "empty" };
-  // 목록 조회와 동일한 레거시 값 가드 — 앱이 모르는 category/source면 없는 것으로 취급.
-  if (!isOpportunityCategory(data.category) || !isSourceKind(data.source)) {
+  // 목록 조회와 동일한 구조 가드 — 앱이 모르는 category/source거나 다른 필드가 기대와
+  // 어긋나면(스키마 드리프트) 캐스팅 없이 없는 것으로 취급한다(M-027).
+  if (!isOpportunityRow(data)) {
     return { data: null, status: "empty" };
   }
-  return { data: rowToMock(data as OpportunityRow), status: "ok" };
+  return { data: rowToMock(data), status: "ok" };
 }

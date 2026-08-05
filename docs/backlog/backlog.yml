@@ -566,7 +566,7 @@ backlog:
   - id: M-027
     title: "packages/core catalog.ts가 Supabase 응답을 Database 제네릭 없이 unchecked cast로 신뢰"
     priority: high
-    status: todo
+    status: doing
     scope: [packages/core]
     done_when:
       - "fetchOpportunities/fetchOpportunityById(catalog.ts:135-205)의 client 파라미터 타입을 SupabaseClient<Database>로 바인딩한다(apps/web/src/lib/supabase.ts:16-26의 패치된 Database 타입 재사용 또는 동등한 것을 core에 둔다)"
@@ -924,3 +924,82 @@ backlog:
       **whyReasons는 지우지 말고 폴백으로 유지** — 이미 테스트됐고 빈 배열을 반환하지 않음을 보장한다.
       모델은 Gemini Flash 무료 티어(비용 0, rate limit 존재) → 429를 정상 경로로 취급해
       폴백을 먼저 구현할 것. pgvector는 이 규모에서 과투자라 쓰지 않는다.
+
+  - id: M-045
+    title: "보관함 저장 항목 실종 — 모바일이 카탈로그 창 밖 id를 조용히 버린다"
+    priority: high
+    status: todo
+    scope: [apps/mobile/app/(tabs)/saved.tsx, apps/mobile/hooks]
+    done_when:
+      - "카탈로그 창(상위 200건) 밖에 있는 저장 id도 보관함에 반드시 나온다 — id 단건 조회로 해소"
+      - "이미 스토어 카탈로그에 있는 항목은 재조회하지 않는다(탐색에서 넘어온 경우)"
+      - "마감이 지난 저장 항목도 숨기지 않는다 — 단건 조회에는 마감 필터가 없다"
+      - "카탈로그에 없는 id를 저장한 상태에서 보관함을 열면 그 항목이 보이는 테스트가 있다"
+    notes: >
+      apps/mobile/app/(tabs)/saved.tsx:53-56이 savedIds.map(id => catalog.find(...))로
+      해소하고 filter(Boolean)으로 미스를 버린다. 코드 주석도 "조용히 빠진다"고 인정하고 있다.
+      **웹은 이미 고쳤다** — apps/web/src/hooks/useSavedOpportunities.ts:20-33.
+      그 주석의 실측치: "live 507건 중 207건이 실종 대상"(약 40%). 성능이 아니라 정합성 버그다.
+      웹 훅을 그대로 복사하지 말 것(React DOM 훅이다). fetchOpportunityById는 이미
+      모바일에도 있으므로(apps/mobile/data/opportunities) 같은 전략만 RN 훅으로 옮긴다.
+      사용자가 저장한 것을 잃는 문제라 이 목록에서 우선순위가 가장 높다.
+
+  - id: M-046
+    title: "모바일 보관함이 실패를 '저장한 게 없음'으로 표시 — 에러 상태·재시도 부재"
+    priority: high
+    status: todo
+    scope: [apps/mobile/app/(tabs)/saved.tsx]
+    done_when:
+      - "조회 실패 시 '아직 저장한 활동이 없어요'가 아니라 실패했음을 알리는 문구가 뜬다"
+      - "실패 화면에 '다시 시도'가 있고, 눌렀을 때 실제로 재조회가 일어난다(장식 버튼 금지)"
+      - "실패 시 개수 라벨이 '0개'로 단정하지 않는다"
+      - "로딩·에러·빈 상태 세 가지가 구분되는 테스트가 있다"
+    notes: >
+      apps/mobile/app/(tabs)/saved.tsx:104-113의 ListEmptyComponent가 실패·로딩·진짜빈값을
+      모두 같은 문구로 덮는다. saved.tsx:88의 {items.length}개는 실패해도 "0개"로 찍힌다.
+      사용자에겐 "저장한 게 사라졌다"로 읽힌다 — M-045와 증상이 겹쳐 더 나쁘다.
+      웹 선례: apps/web/src/app/saved/page.tsx:38-40(개수 숨김), 87-104(에러+재시도),
+      useSavedOpportunities.ts:41-44(retry nonce — nonce 없으면 재시도가 아무 일도 안 한다는
+      주석까지 있다. 같은 함정을 반복하지 말 것).
+      참고: 모바일 report는 이미 isError 분기가 있다((tabs)/report.tsx:28) — report에 없는 건
+      로딩 상태지 에러 처리가 아니다. saved만 에러 분기가 통째로 없다.
+
+  - id: M-047
+    title: "모바일 동네 검색 한글 IME 요청 폭주 — 자모마다 네트워크 요청"
+    priority: medium
+    status: todo
+    scope: [apps/mobile/app/location.tsx]
+    done_when:
+      - "한글 조합 중(자모 입력)에는 요청이 나가지 않는다"
+      - "최소 2글자 미만이면 조회하지 않는다"
+      - "새 입력이 들어오면 이전 in-flight 요청이 취소된다 — cancelled 플래그만으로는 부족"
+      - "'망원동'을 타이핑했을 때 요청 수가 자모 수에 비례하지 않음을 검증한다"
+    notes: >
+      apps/mobile/app/location.tsx:38-58은 250ms 디바운스뿐이라 onChangeText가 자모 단위로
+      들어오는 한글에서는 사실상 방어가 안 된다. cancelled 플래그는 setState만 막고
+      요청 자체는 계속 날아간다.
+      **웹은 이미 고쳤다** — apps/web/src/app/location/page.tsx:65,83-87(composition 이벤트),
+      42,75-79(2글자 최소), 81-97(AbortController).
+      RN은 DOM compositionstart/end가 없다 — TextInput의 onKeyPress/조합 상태를 직접 다루거나
+      최소 글자수+취소로 대체해야 한다. 웹 코드를 그대로 옮기면 안 된다.
+
+  - id: M-048
+    title: "앱↔웹 간극 정리 — 웹에서 고친 것이 모바일에 반영 안 되는 패턴"
+    priority: medium
+    status: todo
+    scope: [apps/mobile, docs]
+    done_when:
+      - "웹↔모바일 기능 대조표가 docs에 있고, 각 항목이 '의도된 차이'인지 '누락'인지 표시된다"
+      - "누락 중 사용자가 막히는 항목이 개별 M-NNN 이슈로 등재된다"
+      - "한쪽만 고치고 넘어가는 것을 막을 방법이 정해진다(공유 로직은 packages/core로 등)"
+    notes: >
+      2026-08-05 감사에서 드러난 패턴: 웹 주석에 "이래서 고쳤다"고 적힌 버그가 모바일에
+      그대로 살아있다. 확인된 것만 3건 — 보관함 실종(M-045), IME 폭주(M-047),
+      랜딩 2차 CTA가 폴백 리포트로 빠지는 문제(웹 page.tsx:53-56에서 의도적으로 제거했는데
+      모바일 index.tsx:49-51은 아직 /report로 보낸다).
+      화면당 코드량이 웹이 약 2.5배다(explore 526 vs 206, opportunity 537 vs 209).
+      나머지 확인된 공백: 이미지 렌더 전무(모바일에 이미지 컴포넌트 0건, imageUrl은 들어오는데
+      안 씀), 지도·산책로 폴리라인 없음, 탐색 정렬/지역/난이도 필터 없음, 스켈레톤 없음,
+      북마크 accessibilityLabel 없음, 상세 메타데이터(마감 D-day·출처·시간대) 미표시.
+      **이 이슈는 조사·분류용이다** — 여기서 구현하지 말고 개별 이슈로 쪼갤 것.
+      우선순위는 사람이 정한다: 하이퍼로컬 제품에서 지도 부재가 제일 크다는 의견이 있었다.

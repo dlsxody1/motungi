@@ -204,6 +204,25 @@ describe("fetchOpportunities — CatalogStatus 4분기", () => {
     expect(result).toEqual({ data: [], status: "empty" });
   });
 
+  it("category/source는 유효하지만 다른 필드 타입이 스키마와 어긋나는 row는 제외한다(M-027)", async () => {
+    const client = makeClient({
+      data: [
+        makeRow({ id: "ok-row", category: "culture" }),
+        // title이 스키마 드리프트로 문자열이 아니게 온 경우 — category/source만 보는 가드로는
+        // 못 걸러 이전엔 `as OpportunityRow`로 무검증 통과했다.
+        { ...makeRow({ id: "bad-title", category: "culture" }), title: 42 },
+        // cost_krw가 숫자|null 계약을 어기고 문자열로 온 경우.
+        { ...makeRow({ id: "bad-cost", category: "culture" }), cost_krw: "0" },
+      ],
+      error: null,
+    });
+
+    const result = await fetchOpportunities(asClient(client));
+
+    expect(result.status).toBe("ok");
+    expect(result.data.map((d) => d.id)).toEqual(["ok-row"]);
+  });
+
   it("조회 실패(query error)면 error 상태를 반환한다", async () => {
     const client = makeClient({ data: null, error: { message: "boom" } });
 
@@ -580,6 +599,13 @@ describe("fetchOpportunityById", () => {
   it("레거시 category/source 값이면 걸러 empty로", async () => {
     const legacy = { ...ROW, category: "legacy_x" };
     const client = makeSingleClient({ data: legacy, error: null });
+    const r = await fetchOpportunityById(asClient(client as unknown as FakeClient), "op-1");
+    expect(r).toEqual({ data: null, status: "empty" });
+  });
+
+  it("category/source는 유효하지만 다른 필드가 스키마와 어긋나면 empty로(M-027, as 단언 제거 검증)", async () => {
+    const drifted = { ...ROW, lat: "37.5556" };
+    const client = makeSingleClient({ data: drifted, error: null });
     const r = await fetchOpportunityById(asClient(client as unknown as FakeClient), "op-1");
     expect(r).toEqual({ data: null, status: "empty" });
   });

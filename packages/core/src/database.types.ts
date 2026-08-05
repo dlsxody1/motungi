@@ -12,6 +12,7 @@
  */
 
 import type { OpportunityCategory, SourceKind } from "./types";
+import type { OpportunityRow } from "./view";
 
 /**
  * DB의 `opportunity_category` enum 전체 값.
@@ -52,6 +53,13 @@ export type SourceKindDb =
  */
 export type PostgisGeographyPoint = unknown;
 
+/**
+ * postgrest-js의 GenericSchema 제약(각 테이블 `Relationships`, 스키마 `Views`/`Functions`)을
+ * 만족하도록 필드를 채워둔다 — 이게 없으면 `SupabaseClient<Database>`의 Schema가 조용히
+ * `never`로 무너져 select() 결과 타입 추론이 전부 깨진다(M-027, 이전엔 apps/web·apps/mobile이
+ * 각자 로컬에서 이 패치를 중복 적용했음). `Relationships`는 FK 임베드 select에만 쓰이고 이
+ * 앱은 사용하지 않으므로 전부 빈 배열 — 런타임 영향 없는 타입 전용 보강이다.
+ */
 export interface Database {
   public: {
     Tables: {
@@ -147,6 +155,7 @@ export interface Database {
           is_loop?: boolean | null;
           gpx_url?: string | null;
         };
+        Relationships: [];
       };
       profiles: {
         Row: {
@@ -176,6 +185,7 @@ export interface Database {
           work_adm_code?: string | null;
           work_dong_name?: string | null;
         };
+        Relationships: [];
       };
       saved_opportunities: {
         Row: {
@@ -193,6 +203,7 @@ export interface Database {
           opportunity_id?: string;
           saved_at?: string;
         };
+        Relationships: [];
       };
       neighborhoods: {
         Row: {
@@ -229,8 +240,11 @@ export interface Database {
           coord_level?: string;
           geom?: PostgisGeographyPoint | null;
         };
+        Relationships: [];
       };
     };
+    Views: { [_ in never]: never };
+    Functions: { [_ in never]: never };
   };
 }
 
@@ -270,4 +284,52 @@ export function isOpportunityCategory(v: unknown): v is OpportunityCategory {
  */
 export function isSourceKind(v: unknown): v is SourceKind {
   return typeof v === "string" && APP_SOURCE_KINDS.has(v);
+}
+
+const isNullOr =
+  <T>(check: (v: unknown) => v is T) =>
+  (v: unknown): v is T | null =>
+    v === null || check(v);
+
+const isString = (v: unknown): v is string => typeof v === "string";
+const isNumber = (v: unknown): v is number => typeof v === "number";
+const isBoolean = (v: unknown): v is boolean => typeof v === "boolean";
+
+const isNullableString = isNullOr(isString);
+const isNullableNumber = isNullOr(isNumber);
+
+/**
+ * `opportunities` row 전체 필드를 구조적으로 검증한다(M-027). `isOpportunityCategory`/
+ * `isSourceKind`만으로는 category/source 2개 필드만 좁혀지고 나머지 14개 필드(title·cost_krw·
+ * lat/lng 등)는 여전히 `as OpportunityRow` 단언에 무검증으로 실려간다 — 스키마 드리프트가
+ * 컴파일은 통과하고 런타임에서야 터지는 경로였다. 여기서 그 경로를 없앤다.
+ */
+export function isOpportunityRow(v: unknown): v is OpportunityRow {
+  if (typeof v !== "object" || v === null) return false;
+  const r = v as Record<string, unknown>;
+  return (
+    isString(r.id) &&
+    isSourceKind(r.source) &&
+    isOpportunityCategory(r.category) &&
+    isNullableString(r.external_id) &&
+    isString(r.title) &&
+    isString(r.summary) &&
+    (r.description === undefined || isNullableString(r.description)) &&
+    isNullableNumber(r.cost_krw) &&
+    isNullableNumber(r.difficulty) &&
+    isNullableString(r.dong_name) &&
+    isNullableNumber(r.lat) &&
+    isNullableNumber(r.lng) &&
+    isNullableString(r.cta_url) &&
+    isNullableString(r.image_url) &&
+    isNullableString(r.deadline) &&
+    isNullableString(r.source_label) &&
+    isNullableNumber(r.time_start_hour) &&
+    isNullableNumber(r.time_end_hour) &&
+    isNullableString(r.course_start) &&
+    isNullableString(r.course_end) &&
+    isNullableString(r.course_notes) &&
+    isNullableNumber(r.duration_min) &&
+    isNullOr(isBoolean)(r.is_loop)
+  );
 }

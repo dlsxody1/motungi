@@ -306,6 +306,13 @@
   pointer-events: none;
 }
 
+/* 물결도 .paint-paper 섹션과 같은 결을 갖게 한다 — 결의 유무가 곧 경계선이었다.
+   결 자체는 SVG 안에서 path 모양으로 잘라 그린다(paint-edge.tsx의 <feTurbulence>).
+   여기서는 blend만 맞춘다: 섹션의 종이 결과 동일하게 multiply. */
+.paint-edge .paint-edge-grain {
+  mix-blend-mode: multiply;
+}
+
 /* 붓으로 밑줄 친 강조 — 텍스트 하이라이트. span에 건다. */
 .paint-underline {
   position: relative;
@@ -343,25 +350,13 @@
   }
 }
 
-/* 여정 경로가 스크롤에 따라 그려진다 — 붓이 지나가는 것처럼.
-   근거(motion motivated): "세 걸음"이 순차라는 걸 그리는 순서로 보여준다.
-   기본값(미지원·reduced-motion)은 "이미 다 그려짐" — 콘텐츠를 절대 안 가린다. */
-@media (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
-    .paint-path-line {
-      stroke-dasharray: 800;
-      animation: paint-draw linear both;
-      animation-timeline: view();
-      animation-range: entry 10% cover 46%;
-    }
-  }
-}
-@keyframes paint-draw {
-  from {
-    stroke-dashoffset: 800;
-  }
-  to {
-    stroke-dashoffset: 0;
+/* 3스텝 미니어처(step-previews.tsx) — reduced-motion이면 조립 모션을 끈다.
+   호버 상태(선택된 칩·완료된 진행바)는 transition만 사라질 뿐 즉시 적용되므로
+   "무엇이 바뀌는지"는 그대로 보인다. 정보 손실 없음. */
+@media (prefers-reduced-motion: reduce) {
+  .step-preview *,
+  .step-preview {
+    transition: none !important;
   }
 }
 

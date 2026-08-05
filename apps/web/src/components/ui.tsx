@@ -200,6 +200,17 @@ export function InfoBox({
 }
 
 /* ────────────────────────────────────────────────────────────
+ * 스켈레톤
+ *  로딩 중 "무엇이 어디에 올지"를 미리 보여주는 회색 블록.
+ *  스피너와 달리 레이아웃을 선점하므로 데이터가 도착해도 화면이 튀지 않는다.
+ *  ⚠️ 스켈레톤 자체는 스크린리더에 무의미하다 — 감싸는 컨테이너에
+ *     aria-busy="true" + 상태 문구(sr-only)를 두는 건 호출부 책임.
+ * ──────────────────────────────────────────────────────────── */
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div aria-hidden className={`animate-pulse rounded-md bg-surface-alt ${className}`} />;
+}
+
+/* ────────────────────────────────────────────────────────────
  * 로고
  * ──────────────────────────────────────────────────────────── */
 export function Logo({ size = 28, onDark = false }: { size?: number; onDark?: boolean }) {
