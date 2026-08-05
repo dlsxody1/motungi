@@ -21,6 +21,7 @@ architect가 확정한 파일 목록 + 테스트 계획.
 
 ## 할 일
 1. **최신 dev 트렁크에 직접 작업한다** (`@.claude/rules/workflow/nightly-pipeline.md`): `git fetch origin && git checkout -B dev origin/dev` 후 그 위에 커밋. **브랜치·PR 없음. main 직접 커밋 절대 금지.** (dev가 통합 기준선이므로 어젯밤 산출물이 이미 반영돼 있다 — 중복 생성 금지.)
+   - **클러스터를 받았으면 이슈당 1커밋으로 나눠 커밋한다**(2026-08-05~). 각 커밋은 자기 완결적이고 **독립적으로 revert 가능**해야 한다 — qa가 이슈별로 판정해서 실패한 것만 되돌리기 때문이다. 여러 이슈를 한 커밋에 뭉치면 한 건이 실패할 때 통과분까지 같이 죽는다. 커밋 메시지에 `M-NNN`을 넣어라.
 2. 확정된 파일만 수정. 범위 밖으로 새지 마라. 기존 코드 스타일·FSD 계층을 그대로 따른다.
 3. 변경에 대응하는 테스트를 작성/갱신한다 (`react-testing` 컨벤션: RTL + Vitest, 필요 시 MSW).
 4. 필요 시 `pnpm install` 후 해당 앱 typecheck / test / build로 스스로 검증한다.
