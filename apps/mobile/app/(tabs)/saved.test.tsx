@@ -3,15 +3,17 @@
  *
  * explore.test.tsx와 같은 이유 — FlatList 전환(M-023) 이후 렌더 테스트가 0개였다.
  * savedIds를 카탈로그에서 해소해 행으로 렌더하는지와, 저장이 없을 때 빈 상태가
- * 나오는지만 본다. 카탈로그에 없는 저장 id가 조용히 빠지는 분기도 함께 고정한다.
+ * 나오는지만 본다. 카탈로그에 없는 저장 id는 fetchOpportunityById로 단건 조회해
+ * 해소되는 분기(M-045)도 함께 고정한다 — 예전엔 여기서 조용히 빠졌다(버그).
  */
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockOpportunity } from "@/data/opportunities";
 
-const { pushMock, toggleSavedMock, state } = vi.hoisted(() => ({
+const { pushMock, toggleSavedMock, fetchOpportunityByIdMock, state } = vi.hoisted(() => ({
   pushMock: vi.fn(),
   toggleSavedMock: vi.fn(),
+  fetchOpportunityByIdMock: vi.fn(),
   state: {
     savedIds: [] as string[],
     toggleSaved: (() => {}) as (id: string) => void,
@@ -29,6 +31,11 @@ vi.mock("@/store/useAppStore", () => ({
 }));
 
 vi.mock("@/hooks/useEnsureCatalog", () => ({ useEnsureCatalog: vi.fn() }));
+
+vi.mock("@/data/opportunities", async () => {
+  const actual = await vi.importActual<typeof import("@/data/opportunities")>("@/data/opportunities");
+  return { ...actual, fetchOpportunityById: fetchOpportunityByIdMock };
+});
 
 import SavedScreen from "./saved";
 
@@ -51,6 +58,7 @@ function makeOpp(overrides: Partial<MockOpportunity> & { id: string; title: stri
 beforeEach(() => {
   pushMock.mockReset();
   toggleSavedMock.mockReset();
+  fetchOpportunityByIdMock.mockReset();
   state.savedIds = [];
   state.toggleSaved = toggleSavedMock;
   state.catalog = [];
@@ -75,14 +83,24 @@ describe("SavedScreen", () => {
     expect(screen.getByText("망원동 기준")).toBeInTheDocument();
   });
 
-  it("카탈로그에 없는 저장 id는 행으로 렌더하지 않고 조용히 뺀다", () => {
+  it("카탈로그 창 밖의 저장 id는 단건 조회로 해소되어 렌더한다(M-045)", async () => {
     state.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
-    state.savedIds = ["op-1", "사라진-id"];
+    state.savedIds = ["op-1", "창밖-id"];
+    fetchOpportunityByIdMock.mockResolvedValueOnce({
+      data: makeOpp({ id: "창밖-id", title: "합정 재즈 라이브" }),
+      status: "ok",
+    });
 
     render(<SavedScreen />);
 
-    expect(screen.getByText("1개")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("2개")).toBeInTheDocument();
+    });
+    expect(fetchOpportunityByIdMock).toHaveBeenCalledWith("창밖-id");
+    // catalog에 이미 있는 id는 재조회하지 않는다.
+    expect(fetchOpportunityByIdMock).not.toHaveBeenCalledWith("op-1");
     expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
+    expect(screen.getByText("합정 재즈 라이브")).toBeInTheDocument();
   });
 
   it("저장한 활동이 없으면 빈 상태 문구와 둘러보기 CTA를 렌더한다", () => {

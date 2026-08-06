@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { memo, useCallback } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
+import { useSavedOpportunities } from "@/hooks/useSavedOpportunities";
 import { useAppStore } from "@/store/useAppStore";
 import { Txt } from "@/ui/components";
 import { Bookmark, Location, User } from "@/ui/icons";
@@ -50,10 +51,9 @@ export default function SavedScreen() {
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
 
   const catalog = useAppStore((s) => s.catalog);
-  // 저장 id를 서버 카탈로그에서 해소. 카탈로그에 없는(상위 200건 밖) 항목은 조용히 빠진다.
-  const items = savedIds
-    .map((id) => catalog.find((o) => o.id === id))
-    .filter((o): o is NonNullable<typeof o> => !!o);
+  // 저장 id를 해소. catalog(반경으로 좁힌 창)에 있으면 그대로 쓰고, 없으면 단건 조회한다
+  // (M-045 — 이전엔 catalog.find만 써서 창 밖 저장 id가 조용히 사라졌다).
+  const { items } = useSavedOpportunities(savedIds, catalog);
   const openDetail = useCallback(
     (id: string) => router.push({ pathname: "/opportunity", params: { id } }),
     [router],
