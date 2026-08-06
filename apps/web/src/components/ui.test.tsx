@@ -161,8 +161,10 @@ describe("Tag", () => {
     const { rerender } = render(<Tag tone="mint">민트</Tag>);
     expect(screen.getByText("민트").className).toContain("bg-mint");
 
+    // 베이지 폐기(2026-08-06) 후 muted 뱃지는 gray-100 — surface-alt는 호버 전용 톤이라
+    // 흰 배경에서 면으로 안 읽힌다.
     rerender(<Tag tone="muted">뮤트</Tag>);
-    expect(screen.getByText("뮤트").className).toContain("bg-surface-alt");
+    expect(screen.getByText("뮤트").className).toContain("bg-gray-100");
   });
 });
 

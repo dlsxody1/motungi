@@ -188,7 +188,7 @@ export default function ReportPage() {
                 ))}
               </div>
 
-              <div className="mt-3 flex items-center justify-between rounded-xl bg-surface-alt px-4 py-3.5">
+              <div className="mt-3 flex items-center justify-between rounded-xl border border-line-alt bg-gray-100 px-4 py-3.5">
                 <div>
                   <p className="text-[14px] font-bold text-ink">이거 묶어서 하루 코스로?</p>
                   <p className="text-[12px] text-muted">관심사·시간대로 저녁 코스 짜기</p>
@@ -267,7 +267,7 @@ export default function ReportPage() {
                     </p>
                     <div className="mt-5 grid grid-cols-3 gap-2.5">
                       {onePick.meta.map((m) => (
-                        <div key={m.label} className="rounded-xl bg-bg px-3 py-3 text-center">
+                        <div key={m.label} className="rounded-xl bg-gray-100 px-3 py-3 text-center">
                           <p className="text-[11px] text-muted">{m.label}</p>
                           <p className={`mt-1 text-[15px] font-bold ${m.value === "낮음" ? "text-mint" : "text-ink"}`}>
                             {m.value}
@@ -285,10 +285,12 @@ export default function ReportPage() {
                           "linear-gradient(150deg, var(--color-primary), var(--color-primary-deep))",
                       }}
                     >
-                      <p className="text-[12px] font-semibold text-white/80">{onePick.costHeading}</p>
+                      {/* 흰 텍스트에 투명도를 주지 않는다 — primary 위 white/80은 3.59:1로 AA 미달.
+                          100%면 4.88:1로 통과한다. 위계는 투명도가 아니라 크기·두께로. */}
+                      <p className="text-[12px] font-semibold text-white">{onePick.costHeading}</p>
                       <p className="text-[30px] font-extrabold leading-tight">{onePick.costLabel}</p>
                       {onePick.costNote && (
-                        <p className="mt-1 text-[12px] text-white/85">{onePick.costNote}</p>
+                        <p className="mt-1 text-[12px] text-white">{onePick.costNote}</p>
                       )}
                     </div>
                     <div className="mt-3 flex gap-2.5">
@@ -337,20 +339,21 @@ export default function ReportPage() {
                     "linear-gradient(150deg, var(--color-purple), var(--color-primary) 118%)",
                 }}
               >
-                <p className="text-[11px] font-bold tracking-[0.08em] text-white/80">DONGNE REPORT</p>
+                {/* ⚠️ 이 카드는 투명도를 2중으로 쌓지 않는다(2026-08-06 AA 수정).
+                    예전엔 bg-white/15 타일 위에 text-white/80~85를 얹어 실측 2.5~3.9:1로
+                    전부 AA 미달이었다. 원인은 텍스트가 아니라 **타일**이다 — 흰색을 얹어
+                    배경을 밝히니 흰 글씨와의 차이가 사라졌다. 타일을 검정으로 어둡게 하고
+                    글씨는 흰색 100%로 둔다(최악 조건 primary 끝에서 5.79:1). */}
+                <p className="text-[11px] font-bold tracking-[0.08em] text-white">DONGNE REPORT</p>
                 <p className="mt-1 text-[18px] font-extrabold">{dongName} 저녁 골라봤어요</p>
                 <div className="mt-4 space-y-2">
-                  <div className="flex items-center justify-between rounded-xl bg-white/15 px-3.5 py-2.5">
-                    <span className="text-[13px] text-white/85">추천 활동</span>
+                  <div className="flex items-center justify-between rounded-xl bg-black/10 px-3.5 py-2.5">
+                    <span className="text-[13px] text-white">추천 활동</span>
                     <span className="text-[14px] font-bold">{list.length}개</span>
                   </div>
-                  <div className="flex items-center justify-between rounded-xl bg-white/15 px-3.5 py-2.5">
-                    <span className="text-[13px] text-white/85">저장한 활동</span>
+                  <div className="flex items-center justify-between rounded-xl bg-black/10 px-3.5 py-2.5">
+                    <span className="text-[13px] text-white">저장한 활동</span>
                     <span className="text-[14px] font-bold">{savedIds.length}개</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-xl bg-white/15 px-3.5 py-2.5">
-                    <span className="text-[13px] text-white/85">동네 통계</span>
-                    <span className="text-[13px] font-semibold text-white/80">곧 제공</span>
                   </div>
                 </div>
               </div>
@@ -365,7 +368,7 @@ export default function ReportPage() {
                 {summaryChips.length > 0 ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {summaryChips.map((t) => (
-                      <span key={t} className="rounded-pill bg-bg px-3 py-1.5 text-[12px] font-semibold text-label">
+                      <span key={t} className="rounded-pill bg-gray-100 px-3 py-1.5 text-[12px] font-semibold text-label">
                         {t}
                       </span>
                     ))}

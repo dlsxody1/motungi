@@ -236,7 +236,10 @@ export function SplashMark({ size = 132, onDone }: { size?: number; onDone?: () 
  */
 export function Splash({ onDone }: { onDone?: () => void }) {
   return (
-    <LinearGradient colors={[C.bg, C.surfaceAlt]} style={styles.screen}>
+    // 베이지 폐기 후 [C.bg, C.surfaceAlt]는 흰→거의 흰이라 그라디언트가 사라진다.
+    // 스플래시는 브랜드 첫인상이라 중립 회색으로 때우지 않고 로즈 틴트로 내려앉게 한다
+    // (tint는 배경·칩용 연한 로즈라 위 ink/muted 텍스트 대비도 그대로 유지된다).
+    <LinearGradient colors={[C.surface, C.tint]} style={styles.screen}>
       <SplashMark onDone={onDone} />
     </LinearGradient>
   );

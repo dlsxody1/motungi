@@ -11,8 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "퇴근하고 뭐하지? — 퇴근 후·주말 내 동네 문화·여가 큐레이션.",
     start_url: "/",
     display: "standalone",
-    background_color: "#f4f0eb",
-    theme_color: "#f4f0eb",
+    background_color: "#ffffff",
+    theme_color: "#ffffff",
     lang: "ko",
     icons: [
       {

@@ -113,7 +113,9 @@ export default function DiagnosisPage() {
               </span>
             </div>
 
-            <div className="flex flex-1 flex-col px-6 pt-4">
+            {/* MobileScreen이 h-dvh 고정이라 넘치는 내용은 여기서 스크롤돼야 한다
+                (안 그러면 작은 화면에서 마지막 선택지에 닿을 수 없다). */}
+            <div className="flex flex-1 flex-col overflow-y-auto px-6 pt-4">
               <p className="text-[13px] font-bold text-primary">{q.eyebrow}</p>
               <h1 className="mt-1.5 whitespace-pre-line text-[24px] font-extrabold leading-snug tracking-[-0.01em] text-ink">
                 {q.title}
@@ -130,7 +132,7 @@ export default function DiagnosisPage() {
                       disabled={o.soon}
                       className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
                         o.soon
-                          ? "border-transparent bg-surface-alt/70 text-faint"
+                          ? "border-line-alt bg-gray-100 text-faint"
                           : on
                             ? "border-primary bg-surface shadow-card"
                             : "border-transparent bg-surface shadow-card"
@@ -259,7 +261,7 @@ export default function DiagnosisPage() {
                     disabled={o.soon}
                     className={`relative flex items-center gap-3.5 rounded-2xl border p-[22px] text-left transition-all ${
                       o.soon
-                        ? "cursor-not-allowed border-transparent bg-surface-alt/70"
+                        ? "cursor-not-allowed border-line-alt bg-gray-100 text-faint"
                         : on
                           ? "border-[1.5px] border-primary bg-surface shadow-web"
                           : "border-[1.5px] border-transparent bg-surface hover:border-line"

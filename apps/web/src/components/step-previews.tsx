@@ -222,7 +222,7 @@ export function PreviewReport({ picks = [] }: { picks?: PreviewPick[] }) {
       <div className="mt-1 space-y-1">
         {(related.length > 0 ? related : [null, null]).map((r, i) => (
           <div key={r?.id ?? i} style={step(i + 1)} className="flex items-center gap-1.5">
-            <span className="size-5 shrink-0 rounded-md bg-surface-alt" />
+            <span className="size-5 shrink-0 rounded-md bg-gray-100" />
             <span className="min-w-0 flex-1">
               {r ? (
                 <span className="block line-clamp-1 text-[8px] font-bold text-ink">{r.title}</span>

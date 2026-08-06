@@ -257,7 +257,7 @@ export function OpportunityDetail({
                 </ul>
               </div>
 
-              <p className="mt-6 rounded-lg bg-surface-alt px-3.5 py-3 text-[12px] leading-relaxed text-muted">
+              <p className="mt-6 rounded-lg border border-line-alt bg-gray-100 px-3.5 py-3 text-[12px] leading-relaxed text-muted">
                 보러 가기를 누르면 주최·출처 채널로 이동해요. 모퉁이는 공공·제휴 정보를 모아
                 소개할 뿐, 예약·주최 당사자가 아니에요.
               </p>
@@ -426,7 +426,7 @@ export function OpportunityDetail({
 
                   {/* 마감·출처 팩트 — 사이드바가 허전하지 않도록 row 데이터를 노출 */}
                   {(deadline || o.sourceLabel) && (
-                    <dl className="mt-4 space-y-2.5 rounded-xl bg-surface-alt px-4 py-3.5">
+                    <dl className="mt-4 space-y-2.5 rounded-xl border border-line-alt bg-gray-100 px-4 py-3.5">
                       {deadline && (
                         <div className="flex items-center justify-between">
                           <dt className="text-[13px] text-muted">마감</dt>
@@ -512,7 +512,7 @@ function DdayPill({ deadline }: { deadline: { dday: number; past: boolean } }) {
   const { dday, past } = deadline;
   const text = past ? "마감" : dday === 0 ? "오늘 마감" : `D-${dday}`;
   const tone = past
-    ? "bg-surface-alt text-muted"
+    ? "bg-gray-100 text-muted"
     : dday <= 3
       ? "bg-primary text-white"
       : "bg-tint text-primary-deep";

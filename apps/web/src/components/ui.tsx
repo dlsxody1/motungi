@@ -55,9 +55,22 @@ export function MobileScreen({
 }) {
   const bg = tone === "surface" ? "bg-surface" : "bg-bg";
   return (
-    <div className="flex min-h-dvh justify-center bg-surface-alt/60 sm:py-8">
+    // 데스크톱 게터(앱 프레임 바깥 여백) — 프레임이 흰색이 됐으므로 게터는 확실한
+    // 회색이어야 프레임이 "떠 있는 화면"으로 읽힌다. 예전 bg-surface-alt/60은
+    // 베이지였기에 대비가 났지만 지금 값으로는 흰 위 흰이 된다.
+    <div className="flex min-h-dvh justify-center bg-gray-100 sm:py-8">
+      {/*
+       * 높이는 min-h가 아니라 **h-dvh(고정)** 다.
+       *
+       * min-h-dvh였을 땐 내용이 화면보다 길면 프레임 자체가 늘어났다. 그러면 안쪽
+       * overflow-y-auto가 넘칠 일이 없어 스크롤이 페이지 전체에서 일어나고,
+       * 하단 내비(BottomNav)가 화면 아래가 아니라 **문서 맨 끝**에 붙는다 —
+       * 스크롤을 끝까지 내려야 탭이 보이던 이유가 이것이다.
+       * 고정 높이라야 자식의 flex-1 + overflow-y-auto가 실제로 스크롤 영역이 되고,
+       * 내비는 프레임 바닥에 고정된다(앱과 같은 동작).
+       */}
       <main
-        className={`flex min-h-dvh w-full max-w-[420px] flex-col ${bg} sm:min-h-[calc(100dvh-4rem)] sm:rounded-[28px] sm:shadow-card`}
+        className={`flex h-dvh w-full max-w-[420px] flex-col overflow-hidden ${bg} sm:h-[calc(100dvh-4rem)] sm:rounded-[28px] sm:shadow-card`}
       >
         {children}
       </main>
@@ -149,7 +162,8 @@ export function Tag({
   const tones = {
     brand: "bg-primary text-white",
     mint: "bg-mint text-white",
-    muted: "bg-surface-alt text-muted",
+    // 흰 배경에서 뱃지가 면으로 읽히려면 gray-100이어야 한다(surface-alt는 호버용 1.07:1).
+    muted: "bg-gray-100 text-muted",
   };
   return (
     <span
@@ -207,7 +221,11 @@ export function InfoBox({
  *     aria-busy="true" + 상태 문구(sr-only)를 두는 건 호출부 책임.
  * ──────────────────────────────────────────────────────────── */
 export function Skeleton({ className = "" }: { className?: string }) {
-  return <div aria-hidden className={`animate-pulse rounded-md bg-surface-alt ${className}`} />;
+  // ⚠️ bg-gray-100이어야 한다. 베이지 폐기(2026-08-06)로 배경·카드가 모두 흰색이 되면서
+  // 예전 값(bg-surface-alt)은 흰 위 1.07:1로 사실상 안 보인다 — animate-pulse가
+  // "아무것도 없는 화면"이 되는 회귀. 스켈레톤은 빈 자리를 보여주는 게 일이므로
+  // 흰 대비가 확실한 gray-100(1.13:1)을 쓴다.
+  return <div aria-hidden className={`animate-pulse rounded-md bg-gray-100 ${className}`} />;
 }
 
 /* ────────────────────────────────────────────────────────────

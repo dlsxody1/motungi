@@ -37,7 +37,7 @@ export const MyMenuList = memo(function MyMenuList({ items }: { items: MenuItem[
             <span className="block text-[13px] text-muted">{m.desc}</span>
           </span>
           {m.soon ? (
-            <span className="rounded-pill bg-bg px-2.5 py-1 text-[11px] font-semibold text-muted">
+            <span className="rounded-pill bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-muted">
               출시 예정
             </span>
           ) : (

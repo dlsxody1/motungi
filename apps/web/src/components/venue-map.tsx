@@ -174,10 +174,10 @@ export const VenueMap = memo(function VenueMap({
     <div className="overflow-hidden rounded-[18px] border border-line bg-surface">
       <div className="relative">
         {/* 실제 지도가 들어갈 컨테이너 (SDK 준비 시 채워짐) */}
-        <div ref={ref} className="h-[180px] w-full bg-bg" aria-hidden={!rendered} />
+        <div ref={ref} className="h-[180px] w-full bg-gray-100" aria-hidden={!rendered} />
         {/* 지도가 아직/영영 안 그려졌을 때의 폴백 오버레이 */}
         {!rendered && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-bg text-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gray-100 text-center">
             <LocationIcon size={24} className="text-primary" />
             <p className="text-[13px] font-semibold text-label">{placeName || title}</p>
             <p className="text-[12px] text-muted">지도를 준비 중이에요</p>
@@ -188,7 +188,7 @@ export const VenueMap = memo(function VenueMap({
         href={naverMapUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center justify-center gap-1.5 border-t border-line-alt px-4 py-3 text-[13px] font-semibold text-label hover:bg-bg"
+        className="flex items-center justify-center gap-1.5 border-t border-line-alt px-4 py-3 text-[13px] font-semibold text-label hover:bg-surface-alt"
       >
         네이버 지도에서 열기
         <ExternalLinkIcon size={15} />
