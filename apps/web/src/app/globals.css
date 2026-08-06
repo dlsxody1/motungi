@@ -15,27 +15,38 @@
   --color-mint: #1e6e64;
   --color-mint-tint: #e0f0ec;
 
-  --color-bg: #f4f0eb;
+  /* ── 중립 스케일 (2026-08-06 베이지 폐기 · 순중립 회색) ──
+     ⚠️ bg === surface === #ffffff. 배경색으로 면을 나눌 수 없다.
+     카드·박스는 반드시 border-line-alt + shadow-card를 함께 쓴다.
+     회색 면(gray-100/200)은 스켈레톤·호버·트랙 같은 "일시적 상태" 전용. */
+  --color-bg: #ffffff;
   --color-surface: #ffffff;
-  --color-surface-alt: #f1ede6;
+  /* 호버·비활성처럼 잠깐 나타나는 면 (흰 대비 1.07:1) */
+  --color-surface-alt: #f7f7f8;
+  /* 스켈레톤·트랙 등 "빈 자리" (1.13:1) */
+  --color-gray-100: #f1f1f3;
+  /* 회색 면 위 스켈레톤·진행바 트랙 (1.25:1) */
+  --color-gray-200: #e6e6e9;
   --color-ink: #1c1a17;
   --color-label: #4a453e;
-  /* 보조 텍스트 — bg/surface 대비 ≥4.5:1(WCAG AA) */
+  /* 보조 텍스트 — 흰 대비 5.8:1(WCAG AA 본문) */
   --color-muted: #6b645a;
-  /* 흐린 텍스트 — 장식·아이콘·구분선 전용(본문 금지) */
+  /* 흐린 텍스트 — 흰 대비 4.3:1. 장식·아이콘·큰 텍스트 전용(본문 금지) */
   --color-faint: #807970;
-  --color-line: #6e4e3c2e;
-  --color-line-alt: #6e4e3c17;
+  --color-line: #1c1a1726;
+  --color-line-alt: #1c1a1714;
 
   --color-negative: #ff4242;
+  /* 카카오 브랜드 노랑 — 공식 로그인 버튼 진행 오버레이 전용(임의 UI 금지) */
+  --color-kakao: #fee500;
 
-  /* ── 웹(데스크탑) 전용 보조 색 ── */
+  /* ── 웹(데스크탑) 전용 보조 색 ──
+     --color-tile/--color-arrow는 사용처 0으로 삭제했다(2026-08-06). */
   --color-nav-link: #6b655c; /* 상단 네비 링크 */
-  --color-track: #eae0d2; /* 진행바·슬라이더 트랙 */
-  --color-info-bg: #f4ece0; /* 안내 박스 배경 */
-  --color-tile: #f1ede6; /* 중립 아이콘 타일 */
-  --color-purple-tint: #eeeaf6; /* 클래스·배움 퍼플 틴트 */
-  --color-arrow: #d8cdbd; /* 스텝 화살표 회색 */
+  --color-track: #e6e6e9; /* 진행바·슬라이더 트랙 — gray-200과 동일 */
+  /* 안내 박스 배경 — 웜 베이지(#f4ece0)에서 중립 회색으로. 위 muted 텍스트 5.2:1(AA) */
+  --color-info-bg: #f1f1f3;
+  --color-purple-tint: #eeeaf6; /* 클래스·배움 퍼플 틴트 (thumbnail 그라디언트에서 사용 중) */
   --color-ink-dark: #2e2a24; /* 다크 푸터/잉크 */
 
   /* ── 반경 ── */
@@ -54,15 +65,18 @@
   /* 워드마크 전용 — 로고 '모퉁이'에만. next/font(Jua) 변수 → font-wordmark 유틸리티. */
   --font-wordmark: var(--font-wordmark-jua, "Jua"), var(--font-sans);
 
-  /* ── 그림자 ── */
-  --shadow-card: 0 1px 2px rgba(46, 42, 36, 0.04),
-    0 8px 24px rgba(46, 42, 36, 0.06);
+  /* ── 그림자 ──
+     ⚠️ 베이지 폐기 이후 그림자는 장식이 아니라 **위계 그 자체**다.
+     흰 배경 위 흰 카드를 띄우는 유일한 수단이라 예전보다 진하고, 웜 브라운 톤에서
+     순중립으로 바꿨다(베이지가 없는 배경에서 갈색 그림자는 누렇게 보인다). */
+  --shadow-card: 0 1px 2px rgba(28, 26, 23, 0.06),
+    0 8px 24px rgba(28, 26, 23, 0.1);
   --shadow-hero: 0 12px 32px rgba(176, 52, 78, 0.18);
 
   /* ── 웹(데스크탑) 그림자 ── */
-  --shadow-web: 0 6px 22px rgba(85, 52, 30, 0.07);
-  --shadow-web-lift: 0 16px 36px rgba(85, 52, 30, 0.14);
-  --shadow-web-pick: 0 12px 32px rgba(85, 52, 30, 0.11);
+  --shadow-web: 0 6px 22px rgba(28, 26, 23, 0.09);
+  --shadow-web-lift: 0 16px 36px rgba(28, 26, 23, 0.16);
+  --shadow-web-pick: 0 12px 32px rgba(28, 26, 23, 0.13);
 }
 
 @layer base {
