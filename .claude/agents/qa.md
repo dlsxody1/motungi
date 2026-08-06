@@ -15,17 +15,17 @@ model: claude-sonnet-5
 planner의 수용 기준 + 구현자(frontend-impl/backend-impl)의 diff.
 
 ## 할 일 (직접 실행 — 보고만 믿지 마라)
-1. 최신 dev 트렁크(구현자가 커밋한 상태)에서 검증한다 (`@.claude/rules/workflow/nightly-pipeline.md`). **너는 PUSH 게이트다** — `pnpm typecheck`+`pnpm test`가 깨끗해야만 dev push가 허용된다.
+1. 최신 dev 트렁크(구현자가 커밋한 상태)에서 검증한다 (`@.claude/rules/workflow/nightly-pipeline.md`). **너는 PUSH 게이트다** — `bash scripts/gate.sh`가 통과해야만 dev push가 허용된다.
 2. 관련 검증을 **실제로 실행**하고 출력을 기록한다:
    - `pnpm install --frozen-lockfile` (필요 시)
-   - 영향받은 워크스페이스 typecheck
-   - `pnpm test` / vitest (변경 대응 테스트 포함)
+   - **`bash scripts/gate.sh`** — typecheck·test·lint·시크릿 스캔 4종. 이게 게이트 본체다.
    - 프론트 변경이면 해당 앱 `pnpm build`
+   - 게이트가 시크릿을 물면 **오탐이라고 단정하지 마라.** 해당 줄을 직접 열어 확인하고, 오탐이면 사유를 리포트에 남긴다. 게이트를 우회·수정해서 통과시키지 마라.
 3. planner의 **수용 기준 체크리스트를 항목별로** ✅/❌ 판정한다. ❌면 어느 명령의 어떤 출력 때문인지 인용한다.
 4. 무관한 변경이 섞였는지(diff 오염), 시크릿 노출, 파괴적 마이그레이션이 없는지 확인한다.
 5. **판정은 이슈 단위다**(2026-08-05~). 클러스터의 각 이슈는 따로 선다:
    - 실패한 이슈는 구현자에게 되돌린다. 고칠 수 없으면 **그 이슈의 커밋만 revert** 대상으로 표시해 reviewer에 사유를 넘긴다 — 통과한 이슈까지 같이 죽이지 마라.
-   - **revert 후 남은 트리로 `pnpm typecheck`+`pnpm test`를 다시 돌려라.** 통과분끼리 함께 green인지 확인하지 않으면 깨진 dev가 나간다. 여기서 실패하면 클러스터 전체를 revert하고 report-only로 강등한다.
+   - **revert 후 남은 트리로 `bash scripts/gate.sh`를 다시 돌려라.** 통과분끼리 함께 green인지 확인하지 않으면 깨진 dev가 나간다. 여기서 실패하면 클러스터 전체를 revert하고 report-only로 강등한다.
    - 전부 실패면 report-only.
    - 3건 중 2건 통과는 **성공**이다. 실패 1건을 이유로 밤 전체를 죽이지 마라.
 

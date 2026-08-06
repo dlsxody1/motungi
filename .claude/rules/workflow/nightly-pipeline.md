@@ -10,7 +10,7 @@ dev    ← 밤 작업의 단일 트렁크. 밤은 여기에 직접 커밋·push.
 ```
 1. **밤은 브랜치를 파지 않는다.** `git fetch origin && git checkout -B dev origin/dev`로 최신 dev를 받아 **그 위에 직접 커밋**한다. (옛 `nightly/YYYY-MM-DD` 브랜치 모델은 폐기됨.)
 2. **밤은 PR을 열지 않는다.** 산출물은 `git push origin dev` 그 자체다.
-3. **qa가 PUSH 게이트다.** `pnpm typecheck` + `pnpm test`가 깨끗이 통과해야만 push. 실패 시 코드 revert, report-only 야간 노트만 push하고 STOP. **깨진 커밋은 dev에 못 간다.**
+3. **qa가 PUSH 게이트다.** `bash scripts/gate.sh`가 통과해야만 push (typecheck·test·lint·시크릿 스캔 4종). 실패 시 코드 revert, report-only 야간 노트만 push하고 STOP. **깨진 커밋은 dev에 못 간다.**
 4. **planner는 최신 `origin/dev` 기준.** 어젯밤 산출물이 이미 dev에 있으므로 중복 생성 금지. backlog가 stale할 수 있으니 dev 실코드로 `done_when` 충족 여부 먼저 확인.
 5. **밤은 절대 main에 손대지 않는다.** dev→main 승격은 사람만.
 
@@ -26,6 +26,22 @@ dev    ← 밤 작업의 단일 트렁크. 밤은 여기에 직접 커밋·push.
   4. **audit 모드는 backlog.yml만 편집한다** — 제품 코드는 손대지 않는다. qa 게이트(typecheck·test)는 코드 무변경이라 자동 통과.
   5. report-only 야간 노트(무엇을 감사했고 몇 개 등재했는지)와 backlog.yml 변경을 dev에 push하고 STOP.
 - **사람의 몫은 우선순위 조정뿐.** 등재는 밤이 한다(옛 "밤은 status만 갱신" 규칙은 이 게이트로 대체됨).
+
+## push 게이트 = `scripts/gate.sh` (2026-08-05 추가)
+게이트는 스크립트 하나로 단일화됐다. qa는 이걸 돌리고 **실제 출력을 리포트에 인용**한다.
+```
+bash scripts/gate.sh          # typecheck · test · lint · 시크릿 스캔
+```
+- **lint가 이번에 게이트에 편입됐다.** 스크립트는 있었는데 게이트 밖이라 밤이 린트 깨진 코드를 올릴 수 있었다. (현재 `pnpm lint`는 web만 검사한다 — core·mobile엔 lint 스크립트가 없다. 그 자체가 백로그 감이다.)
+- **시크릿 스캔이 자동화됐다.** `security-policy.md`의 금지 항목(`NEXT_PUBLIC_*`에 시크릿·service_role 노출·JWT/AWS/PEM 리터럴·`.env` 커밋)을 `scripts/scan-secrets.sh`가 diff의 **추가된 줄만** 검사한다. 기존엔 reviewer의 눈이 유일한 검사였다.
+- **커버리지 수치 게이트는 일부러 없다.** 밤이 자율로 도는데 85% 같은 숫자를 걸면 숫자를 채우는 게 목적이 되고 무의미한 테스트가 쌓인다. 커버리지는 필요하면 측정해서 리포트에 적고, 판단은 사람이.
+- 오탐이면 게이트를 끄지 말고 **리포트에 사유를 남기고** 넘어간다.
+
+## 헛도는 밤 감지 — 연속 report-only는 사고다 (2026-08-05 추가)
+2026-07-23~07-30 **8일 연속** report-only로 밤이 헛돌았다(커밋 메시지에 "8일째"까지 스스로 세고 있었다). 밤은 큐가 비었다는 걸 알면서도 아무것도 안 했고, 산출물이 dev 커밋 하나뿐이라 사람이 몰랐다.
+- 야간 노트를 쓰기 전 `ls docs/nightly/` 최근 것들을 확인해 **연속 report-only 횟수**를 센다.
+- **2회 이상 연속이면 리포트 TL;DR 최상단에 경고를 박는다**: `⚠️ N일 연속 report-only — 파이프라인이 헛돌고 있다. 사람 개입 필요.`
+- 3회 이상이면 그 밤은 audit 모드를 **강제 실행**한다(0단계의 todo 개수와 무관하게). 큐가 있는데도 3밤 연속 아무것도 못 냈다면 큐가 아니라 규칙이 막힌 것이다 — 무엇이 막았는지를 리포트에 쓴다.
 
 ## 클러스터 규칙 — 밤은 1이슈가 아니라 **클러스터(1~3개)** 를 친다 (2026-08-05 변경)
 옛 규칙("하룻밤 1이슈")은 폐기됐다. todo 19건이면 19밤이 걸리는 게 병목이었다.
