@@ -72,6 +72,8 @@ export interface Database {
           title: string;
           summary: string;
           description: string | null;
+          genre: string | null;
+          audience: string | null;
           cost_krw: number | null;
           difficulty: number | null;
           adm_code: string | null;
@@ -103,6 +105,8 @@ export interface Database {
           title: string;
           summary: string;
           description?: string | null;
+          genre?: string | null;
+          audience?: string | null;
           cost_krw?: number | null;
           difficulty?: number | null;
           adm_code?: string | null;
@@ -133,6 +137,8 @@ export interface Database {
           title?: string;
           summary?: string;
           description?: string | null;
+          genre?: string | null;
+          audience?: string | null;
           cost_krw?: number | null;
           difficulty?: number | null;
           adm_code?: string | null;
@@ -315,6 +321,9 @@ export function isOpportunityRow(v: unknown): v is OpportunityRow {
     isString(r.title) &&
     isString(r.summary) &&
     (r.description === undefined || isNullableString(r.description)) &&
+    // 0017. 구버전 캐시/부분 select엔 없을 수 있어 undefined를 허용한다.
+    (r.genre === undefined || isNullableString(r.genre)) &&
+    (r.audience === undefined || isNullableString(r.audience)) &&
     isNullableNumber(r.cost_krw) &&
     isNullableNumber(r.difficulty) &&
     isNullableString(r.dong_name) &&

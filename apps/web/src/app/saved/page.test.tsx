@@ -14,8 +14,8 @@ import { toHaveNoViolations } from "vitest-axe/dist/matchers";
 import type { MockOpportunity } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 
-// 기본은 실패하지 않는다 — 기존 테스트는 카탈로그에 이미 항목이 있어 이 조회를 타지 않는다.
-// 에러 상태 테스트에서만 실패 응답을 돌려준다.
+// 보관함 항목은 이제 항상 id 조회로 해소된다(스토어 카탈로그 경유가 사라졌다).
+// 기본은 성공 응답이고, 로딩·에러 테스트에서만 개별로 덮어쓴다.
 const fetchOpportunityById = vi.fn();
 vi.mock("@/data/opportunities", () => ({
   fetchOpportunityById: (id: string) => fetchOpportunityById(id),
@@ -45,17 +45,19 @@ const PICK: MockOpportunity = {
   tone: "brand",
 };
 
-/** 데이터 슬라이스를 통째로 덮어써 이전 테스트 잔여 상태를 제거한다. */
+/**
+ * 데이터 슬라이스를 통째로 덮어써 이전 테스트 잔여 상태를 제거한다.
+ * 저장 항목 본문은 id 조회로 오므로 기본 성공 응답도 함께 깔아둔다.
+ */
 function seed() {
   useAppStore.setState({
     anchors: {},
     answers: null,
     results: [],
-    catalog: [PICK],
-    catalogStatus: "ok",
     savedIds: [PICK.id],
     user: null,
   });
+  fetchOpportunityById.mockResolvedValue({ data: PICK, status: "ok" });
 }
 
 // SavedPage는 MobileScreen(<main>)과 DesktopShell(<main id="main">)을 동시에 렌더한다
@@ -104,7 +106,7 @@ describe("SavedPage 카드 인터랙션 (M-014)", () => {
     render(<SavedPage />);
     const mobile = within(screen.getByTestId("saved-mobile"));
 
-    const toggleButton = mobile.getByRole("button", { name: "저장 취소" });
+    const toggleButton = await mobile.findByRole("button", { name: "저장 취소" });
     await user.click(toggleButton);
 
     expect(useAppStore.getState().savedIds).not.toContain(PICK.id);
@@ -126,18 +128,18 @@ describe("SavedPage 카드 인터랙션 (M-014)", () => {
     render(<SavedPage />);
     const mobile = within(screen.getByTestId("saved-mobile"));
 
-    const detailButton = mobile.getByRole("button", { name: `${PICK.title} 상세 보기` });
+    const detailButton = await mobile.findByRole("button", { name: `${PICK.title} 상세 보기` });
     await user.click(detailButton);
 
     // 정식 경로는 path 형태다(쿼리 파라미터 URL은 SEO상 색인이 안 돼 옮겼다).
     expect(push).toHaveBeenCalledWith(`/opportunity/${PICK.id}`);
   });
 
-  it("토글 버튼은 aria-label '저장 취소'와 aria-pressed='true'를 노출한다", () => {
+  it("토글 버튼은 aria-label '저장 취소'와 aria-pressed='true'를 노출한다", async () => {
     render(<SavedPage />);
     const mobile = within(screen.getByTestId("saved-mobile"));
 
-    const toggleButton = mobile.getByRole("button", { name: "저장 취소" });
+    const toggleButton = await mobile.findByRole("button", { name: "저장 취소" });
     expect(toggleButton).toHaveAttribute("aria-pressed", "true");
   });
 

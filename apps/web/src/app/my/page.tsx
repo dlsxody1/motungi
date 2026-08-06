@@ -3,20 +3,14 @@
 import { displayNameOf, ENERGY_LABEL } from "@motungi/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { BottomNav } from "@/components/bottom-nav";
 import { ChevronRightIcon, LocationIcon, UserIcon } from "@/components/icons";
+import { MyMenuList, type MenuItem } from "@/components/my-menu-list";
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { signInWithKakao, signOut } from "@/lib/auth";
 import { useAppStore } from "@/store/useAppStore";
-
-interface MenuItem {
-  label: string;
-  desc: string;
-  onClick: () => void;
-  soon?: boolean;
-}
 
 /** D1 · 마이 — 반응형 */
 export default function MyPage() {
@@ -39,18 +33,45 @@ export default function MyPage() {
     setBusy(false);
     if (error) setLoginError("로그인에 실패했어요. 잠시 후 다시 시도해 주세요.");
   };
-  const logout = () => {
-    if (window.confirm("로그아웃하면 이 기기에서 계정 연결이 풀려요. 진행할까요?")) void signOut();
-  };
-
-  // soon 항목은 탭해도 아무 일도 일어나지 않게 하고(alert 금지), "출시 예정" 배지로만 안내.
-  const MENU: MenuItem[] = [
-    { label: "내 동네 관리", desc: dongName, onClick: () => router.push("/location") },
-    { label: "알림 설정", desc: "새 활동 · 마감 임박 알림", onClick: () => {}, soon: true },
-    ...(user
-      ? [{ label: "로그아웃", desc: `저장 ${savedCount}개 · 계정 연결됨`, onClick: logout }]
-      : [{ label: "설정", desc: `저장 ${savedCount}개 · 로그인 안 됨`, onClick: () => {}, soon: true }]),
-  ];
+  /**
+   * soon 항목은 탭해도 아무 일도 일어나지 않게 하고(alert 금지), "출시 예정" 배지로만 안내.
+   *
+   * memo된 MyMenuList가 걸리려면 이 배열이 매 렌더 새로 만들어지면 안 된다 —
+   * 로그인 버튼을 눌러 busy가 바뀔 때마다 메뉴가 다시 그려지던 이유가 이것이었다.
+   * router/logout은 참조가 흔들리므로 ref로 고정한다.
+   */
+  const routerRef = useRef(router);
+  routerRef.current = router;
+  const MENU: MenuItem[] = useMemo(
+    () => [
+      {
+        label: "내 동네 관리",
+        desc: dongName,
+        onClick: () => routerRef.current.push("/location"),
+      },
+      { label: "알림 설정", desc: "새 활동 · 마감 임박 알림", onClick: () => {}, soon: true },
+      ...(user
+        ? [
+            {
+              label: "로그아웃",
+              desc: `저장 ${savedCount}개 · 계정 연결됨`,
+              onClick: () => {
+                if (window.confirm("로그아웃하면 이 기기에서 계정 연결이 풀려요. 진행할까요?"))
+                  void signOut();
+              },
+            },
+          ]
+        : [
+            {
+              label: "설정",
+              desc: `저장 ${savedCount}개 · 로그인 안 됨`,
+              onClick: () => {},
+              soon: true,
+            },
+          ]),
+    ],
+    [dongName, user, savedCount],
+  );
 
   const KakaoButton = (
     <div>
@@ -70,33 +91,7 @@ export default function MyPage() {
     </div>
   );
 
-  const MenuList = (
-    <div className="divide-y divide-line-alt rounded-xl bg-surface shadow-card">
-      {MENU.map((m) => (
-        <button
-          key={m.label}
-          onClick={m.onClick}
-          disabled={m.soon}
-          aria-disabled={m.soon}
-          className="flex w-full items-center gap-3 p-4 text-left disabled:cursor-default"
-        >
-          <span className="flex-1">
-            <span className={`block text-[15px] font-semibold ${m.soon ? "text-muted" : "text-ink"}`}>
-              {m.label}
-            </span>
-            <span className="block text-[13px] text-muted">{m.desc}</span>
-          </span>
-          {m.soon ? (
-            <span className="rounded-pill bg-bg px-2.5 py-1 text-[11px] font-semibold text-muted">
-              출시 예정
-            </span>
-          ) : (
-            <ChevronRightIcon size={20} className="text-faint" />
-          )}
-        </button>
-      ))}
-    </div>
-  );
+  const MenuList = <MyMenuList items={MENU} />;
 
   return (
     <>

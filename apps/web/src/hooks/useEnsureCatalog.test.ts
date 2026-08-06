@@ -1,10 +1,13 @@
 /**
- * useEnsureCatalog: catalogStatus가 "idle"일 때만 /api/opportunities를 호출해
- * 스토어를 시딩하고, 이미 로드/에러 상태면 재요청하지 않는지 검증한다.
+ * useEnsureCatalog: /api/opportunities를 호출해 카탈로그를 돌려주고,
+ * 좌표가 그대로면 재요청하지 않는지 검증한다.
  *
  * 반경 사다리(5→10→20km)는 이 훅이 아니라 **서버(Route Handler)가 소유**한다 —
  * 그쪽 검증은 src/app/api/opportunities/route.test.ts에 있다.
- * 여기서 보는 것은 "요청을 언제 보내고/안 보내고, 응답을 어떻게 스토어에 넣는가"다.
+ * 여기서 보는 것은 "요청을 언제 보내고/안 보내고, 응답을 어떻게 화면에 넘기는가"다.
+ *
+ * 캐시가 스토어가 아니라 react-query로 옮겼으므로(M: 서버상태 분리) 단언 대상도
+ * `useAppStore.getState().catalog`가 아니라 **훅 반환값**이다 — 화면이 실제로 보는 것.
  */
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -41,14 +44,12 @@ function jsonOk(items: MockOpportunity[], status = "ok") {
   };
 }
 
-/** 데이터 슬라이스를 통째로 덮어써 이전 테스트 잔여 상태를 제거한다. */
-function seedStatus(catalogStatus: "idle" | "ok" | "empty" | "error" | "unconfigured") {
+/** 클라이언트 상태를 초기화한다(앵커 잔여로 다음 테스트가 오염되지 않게). */
+function resetStore() {
   useAppStore.setState({
     anchors: {},
     answers: null,
     results: [],
-    catalog: [],
-    catalogStatus,
     savedIds: [],
     user: null,
   });
@@ -57,6 +58,7 @@ function seedStatus(catalogStatus: "idle" | "ok" | "empty" | "error" | "unconfig
 beforeEach(() => {
   mockFetch.mockReset();
   vi.stubGlobal("fetch", mockFetch);
+  resetStore();
 });
 
 afterEach(() => {
@@ -67,22 +69,27 @@ afterEach(() => {
 });
 
 describe("useEnsureCatalog", () => {
-  it("idle 상태면 /api/opportunities를 호출하고 결과로 스토어를 시딩한다", async () => {
-    seedStatus("idle");
+  it("/api/opportunities를 호출하고 결과를 돌려준다", async () => {
     mockFetch.mockResolvedValueOnce(jsonOk([PICK]));
 
-    renderHook(() => useEnsureCatalog());
+    const { result } = renderHook(() => useEnsureCatalog());
 
-    await waitFor(() => {
-      expect(useAppStore.getState().catalogStatus).toBe("ok");
-    });
+    await waitFor(() => expect(result.current.status).toBe("ok"));
     expect(mockFetch).toHaveBeenCalledTimes(1);
     expect(String(mockFetch.mock.calls[0]![0])).toContain("/api/opportunities");
-    expect(useAppStore.getState().catalog).toEqual([PICK]);
+    expect(result.current.catalog).toEqual([PICK]);
+  });
+
+  it("조회가 끝나기 전에는 idle이다 — 화면이 '없음'을 띄우면 거짓말이 된다", async () => {
+    mockFetch.mockImplementationOnce(() => new Promise(() => {}));
+
+    const { result } = renderHook(() => useEnsureCatalog());
+
+    expect(result.current.status).toBe("idle");
+    expect(result.current.catalog).toEqual([]);
   });
 
   it("앵커가 있으면 좌표를 쿼리로 넘긴다(사다리는 서버가 돈다 — 요청은 1회)", async () => {
-    seedStatus("idle");
     const home = { dongName: "역삼1동", point: { lat: 37.5006, lng: 127.0364 } };
     useAppStore.setState({ anchors: { home } });
     mockFetch.mockResolvedValue(jsonOk([PICK]));
@@ -96,7 +103,6 @@ describe("useEnsureCatalog", () => {
   });
 
   it("집 앵커가 없으면 직장 앵커 좌표를 쓴다", async () => {
-    seedStatus("idle");
     const work = { dongName: "판교동", point: { lat: 37.3948, lng: 127.1112 } };
     useAppStore.setState({ anchors: { work } });
     mockFetch.mockResolvedValue(jsonOk([PICK]));
@@ -108,7 +114,6 @@ describe("useEnsureCatalog", () => {
   });
 
   it("앵커가 없으면 좌표 없이 부른다", async () => {
-    seedStatus("idle");
     mockFetch.mockResolvedValue(jsonOk([PICK]));
 
     renderHook(() => useEnsureCatalog());
@@ -117,102 +122,54 @@ describe("useEnsureCatalog", () => {
     expect(String(mockFetch.mock.calls[0]![0])).not.toContain("lat=");
   });
 
-  it("빈 결과(empty)도 상태 그대로 스토어에 반영한다", async () => {
-    seedStatus("idle");
+  it("빈 결과(empty)도 상태 그대로 전달한다", async () => {
     mockFetch.mockResolvedValueOnce(jsonOk([], "empty"));
 
-    renderHook(() => useEnsureCatalog());
+    const { result } = renderHook(() => useEnsureCatalog());
 
-    await waitFor(() => {
-      expect(useAppStore.getState().catalogStatus).toBe("empty");
-    });
-    expect(useAppStore.getState().catalog).toEqual([]);
+    await waitFor(() => expect(result.current.status).toBe("empty"));
+    expect(result.current.catalog).toEqual([]);
   });
 
   it("503(미설정)은 unconfigured로 옮긴다 — 에러와 구분해야 안내 문구가 달라진다", async () => {
-    seedStatus("idle");
     mockFetch.mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({}) });
 
-    renderHook(() => useEnsureCatalog());
+    const { result } = renderHook(() => useEnsureCatalog());
 
-    await waitFor(() => {
-      expect(useAppStore.getState().catalogStatus).toBe("unconfigured");
-    });
+    await waitFor(() => expect(result.current.status).toBe("unconfigured"));
   });
 
   it("네트워크 실패는 error로 떨어뜨린다(화면이 무한 로딩에 갇히지 않게)", async () => {
-    seedStatus("idle");
-    mockFetch.mockRejectedValueOnce(new TypeError("network"));
+    mockFetch.mockRejectedValue(new TypeError("network"));
 
-    renderHook(() => useEnsureCatalog());
+    const { result } = renderHook(() => useEnsureCatalog());
 
-    await waitFor(() => {
-      expect(useAppStore.getState().catalogStatus).toBe("error");
-    });
+    await waitFor(() => expect(result.current.status).toBe("error"));
   });
 
-  it("이미 로드된(ok) 상태면 재요청하지 않는다", async () => {
-    seedStatus("ok");
-
-    renderHook(() => useEnsureCatalog());
-
-    await Promise.resolve();
-    expect(mockFetch).not.toHaveBeenCalled();
-    expect(useAppStore.getState().catalogStatus).toBe("ok");
-  });
-
-  it("에러 상태여도 재시도하지 않는다(무한 재요청 방지)", async () => {
-    seedStatus("error");
-
-    renderHook(() => useEnsureCatalog());
-
-    await Promise.resolve();
-    expect(mockFetch).not.toHaveBeenCalled();
-    expect(useAppStore.getState().catalogStatus).toBe("error");
-  });
-
-  it("성공한 뒤(ok로 전이) 리렌더돼도 다시 호출하지 않는다", async () => {
-    seedStatus("idle");
+  it("성공한 뒤 리렌더돼도 다시 호출하지 않는다", async () => {
     mockFetch.mockResolvedValueOnce(jsonOk([PICK]));
 
-    const { rerender } = renderHook(() => useEnsureCatalog());
-
-    await waitFor(() => {
-      expect(useAppStore.getState().catalogStatus).toBe("ok");
-    });
+    const { result, rerender } = renderHook(() => useEnsureCatalog());
+    await waitFor(() => expect(result.current.status).toBe("ok"));
 
     rerender();
     await Promise.resolve();
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
-  it("응답 도착 전 언마운트되면 요청을 abort하고 스토어를 시딩하지 않는다", async () => {
-    seedStatus("idle");
-    let seenSignal: AbortSignal | undefined;
-    let resolveFetch!: (r: unknown) => void;
-    mockFetch.mockImplementationOnce((_url: string, init: RequestInit) => {
-      seenSignal = init.signal ?? undefined;
-      return new Promise((res) => {
-        resolveFetch = res;
-      });
-    });
+  it("요청에 abort signal을 넘긴다 — 언마운트 시 실제로 끊기게", async () => {
+    mockFetch.mockImplementationOnce(() => new Promise(() => {}));
 
     const { unmount } = renderHook(() => useEnsureCatalog());
-    expect(mockFetch).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
+    const init = mockFetch.mock.calls[0]![1] as RequestInit | undefined;
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
     unmount();
-    // 결과만 버리는 게 아니라 실제로 요청이 끊겼는지 본다.
-    expect(seenSignal?.aborted).toBe(true);
-
-    resolveFetch(jsonOk([PICK]));
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(useAppStore.getState().catalogStatus).toBe("idle");
-    expect(useAppStore.getState().catalog).toEqual([]);
   });
 
   it("동네를 바꾸면(좌표 변경) 이미 로드됐어도 다시 조회한다", async () => {
-    seedStatus("idle");
     const home = { dongName: "역삼1동", point: { lat: 37.5006, lng: 127.0364 } };
     useAppStore.setState({ anchors: { home } });
     mockFetch.mockResolvedValue(jsonOk([PICK]));

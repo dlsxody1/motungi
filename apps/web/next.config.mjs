@@ -28,6 +28,11 @@ const nextConfig = {
     // 랜딩 플레이스홀더는 우리가 만든 신뢰된 SVG(public/landing/). 실사진 교체 시에도 동일 슬롯 사용.
     // CSP로 인라인 스크립트/외부 리소스 차단(우리 자산엔 스크립트 없음).
     dangerouslyAllowSVG: true,
+    // 공공데이터 원본(culture.seoul/culture.go.kr)은 느리고 http도 섞여 있다. 원본 응답에
+    // Cache-Control이 없으면 next/image는 기본 60초만 캐시해 사실상 매번 원본을 다시 당긴다
+    // → 히어로 3D 링의 포스터 12장이 그때마다 처음부터 느려진다. 포스터는 사실상 불변이므로
+    // 최적화 결과를 30일 붙잡아 둔다(첫 방문자만 원본 대기를 치른다).
+    minimumCacheTTL: 60 * 60 * 24 * 30,
     contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     // 실 활동 썸네일 원본 호스트(공공데이터). next/image가 서버에서 프록시·최적화(AVIF/WebP)하므로

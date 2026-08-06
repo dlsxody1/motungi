@@ -16,6 +16,10 @@ export interface OpportunityRow {
   summary: string;
   /** 설명 원문(0015). 소스별 채움률이 달라 null이 정상. */
   description?: string | null;
+  /** 장르 원문(0017). 재적재 전 행은 null. */
+  genre?: string | null;
+  /** 관람 대상 원문(0017). 재적재 전엔 전 행 null이 정상. */
+  audience?: string | null;
   cost_krw: number | null;
   difficulty: number | null;
   dong_name: string | null;
@@ -63,6 +67,8 @@ export function rowToOpportunity(r: OpportunityRow): Opportunity {
     summary: decodeHtmlEntities(r.summary),
     // 공공데이터 이중 이스케이프는 설명 원문에도 그대로 온다 — 같은 디코드를 태운다.
     description: r.description ? decodeHtmlEntities(r.description) : undefined,
+    genre: r.genre ?? undefined,
+    audience: r.audience ?? undefined,
     costKrw: r.cost_krw ?? undefined,
     difficulty: r.difficulty ?? undefined,
     location: {

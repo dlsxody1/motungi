@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useCallback, useRef } from "react";
 import { BottomNav } from "@/components/bottom-nav";
 import { ErrorState } from "@/components/error-state";
 import {
@@ -11,6 +12,7 @@ import {
   RefreshIcon,
   ShareIcon,
 } from "@/components/icons";
+import { ReportRelatedCard } from "@/components/report-related-card";
 import { Thumbnail } from "@/components/thumbnail";
 import { MobileScreen, SafeBottom, SafeTop, Skeleton, Tag } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
@@ -32,19 +34,27 @@ function formatDeadline(iso: string): string | null {
 /** A5 · 동네 리포트 (원픽 히어로) — 반응형 */
 export default function ReportPage() {
   // 정상 경로에선 results가 이미 차 있어 조회 없음. 직접 진입 시에만 6건 fallback.
-  useReportFallback();
+  const { items: fallbackItems, status: catalogStatus } = useReportFallback();
   const router = useRouter();
   const results = useAppStore((s) => s.results);
-  const catalog = useAppStore((s) => s.catalog);
-  const catalogStatus = useAppStore((s) => s.catalogStatus);
   const answers = useAppStore((s) => s.answers);
   const user = useAppStore((s) => s.user);
   const savedIds = useAppStore((s) => s.savedIds);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
 
-  // 스코어링 결과 우선, 없으면 카탈로그 상위 6개(진단 전 직접 진입). 원픽1 + 함께 최대5.
-  const list = results.length > 0 ? results : catalog.slice(0, 6);
+  /**
+   * memo된 카드가 실제로 걸리려면 이 콜백이 영원히 같은 참조여야 한다.
+   * `useCallback([router])`로 두면 useRouter()가 새 객체를 주는 순간 콜백이 새로
+   * 만들어지고, 그 하나 때문에 관련 카드 전체의 memo가 무너진다(explore에서 실측).
+   * 훅이므로 아래 early return보다 위에 있어야 한다.
+   */
+  const routerRef = useRef(router);
+  routerRef.current = router;
+  const openDetail = useCallback((id: string) => routerRef.current.push(`/opportunity/${id}`), []);
+
+  // 스코어링 결과 우선, 없으면 fallback 6건(진단 전 직접 진입). 원픽1 + 함께 최대5.
+  const list = results.length > 0 ? results : fallbackItems;
   const onePick = list[0];
 
   // 데이터가 없으면 원픽을 그릴 수 없다. 다만 "아직 안 불러옴"과 "없음"은 다른 사실이다 —
@@ -67,7 +77,6 @@ export default function ReportPage() {
   const onePickSaved = savedIds.includes(onePick.id);
   const deadlineLabel = onePick.deadline ? formatDeadline(onePick.deadline) : null;
 
-  const openDetail = (id: string) => router.push(`/opportunity/${id}`);
   const onShare = () => {
     void shareContent({
       title: onePick.title,
@@ -175,30 +184,7 @@ export default function ReportPage() {
               )}
               <div className="divide-y divide-line-alt">
                 {related.map((o) => (
-                  <button
-                    key={o.id}
-                    onClick={() => openDetail(o.id)}
-                    className="flex w-full items-start gap-3 py-4 text-left"
-                  >
-                    <Thumbnail
-                      src={o.imageUrl}
-                      tone={o.tone === "mint" ? "mint" : "purple"}
-                      sizeClass="size-16"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-[12px] font-bold ${o.tone === "mint" ? "text-mint" : "text-primary"}`}>
-                        {o.categoryLabel}
-                      </p>
-                      <p className="mt-1 text-[16px] font-bold text-ink">{o.title}</p>
-                      <p className="mt-0.5 text-[13px] text-muted">{o.summary}</p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className={`text-[16px] font-extrabold ${o.tone === "mint" ? "text-mint" : "text-primary"}`}>
-                        {o.costLabel}
-                      </p>
-                      <p className="text-[12px] text-muted">자세히 →</p>
-                    </div>
-                  </button>
+                  <ReportRelatedCard key={o.id} o={o} onOpen={openDetail} variant="mobile" />
                 ))}
               </div>
 
@@ -337,26 +323,7 @@ export default function ReportPage() {
               </div>
               <div className="space-y-3">
                 {related.map((o) => (
-                  <button
-                    key={o.id}
-                    onClick={() => openDetail(o.id)}
-                    className="wcard-hover flex w-full items-center gap-4 rounded-[18px] bg-surface p-5 text-left shadow-web"
-                  >
-                    <Thumbnail src={o.imageUrl} tone={o.tone === "mint" ? "mint" : "purple"} sizeClass="size-14" />
-                    <div className="flex-1">
-                      <p className={`text-[12px] font-bold ${o.tone === "mint" ? "text-mint" : "text-purple"}`}>
-                        {o.categoryLabel}
-                      </p>
-                      <p className="mt-0.5 text-[16px] font-bold text-ink">{o.title}</p>
-                      <p className="mt-0.5 text-[13px] text-muted">{o.summary}</p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className={`text-[17px] font-extrabold ${o.tone === "mint" ? "text-mint" : "text-purple"}`}>
-                        {o.costLabel}
-                      </p>
-                      <p className="text-[12px] text-muted">자세히 →</p>
-                    </div>
-                  </button>
+                  <ReportRelatedCard key={o.id} o={o} onOpen={openDetail} variant="desktop" />
                 ))}
               </div>
             </div>

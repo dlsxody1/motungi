@@ -79,6 +79,17 @@ export interface Opportunity {
    * (실측: trail 100%, seoul_culture 약 20%, culture_info 0%). 마이그레이션 0015.
    */
   description?: string;
+  /**
+   * 원본 장르 문자열(0017). seoul_culture=CODENAME("교육/체험"·"전시/미술"·"콘서트"…),
+   * culture_info=realmName. 소스별 어휘가 달라 통합 enum을 두지 않고 원문을 보존한다.
+   */
+  genre?: string;
+  /**
+   * 관람/참여 대상 원문(0017). seoul_culture=USE_TRGT.
+   * **null/undefined는 "미상"이며 성인 가능으로 취급**한다 — 모르는 걸 배제하지 않는다.
+   * 아동 전용 판정은 adapters/audience.ts의 isKidsOnly가 SoT.
+   */
+  audience?: string;
   /** 참가/이용 비용(원). 0 = 무료. side_job이면 반대로 벌이(income) 성격 — 표시 시 costHeading으로 "예상 수입" 구분. */
   costKrw?: number;
   /** 시작 난이도 0(쉬움)~1(어려움) */

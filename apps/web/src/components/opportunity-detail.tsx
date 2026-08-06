@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useCallback, useRef } from "react";
 import {
   BookmarkIcon,
   ChevronLeftIcon,
@@ -63,11 +64,23 @@ export function OpportunityDetail({
   // 걷기길이면 코스 경로를 받아 지도에 선으로 그린다(그 외 소스는 요청하지 않음).
   const routePoints = useTrailRoute(id, o?.source === "trail");
 
-  const savedIds = useAppStore((s) => s.savedIds);
+  // savedIds 전체가 아니라 **이 활동의 저장 여부(boolean)** 만 본다.
+  // 배열을 구독하면 다른 활동을 저장/취소해도 새 배열이라 이 페이지가 다시 렌더된다.
+  const saved = useAppStore((s) => (o ? s.savedIds.includes(o.id) : false));
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const answers = useAppStore((s) => s.answers);
   const user = useAppStore((s) => s.user);
   const homeDong = useAppStore((s) => s.anchors.home?.dongName);
+
+  // memo된 자식(지도·코스안내)이 걸리려면 콜백이 매 렌더 새로 만들어지면 안 된다.
+  const toggleRef = useRef(toggleSaved);
+  toggleRef.current = toggleSaved;
+  const idRef = useRef<string | undefined>(o?.id);
+  idRef.current = o?.id;
+  const onToggleSaved = useCallback(() => {
+    const id = idRef.current;
+    if (id) toggleRef.current(id);
+  }, []);
 
   if (!o) {
     // 아직 불러오는 중(idle/loading)이면 "없음"이 아니라 로딩 스피너.
@@ -99,8 +112,6 @@ export function OpportunityDetail({
       </>
     );
   }
-
-  const saved = savedIds.includes(o.id);
 
   const displayName = displayNameOf(user);
   const why = whyReasons(o, answers);
@@ -254,7 +265,7 @@ export function OpportunityDetail({
 
             <div className="flex shrink-0 items-center gap-3 px-5 pb-2 pt-2">
               <button
-                onClick={() => toggleSaved(o.id)}
+                onClick={onToggleSaved}
                 aria-label={saved ? "저장 취소" : "저장하기"}
                 aria-pressed={saved}
                 className={`tap-safe grid size-[52px] shrink-0 place-items-center rounded-xl border bg-surface ${
@@ -449,7 +460,7 @@ export function OpportunityDetail({
                   )}
                   <div className="mt-2.5 flex gap-2.5">
                     <button
-                      onClick={() => toggleSaved(o.id)}
+                      onClick={onToggleSaved}
                       aria-pressed={saved}
                       className={`flex h-[46px] flex-1 items-center justify-center gap-1.5 rounded-xl border bg-surface text-[14px] font-semibold hover:border-faint ${
                         saved ? "border-primary text-primary" : "border-line text-label"

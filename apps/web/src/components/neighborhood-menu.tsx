@@ -4,7 +4,7 @@ import { POPULAR_NEIGHBORHOODS } from "@motungi/core";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { CheckIcon, ChevronDownIcon, LocationIcon, SearchIcon } from "@/components/icons";
-import { type NeighborhoodSearchResult, searchNeighborhoods } from "@/lib/geo";
+import { MIN_QUERY_LEN, useNeighborhoodSearch } from "@/hooks/useNeighborhoodSearch";
 import { useAppStore } from "@/store/useAppStore";
 
 /**
@@ -18,9 +18,6 @@ import { useAppStore } from "@/store/useAppStore";
  * 예전에는 둘을 구분하지 않고 무조건 /location으로 보내, 동네만 바꾸려던 사람까지
  * 온보딩 플로우로 튕겨나갔다.
  */
-
-/** 검색어 최소 길이 — 한 음절(조합 중)로는 검색하지 않아 요청을 줄인다. (location 페이지와 동일 규율) */
-const MIN_QUERY_LEN = 2;
 
 /** core Anchor와 같은 모양 — admCode·region은 인기 동네 목록에서 비어 있을 수 있어 옵셔널. */
 type Pick = {
@@ -44,45 +41,13 @@ export function NeighborhoodMenu({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<"list" | "search">("list");
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<NeighborhoodSearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  // IME(한글) 조합 중에는 요청을 보류 — 자모 단위 onChange로 요청이 쏟아지는 걸 막는다.
-  const composingRef = useRef(false);
-
-  // 검색어 디바운스(300ms) + 이전 요청 취소. 2글자 미만이면 조회하지 않는다.
-  useEffect(() => {
-    const q = query.trim();
-    if (mode !== "search" || q.length < MIN_QUERY_LEN) {
-      setResults([]);
-      setSearching(false);
-      return;
-    }
-    setSearching(true);
-    const ctrl = new AbortController();
-    const t = setTimeout(async () => {
-      // 아직 조합 중이면(마지막 글자 미확정) 이번 틱은 건너뛴다 — 다음 확정 입력이 다시 트리거.
-      if (composingRef.current) {
-        setSearching(false);
-        return;
-      }
-      const items = await searchNeighborhoods(q, ctrl.signal);
-      if (!ctrl.signal.aborted) {
-        setResults(items);
-        setSearching(false);
-      }
-    }, 300);
-    return () => {
-      ctrl.abort();
-      clearTimeout(t);
-    };
-  }, [query, mode]);
+  // 디바운스·IME 보류·요청 취소는 훅이 소유한다(location 페이지와 같은 구현을 공유).
+  const search = useNeighborhoodSearch(mode === "search");
+  const { query, results, searching } = search;
 
   const reset = () => {
     setMode("list");
-    setQuery("");
-    setResults([]);
-    setSearching(false);
+    search.reset();
   };
 
   const close = () => dialogRef.current?.close();
@@ -202,16 +167,9 @@ export function NeighborhoodMenu({
                 ref={inputRef}
                 type="search"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onCompositionStart={() => {
-                  composingRef.current = true;
-                }}
-                onCompositionEnd={(e) => {
-                  composingRef.current = false;
-                  // 조합 확정 값으로 한 번 더 트리거(조합 중 마지막 onChange와 값이 같으면
-                  // effect가 다시 돌지 않아 검색이 한 박자 밀린다).
-                  setQuery(e.currentTarget.value);
-                }}
+                onChange={(e) => search.setQuery(e.target.value)}
+                onCompositionStart={search.onCompositionStart}
+                onCompositionEnd={search.onCompositionEnd}
                 placeholder="동·구 이름으로 검색"
                 aria-label="동네 검색"
                 className="w-full bg-transparent text-[14px] text-ink outline-none placeholder:text-faint"

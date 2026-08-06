@@ -21,7 +21,8 @@
 - web은 `@motungi/core`·`@motungi/tokens`를 `transpilePackages`로 **소스 공유**(빌드 산출물 아님).
 
 ## 불변 규칙
-- FSD 아키텍처 경계(entities/features/widgets/shared)를 지킨다. import 방향을 거스르지 마라.
+- **파일 구조는 기술 종류별 평면 배치다** — `app/` · `components/`(평면, kebab-case) · `hooks/` · `lib/` · `data/` · `store/`. web·mobile 모두 이 구조이며, **FSD(entities/features/widgets/shared) 디렉토리는 실재하지 않는다**(옛 룰의 잔재였다). 도메인 묶음은 파일명 접두사(`explore-*`·`report-*`)로 한다. 새 계층 디렉토리를 임의로 만들지 마라.
+- 상태는 **그것을 쓰는 컴포넌트가 소유**한다. page/widget에 몰아넣지 않는다 — 자세히는 `@.claude/rules/languages/react-web.md`의 "렌더 격리".
 - 시크릿·환경변수는 `@.claude/rules/core/security-policy.md`를 따른다 (예외 없음).
 - 야간 작업은 `@.claude/rules/workflow/nightly-pipeline.md`를 따른다.
 - 도메인에 맞는 스킬은 `@.claude/rules/workflow/skill-routing.md`에서 고른다.

@@ -28,6 +28,8 @@ import * as THREE from "three";
 
 /** 링에 세울 포스터 최대 장수. 늘리면 텍스처 다운로드가 그만큼 늘어난다. */
 const MAX_CARDS = 12;
+/** 첫 화면에서 실제로 보이는(정면 근처) 장수 — 이만큼만 즉시 받고 나머지는 유휴 시간에. */
+const EAGER_CARDS = 4;
 /** 링 반지름(월드 단위). 카드 폭 대비 충분히 커야 서로 안 겹친다.
  *  12장 기준 이웃 간격(2π·R/12)이 카드 폭보다 커야 앞뒤가 뭉치지 않는다. */
 const RADIUS = 4.6;
@@ -47,9 +49,11 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 
 export type PosterRingItem = { id: string; title: string; imageUrl: string };
 
-/** 원본 이미지를 same-origin next/image 프록시 URL로 바꾼다(CORS + 최적화 동시 해결). */
-function proxied(url: string, width = 384) {
-  return `/_next/image?url=${encodeURIComponent(url)}&w=${width}&q=70`;
+/** 원본 이미지를 same-origin next/image 프록시 URL로 바꾼다(CORS + 최적화 동시 해결).
+ *  링에서 카드는 화면의 1/3도 안 차지한다 — 256이면 충분하고, 384 대비 원본 fetch·인코딩이
+ *  절반 이하다(느린 공공데이터 원본이 병목이라 장수당 대기가 그대로 줄어든다). */
+function proxied(url: string, width = 256) {
+  return `/_next/image?url=${encodeURIComponent(url)}&w=${width}&q=60`;
 }
 
 /** 텍스처가 도착하기 전에 깔아둘 브랜드 톤 단색 — 링이 검게 비어 보이지 않게. */
@@ -172,6 +176,8 @@ export function PosterRing({
     /** 각 카드의 메시 + 원본 각도 + 현재 확대 진행도(0~1). */
     type Card = { mesh: THREE.Mesh; angle: number; item: PosterRingItem; grow: number };
     const built: Card[] = [];
+    /** 뒤쪽 카드의 텍스처 로드 — 앞 카드가 끝난 뒤 유휴 시간에 실행한다. */
+    const deferred: (() => void)[] = [];
 
     cards.forEach((item, i) => {
       const angle = (i / cards.length) * Math.PI * 2;
@@ -189,21 +195,36 @@ export function PosterRing({
       ring.add(mesh);
       built.push({ mesh, angle, item, grow: 0 });
 
-      loader.load(
-        proxied(item.imageUrl),
-        (texture) => {
-          // three r152+ 기본은 Linear — 포스터가 물 빠져 보인다. sRGB로 명시.
-          texture.colorSpace = THREE.SRGBColorSpace;
-          texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-          material.map = texture;
-          material.color.set("#ffffff");
-          material.needsUpdate = true;
-          disposables.push(texture);
-        },
-        undefined,
-        // 개별 포스터 404는 치명적이지 않다 — 그 카드만 톤 단색으로 남는다.
-        () => {},
-      );
+      const load = () =>
+        loader.load(
+          proxied(item.imageUrl),
+          (texture) => {
+            // three r152+ 기본은 Linear — 포스터가 물 빠져 보인다. sRGB로 명시.
+            texture.colorSpace = THREE.SRGBColorSpace;
+            texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            material.map = texture;
+            material.color.set("#ffffff");
+            material.needsUpdate = true;
+            disposables.push(texture);
+          },
+          undefined,
+          // 개별 포스터 404는 치명적이지 않다 — 그 카드만 톤 단색으로 남는다.
+          () => {},
+        );
+
+      // 앞쪽 4장(정면 근처)만 즉시, 나머지는 그 뒤에 받는다.
+      // 12장을 한꺼번에 요청하면 브라우저 커넥션 6개를 두고 경쟁해 "보이는 카드"가
+      // 뒤쪽 카드 뒤에 줄 서 있게 된다 — 체감 대기가 그대로 늘어난다.
+      // 링은 어차피 천천히 돌아 뒤 카드는 몇 초 뒤에나 정면에 온다.
+      if (i < EAGER_CARDS) load();
+      else deferred.push(load);
+    });
+
+    // 앞 카드가 다 뜬 뒤(또는 브라우저가 한가할 때) 나머지를 채운다.
+    const idle: (cb: () => void) => number =
+      window.requestIdleCallback ?? ((cb) => window.setTimeout(cb, 600));
+    const idleId = idle(() => {
+      for (const load of deferred) load();
     });
 
     // ── 상호작용 상태 ──
@@ -535,6 +556,7 @@ export function PosterRing({
 
     return () => {
       stop();
+      (window.cancelIdleCallback ?? window.clearTimeout)(idleId);
       io.disconnect();
       resize.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);

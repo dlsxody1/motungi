@@ -5,6 +5,7 @@
  * 축(뼈대): fit(관심사↔카테고리) · distance(2앵커 min) · time(퇴근후 겹침) · difficulty · cost.
  * v0: 규칙 가중합. 실데이터 연동 후 재보정 전제.
  */
+import { isKidsOnly } from "./adapters/audience";
 import type { DiagnosisAnswers, Energy, TimeSlot } from "./diagnosis";
 import type { Location, Opportunity, TimeWindow, UserAnchors } from "./types";
 
@@ -33,12 +34,17 @@ const ENERGY_DIFFICULTY_TOLERANCE: Record<Energy, number> = {
 /**
  * timeSlot별 선호 시간창. time 축 겹침 판정 기준.
  * - weekday_evening: 퇴근 후 코어(18~22시)
- * - weekend: 주간~저녁 종일 창(10~22시)
+ * - weekend: 늦은 오전~저녁 창(12~22시)
  * - flexible: 시간 선호 없음(null) → time 축 중립(0.5)
+ *
+ * weekend가 10시가 아니라 12시부터인 이유: 10~12시는 어린이 프로그램 피크 구간이다
+ * (실측 — 10시 시작이 주간 최대 버킷이고 교육/체험에 쏠려 있다). 주말을 고른 성인이
+ * 토요일 오전 10시 독서교실을 원한 게 아니다. 14시엔 정상적인 성인 마티네 공급이
+ * 충분해 더 좁히지는 않는다.
  */
 const TIMESLOT_WINDOW: Record<TimeSlot, TimeWindow | null> = {
   weekday_evening: { startHour: 18, endHour: 22 },
-  weekend: { startHour: 10, endHour: 22 },
+  weekend: { startHour: 12, endHour: 22 },
   flexible: null,
 };
 
@@ -81,6 +87,21 @@ function clamp01(n: number): number {
 /** 두 시간대 겹침(시간). 겹치지 않으면 0. */
 function overlapHours(a: TimeWindow, b: TimeWindow): number {
   return Math.max(0, Math.min(a.endHour, b.endHour) - Math.max(a.startHour, b.startHour));
+}
+
+/**
+ * 아동 전용 활동 배제 — 유일한 하드 필터다.
+ *
+ * 감점으로는 못 막는다. culture는 cost·difficulty가 전부 null이라 세 축이 0.5로 붕괴하고,
+ * 사전 카테고리 필터 때문에 fit도 1.0 상수다. 남은 노이즈만으로 정렬되는 상태에서
+ * 감점 몇 점은 어린이 프로그램을 원픽 자리에서 밀어내지 못한다.
+ *
+ * **culture에만 적용한다.** side_job의 "○○어린이집 · 보육 교사"는 성인이 지원하는
+ * 정상 후보다(실측: 제목에 아동 토큰을 가진 49건 중 26건이 어린이집 구인).
+ */
+function isExcludedByAudience(opp: Opportunity): boolean {
+  if (opp.category !== "culture") return false;
+  return isKidsOnly(opp.audience, opp.title);
 }
 
 /** 개별 활동 점수(0~1) 계산. */
@@ -142,6 +163,7 @@ export function scoreAll<T extends Opportunity>(
   weights: ScoreWeights = DEFAULT_WEIGHTS,
 ): (ScoredOpportunity & { opportunity: T })[] {
   return candidates
+    .filter((c) => !isExcludedByAudience(c))
     .map((c) => ({ ...scoreOpportunity(c, answers, anchors, weights), opportunity: c }))
     .sort((a, b) => b.score - a.score);
 }

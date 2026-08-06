@@ -100,9 +100,17 @@ export interface CatalogResult {
   status: CatalogStatus;
 }
 
-/** fetchOpportunities 조회 컬럼(전량 select 아님 — 화면이 바인딩하는 필드만). */
+/**
+ * fetchOpportunities 조회 컬럼(전량 select 아님 — 화면이 바인딩하는 필드만).
+ *
+ * ⚠️ 이 목록에 컬럼을 추가하려면 **마이그레이션이 운영 DB에 먼저 적용돼 있어야 한다.**
+ * 없는 컬럼을 요청하면 PostgREST가 `column ... does not exist`로 조회 **전체**를
+ * 실패시킨다 — 한 컬럼 때문에 랜딩 히어로·탐색·리포트·보관함이 통째로 빈다(실측).
+ * 코드가 스키마보다 먼저 나가면 안 된다.
+ * (`genre`·`audience`는 0017 적용 완료 후 여기 들어왔다.)
+ */
 const CATALOG_COLUMNS =
-  "id,source,category,external_id,title,summary,cost_krw,difficulty,dong_name,lat,lng,cta_url,image_url,deadline,source_label,time_start_hour,time_end_hour,course_start,course_end,course_notes,duration_min,is_loop";
+  "id,source,category,external_id,title,summary,genre,audience,cost_krw,difficulty,dong_name,lat,lng,cta_url,image_url,deadline,source_label,time_start_hour,time_end_hour,course_start,course_end,course_notes,duration_min,is_loop";
 
 /**
  * 단건 조회 컬럼 = 목록 컬럼 + `description`(설명 원문).
@@ -207,7 +215,10 @@ export async function fetchOpportunities(
   // DB의 category/source enum에는 앱이 모르는 레거시 값이 남아있을 수 있고, 스키마 드리프트로
   // 나머지 필드도 기대와 어긋날 수 있다(§database.types.ts) — row 전체를 구조적으로 검증된
   // row만 남기고 캐스팅 없이 OpportunityRow로 좁힌다(M-011, 전체 필드 검증은 M-027).
-  const rows: OpportunityRow[] = data.filter(isOpportunityRow);
+  // `data`의 원소 타입은 이미 구체적(source: SourceKindDb)이라 filter가 타입가드 오버로드
+  // 대신 좁히기 오버로드를 골라 SourceKindDb → SourceKind로 안 좁혀진다. unknown[]로 넘겨
+  // 가드가 실제로 판정하게 한다 — 캐스팅이 아니라 런타임 검증은 그대로 돈다.
+  const rows: OpportunityRow[] = (data as unknown[]).filter(isOpportunityRow);
   // 원본 조회는 1건 이상이었지만 전부 레거시 값이라 필터링되면 "empty"로 취급한다 —
   // status==="ok"는 항상 1건 이상 렌더 가능한 데이터를 의미하는 계약(위 CatalogStatus 주석)을 지킨다.
   if (rows.length === 0) return { data: [], status: "empty" };

@@ -23,7 +23,8 @@ import {
   type NeighborhoodPick,
   POPULAR_NEIGHBORHOODS,
 } from "@/data/opportunities";
-import { reverseGeocode, searchNeighborhoods } from "@/lib/geo";
+import { useNeighborhoodSearch } from "@/hooks/useNeighborhoodSearch";
+import { reverseGeocode } from "@/lib/geo";
 import { useAppStore } from "@/store/useAppStore";
 
 /** 검색 결과 → 선택 객체. 좌표를 그대로 실어 앵커에 주입 가능하게. */
@@ -37,9 +38,6 @@ type SearchItem = {
 
 /** 선택이 어디서 왔는지 — 배너·위치카드가 출처를 눈으로 알려주기 위한 태그. */
 type PickSource = "default" | "current" | "search" | "popular";
-
-/** 검색어 최소 길이 — 한 음절(조합 중)로는 검색하지 않아 요청을 줄인다. */
-const MIN_QUERY_LEN = 2;
 
 function itemToPick(it: SearchItem): NeighborhoodPick {
   return {
@@ -56,55 +54,22 @@ export default function LocationPage() {
   const setAnchor = useAppStore((s) => s.setAnchor);
   const [selected, setSelected] = useState<NeighborhoodPick>(DEFAULT_NEIGHBORHOOD);
   const [source, setSource] = useState<PickSource>("default");
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchItem[]>([]);
-  const [searching, setSearching] = useState(false);
+  // 디바운스·IME 보류·요청 취소는 훅이 소유한다(NeighborhoodMenu와 같은 구현을 공유).
+  const search = useNeighborhoodSearch();
+  const { query, results, searching, showDropdown } = search;
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
-  // IME(한글) 조합 중에는 요청을 보류 — 자모 단위 onChange로 요청이 쏟아지는 걸 막는다.
-  const composingRef = useRef(false);
   const primeRef = useRef<HTMLDialogElement>(null);
   const GEO_FAIL = "위치를 가져오지 못했어요. 아래에서 동네를 직접 골라주세요.";
   // 거부는 페이지에서 되돌릴 수 없다 — "다시 시도"가 아니라 어디서 바꾸는지를 알려준다.
   const GEO_DENIED =
     "위치 권한이 꺼져 있어요. 주소창 왼쪽 자물쇠·위치 아이콘에서 허용으로 바꾸거나, 아래에서 동네를 직접 골라주세요.";
 
-  // 검색어 디바운스(300ms) + 이전 요청 취소. 2글자 미만이면 조회하지 않는다.
-  useEffect(() => {
-    const q = query.trim();
-    if (q.length < MIN_QUERY_LEN) {
-      setResults([]);
-      setSearching(false);
-      return;
-    }
-    setSearching(true);
-    const ctrl = new AbortController();
-    const t = setTimeout(async () => {
-      // 아직 조합 중이면(마지막 글자 미확정) 이번 틱은 건너뛴다 — 다음 확정 입력이 다시 트리거.
-      if (composingRef.current) {
-        setSearching(false);
-        return;
-      }
-      const items = await searchNeighborhoods(q, ctrl.signal);
-      if (!ctrl.signal.aborted) {
-        setResults(items);
-        setSearching(false);
-      }
-    }, 300);
-    return () => {
-      ctrl.abort();
-      clearTimeout(t);
-    };
-  }, [query]);
-
-  const showDropdown = query.trim().length >= MIN_QUERY_LEN;
-
   const choose = (pick: NeighborhoodPick, from: PickSource) => {
     setSelected(pick);
     setSource(from);
     setGeoError(null);
-    setQuery("");
-    setResults([]);
+    search.reset();
   };
 
   const start = () => {
@@ -169,8 +134,7 @@ export default function LocationPage() {
         });
         setSource("current");
         setLocating(false);
-        setQuery("");
-        setResults([]);
+        search.reset();
       },
       (err) => {
         setLocating(false);
@@ -302,12 +266,9 @@ export default function LocationPage() {
                 <SearchIcon size={20} className="text-faint" />
                 <input
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onCompositionStart={() => (composingRef.current = true)}
-                  onCompositionEnd={(e) => {
-                    composingRef.current = false;
-                    setQuery(e.currentTarget.value);
-                  }}
+                  onChange={(e) => search.setQuery(e.target.value)}
+                  onCompositionStart={search.onCompositionStart}
+                  onCompositionEnd={search.onCompositionEnd}
                   aria-label="동네 또는 구 검색"
                   className="flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-muted"
                   placeholder="동네 또는 구 검색 (예: 역삼동, 강남구)"
@@ -385,12 +346,9 @@ export default function LocationPage() {
               <SearchIcon size={20} className="text-faint" />
               <input
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onCompositionStart={() => (composingRef.current = true)}
-                onCompositionEnd={(e) => {
-                  composingRef.current = false;
-                  setQuery(e.currentTarget.value);
-                }}
+                onChange={(e) => search.setQuery(e.target.value)}
+                onCompositionStart={search.onCompositionStart}
+                onCompositionEnd={search.onCompositionEnd}
                 aria-label="동네 또는 구 검색"
                 className="flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-muted"
                 placeholder="동네 또는 구 검색 (예: 역삼동, 강남구)"

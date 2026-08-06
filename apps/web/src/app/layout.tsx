@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { AuthBoot } from "@/components/auth-boot";
 import { KakaoSDK } from "@/components/kakao-sdk";
 import { WebVitals } from "@/components/web-vitals";
+import { QueryProvider } from "@/lib/query";
 import "./globals.css";
 
 /* 워드마크 전용 귀여운 둥근고딕 — 로고 '모퉁이'에만 쓴다(본문은 Pretendard 유지). */
@@ -84,10 +85,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/fonts/pretendard/pretendardvariable-dynamic-subset.css" />
       </head>
       <body>
-        <AuthBoot />
-        <KakaoSDK />
-        <WebVitals />
-        {children}
+        <QueryProvider>
+          <AuthBoot />
+          <KakaoSDK />
+          <WebVitals />
+          {children}
+        </QueryProvider>
       </body>
     </html>
   );
