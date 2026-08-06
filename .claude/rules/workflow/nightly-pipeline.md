@@ -19,7 +19,7 @@ dev    ← 밤 작업의 단일 트렁크. 밤은 여기에 직접 커밋·push.
 - **todo ≥ 2** → 아래 6단계(구현 모드)를 평소대로 진행한다. 그 밤은 **클러스터 1개**(1~3이슈)를 친다 — 아래 "클러스터 규칙".
 - **todo < 2** → **이 밤은 audit 모드다. 구현하지 않는다.** 큐가 마르면 억지로 이슈를 짜내
   a11y·마이크로카피 같은 저가치 변경만 쌓이므로, 대신 **일감을 생성**한다:
-  1. `origin/dev` 실코드를 8축으로 정적 감사한다: **a11y · perf · 보안 · 타입안전(noUncheckedIndexedAccess) · FSD/의존성 경계 · 테스트 커버리지 · UX 일관성(web↔mobile) · 데드코드**. (선례: `docs/nightly/nightly-2026-07-15.md` — 8축 병렬 감사가 M-005~M-019를 생성.)
+  1. `origin/dev` 실코드를 8축으로 정적 감사한다: **a11y · perf(렌더 격리 포함) · 보안 · 타입안전(noUncheckedIndexedAccess) · 파일구조/의존성 경계 · 테스트 커버리지 · UX 일관성(web↔mobile) · 데드코드**. (선례: `docs/nightly/nightly-2026-07-15.md` — 8축 병렬 감사가 M-005~M-019를 생성.)
   2. 각 finding을 **적대검증**(반증 시도)해 살아남은 것만 채택한다. 근거는 반드시 `file:line`.
   3. 채택 findings를 dedup·클러스터링해 **`backlog.yml`에 `M-NNN` 이슈로 등재**한다
      (`status: todo`, `priority` 부여, `scope`·`done_when`·`notes` 채움 — 기존 M-005~M-019 형식 그대로). id는 마지막 M-NNN 다음 번호.

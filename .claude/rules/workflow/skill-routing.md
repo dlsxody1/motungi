@@ -29,7 +29,7 @@
 | 에이전트 | 스킬 |
 |---|---|
 | planner | — (스펙만) |
-| architect | — (검증만; FSD 경계는 rules 참조) |
+| architect | — (검증만; 파일구조·렌더 격리 규율은 rules 참조) |
 | frontend-impl | react-patterns · frontend-patterns · react-testing · (UI 변경 시) impeccable · ux |
 | backend-impl | tdd-workflow · postgres-patterns · database-migrations · safe-sql-execution · security-review · api-design |
 | qa | (실행 검증) e2e-testing·react-testing 컨벤션 인지 |
