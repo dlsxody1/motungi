@@ -20,8 +20,13 @@ export const queryKeys = {
     ["catalog", point ? `${point.lat},${point.lng}` : "no-anchor"] as const,
   /** 단건 상세. 보관함·상세가 같은 키를 공유해 중복 조회가 사라진다. */
   opportunity: (id: string) => ["opportunity", id] as const,
-  /** 리포트 직접진입 fallback(6건). 카탈로그와 다른 쿼리다 — limit이 달라 섞이면 안 된다. */
-  reportFallback: () => ["report-fallback"] as const,
+  /**
+   * 리포트 직접진입 fallback(6건). 카탈로그와 다른 쿼리다 — limit이 달라 섞이면 안 된다.
+   * point가 키에 들어간다: 예전엔 키가 상수여서 동네를 바꿔도 이전 동네 6건이 캐시에서
+   * 그대로 나왔다(강남에서 금천 원픽이 뜨던 경로 중 하나).
+   */
+  reportFallback: (point: { lat: number; lng: number } | undefined) =>
+    ["report-fallback", point ? `${point.lat},${point.lng}` : "no-anchor"] as const,
   /** 걷기길 경로. */
   trailRoute: (id: string) => ["trail-route", id] as const,
 } as const;
