@@ -7,9 +7,16 @@
  * 두루누비엔 코스 사진이 아예 없어(courseList 16개 필드에 image 계열 0개) 이 안내가
  * 사진 자리를 대신한다. 값이 없으면 아무것도 렌더하지 않는다 — trail 아닌 활동엔 영향 없음.
  */
+import { memo } from "react";
 import type { MockOpportunity } from "@/data/opportunities";
 
-export function CourseGuide({
+/**
+ * memo인 이유: 상세 페이지는 `savedIds`를 구독한다 — 북마크를 누를 때마다 페이지 전체가
+ * 다시 렌더된다. 코스 안내는 저장 여부와 아무 상관이 없는데도 매번 따라 그려졌고,
+ * `md:hidden`은 CSS라 모바일·데스크톱 트리에서 두 번씩 돌았다.
+ * props가 전부 안정 참조(활동 객체·문자열)라 memo가 그대로 걸린다.
+ */
+export const CourseGuide = memo(function CourseGuide({
   opportunity: o,
   className = "",
 }: {
@@ -58,4 +65,4 @@ export function CourseGuide({
       )}
     </section>
   );
-}
+});
