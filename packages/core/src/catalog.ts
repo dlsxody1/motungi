@@ -207,7 +207,10 @@ export async function fetchOpportunities(
   // DB의 category/source enum에는 앱이 모르는 레거시 값이 남아있을 수 있고, 스키마 드리프트로
   // 나머지 필드도 기대와 어긋날 수 있다(§database.types.ts) — row 전체를 구조적으로 검증된
   // row만 남기고 캐스팅 없이 OpportunityRow로 좁힌다(M-011, 전체 필드 검증은 M-027).
-  const rows: OpportunityRow[] = data.filter(isOpportunityRow);
+  // `data`의 원소 타입은 이미 구체적(source: SourceKindDb)이라 filter가 타입가드 오버로드
+  // 대신 좁히기 오버로드를 골라 SourceKindDb → SourceKind로 안 좁혀진다. unknown[]로 넘겨
+  // 가드가 실제로 판정하게 한다 — 캐스팅이 아니라 런타임 검증은 그대로 돈다.
+  const rows: OpportunityRow[] = (data as unknown[]).filter(isOpportunityRow);
   // 원본 조회는 1건 이상이었지만 전부 레거시 값이라 필터링되면 "empty"로 취급한다 —
   // status==="ok"는 항상 1건 이상 렌더 가능한 데이터를 의미하는 계약(위 CatalogStatus 주석)을 지킨다.
   if (rows.length === 0) return { data: [], status: "empty" };
