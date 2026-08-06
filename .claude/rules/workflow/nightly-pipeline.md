@@ -13,6 +13,16 @@ dev    ← 밤 작업의 단일 트렁크. 밤은 여기에 직접 커밋·push.
 3. **qa가 PUSH 게이트다.** `bash scripts/gate.sh`가 통과해야만 push (typecheck·test·lint·시크릿 스캔 4종). 실패 시 코드 revert, report-only 야간 노트만 push하고 STOP. **깨진 커밋은 dev에 못 간다.**
 4. **planner는 최신 `origin/dev` 기준.** 어젯밤 산출물이 이미 dev에 있으므로 중복 생성 금지. backlog가 stale할 수 있으니 dev 실코드로 `done_when` 충족 여부 먼저 확인.
 5. **밤은 절대 main에 손대지 않는다.** dev→main 승격은 사람만.
+6. **main이 dev보다 앞서 있으면 되받고 시작한다.** main은 squash merge라 PR이 머지되면
+   main에 새 커밋이 생기는데 dev는 모른다. 되받지 않으면 merge-base가 계속 밀리고
+   **같은 변경이 양쪽에 다른 형태로 남아** 다음 dev→main PR이 충돌한다
+   (선례: PR #21 — 스쿼시 4건이 안 돌아와 충돌 5건).
+   ```
+   git log --oneline origin/dev..origin/main   # 비어 있으면 그냥 진행
+   git merge origin/main                        # 아니면 되받고, gate.sh 통과 후 계속
+   ```
+   충돌 시 `-X ours/theirs`로 뭉개지 마라 — 파일마다 어느 쪽이 최신인지 다르다.
+   양쪽 diff를 읽고 판단하고, **머지 커밋 전에** `gate.sh`를 돌린다.
 
 ## 0단계 — 백로그 게이트 (planner 실행 전 매 밤 판정)
 밤은 시작하자마자 `docs/backlog/backlog.yml`의 `status: todo` 개수를 센다.
