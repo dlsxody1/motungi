@@ -11,6 +11,8 @@
 import { hashKey, joinDescription, parseFeeKrw, parseHour, parsePoint, parseTrailGuide, toIsoDate } from "../../../packages/core/src/adapters/util.ts";
 // 퇴근후 판정은 core가 SoT(테스트 소유: core/adapters/seoul-jobs.test.ts).
 import { isAfterWorkShift, parseShiftHours, parseWorkRegion } from "../../../packages/core/src/adapters/seoul-jobs.ts";
+// 아동 전용 판정도 core가 SoT(테스트 소유: core/adapters/audience.test.ts).
+import { isKidsOnly } from "../../../packages/core/src/adapters/audience.ts";
 
 /** DB opportunities row (upsert 페이로드). */
 export interface OppRow {
@@ -24,6 +26,16 @@ export interface OppRow {
    * 소스별 채움률이 크게 달라 없는 게 정상 — 실측 trail 100% / seoul_culture 약 20% / culture_info 0%.
    */
   description?: string | null;
+  /**
+   * 원본 장르 문자열(0017). seoul_culture=CODENAME, culture_info=realmName.
+   * 소스별 어휘가 달라 통합 enum을 두지 않고 원문을 보존한다.
+   */
+  genre?: string | null;
+  /**
+   * 관람/참여 대상 원문(0017). seoul_culture=USE_TRGT(실측 채움률 100%).
+   * null=미상이며 "성인 가능"으로 취급한다 — 모르는 걸 배제하지 않는다.
+   */
+  audience?: string | null;
   cost_krw: number | null;
   difficulty: number | null;
   dong_name: string | null;
@@ -49,6 +61,12 @@ export interface OppRow {
 export function mapSeoulCulture(raw: Record<string, string>): OppRow | null {
   const title = raw.TITLE?.trim();
   if (!title) return null;
+  /**
+   * 컨셉 게이트 — "퇴근하고 뭐하지"는 성인 직장인용이라 아동 전용 프로그램은 적재하지 않는다.
+   * (seoul_jobs의 isAfterWorkShift와 같은 성격. 판정 로직은 core가 SoT.)
+   * USE_TRGT는 실응답에 100% 오므로 제목 추측이 아니라 실제 필드로 판정한다.
+   */
+  if (isKidsOnly(raw.USE_TRGT, title)) return null;
   const externalId = hashKey(`${title}|${raw.STRTDATE ?? ""}|${raw.PLACE ?? ""}`);
   const cost = raw.IS_FREE?.includes("무료") ? 0 : parseFeeKrw(raw.USE_FEE);
   const startHour = parseHour(raw.PRO_TIME);
@@ -63,6 +81,10 @@ export function mapSeoulCulture(raw: Record<string, string>): OppRow | null {
     // 채움률은 낮다 — 실측 2026-08-03 300건: PROGRAM 14% · PLAYER 11% · ETC_DESC 3%.
     // 그래도 있는 행은 유일하게 "무슨 공연인지"를 담고 있어 검색·LLM 입력으로 값이 크다.
     description: joinDescription([raw.PROGRAM, raw.PLAYER, raw.ETC_DESC]) ?? null,
+    // 장르·대상은 여태 summary 조인 문자열로만 남거나(CODENAME) 아예 버려졌다(USE_TRGT).
+    // 필터·스코어링이 쓰려면 컬럼으로 서야 한다(0017).
+    genre: raw.CODENAME?.trim() || null,
+    audience: raw.USE_TRGT?.trim() || null,
     cost_krw: cost ?? null,
     difficulty: null,
     dong_name: raw.GUNAME || null,
@@ -73,7 +95,12 @@ export function mapSeoulCulture(raw: Record<string, string>): OppRow | null {
     deadline: toIsoDate(raw.END_DATE) ?? null,
     source_label: "서울시 문화행사",
     time_start_hour: startHour ?? null,
-    time_end_hour: startHour != null ? Math.min(startHour + 2, 24) : null,
+    /**
+     * 종료시각은 **지어내지 않는다.** 예전엔 start+2로 추정했는데, API가 주지 않는 값을
+     * 만들어낸 것이라 카드에 "10–12시"처럼 사실이 아닌 시간대가 찍혔다.
+     * seoul_jobs가 이미 같은 실수를 고쳤다(start+4 추정 → 실제 파싱). 모르면 null이 정답이다.
+     */
+    time_end_hour: null,
   };
 }
 
@@ -83,6 +110,8 @@ export function mapCultureInfo(raw: Record<string, string>): OppRow | null {
   const seq = raw.seq?.trim();
   const title = raw.title?.trim();
   if (!seq || !title) return null;
+  // 이 소스엔 대상(USE_TRGT) 필드가 없다 — 제목 폴백으로만 판정한다(core 함정 2 참조).
+  if (isKidsOnly(null, title)) return null;
   const point = parsePoint(raw.gpsY, raw.gpsX);
   return {
     source: "culture_info",
@@ -90,6 +119,10 @@ export function mapCultureInfo(raw: Record<string, string>): OppRow | null {
     external_id: seq,
     title,
     summary: [raw.sigungu, raw.place, raw.realmName].filter(Boolean).join(" · ") || title,
+    genre: raw.realmName?.trim() || null,
+    // 이 소스는 대상 정보를 주지 않는다 — 지어내지 않고 null(미상=성인 가능).
+    audience: null,
+    // cost_krw·difficulty는 API가 실제로 주지 않는다. 값을 지어내는 건 지금 고치는 버그와 같은 부류다.
     cost_krw: null,
     difficulty: null,
     dong_name: [raw.area, raw.sigungu].filter(Boolean).join(" ") || null,

@@ -260,10 +260,16 @@ describe("scoreOpportunity time 축 — timeSlot 분기", () => {
     expect(scoreOpportunity(daytime, a, anchors).breakdown.time).toBe(0);
   });
 
-  it("weekend: 낮 활동도 종일 창(10~22시)과 겹쳐 가점된다", () => {
+  it("weekend: 낮 활동도 주말 창(12~22시)과 겹쳐 가점된다", () => {
     const a = { ...answers, timeSlot: "weekend" as const };
     // weekday_evening이면 0이던 낮 활동이 weekend 창에선 > 0.
     expect(scoreOpportunity(daytime, a, anchors).breakdown.time).toBeGreaterThan(0);
+  });
+
+  it("weekend: 오전 10~12시는 창 밖이라 0 — 어린이 프로그램 피크 구간을 걷어낸다", () => {
+    const a = { ...answers, timeSlot: "weekend" as const };
+    const morning = opp({ timeWindow: { startHour: 10, endHour: 12 } });
+    expect(scoreOpportunity(morning, a, anchors).breakdown.time).toBe(0);
   });
 
   it("flexible: 시간 선호 없음 → 활동 시간대와 무관하게 중립(0.5)", () => {
