@@ -98,6 +98,15 @@
     min-height: 44px;
     min-width: 44px;
   }
+
+  /* 키보드 포커스 링 — Tailwind Preflight가 UA 기본 outline을 지워버려서
+     focus 스타일을 따로 안 준 요소는 키보드 사용자에게 아무 표시가 없다.
+     컴포넌트마다 focus-visible: 클래스를 붙이는 대신 base에서 한 번 깔고,
+     개별 요소가 자기 focus-visible:outline-* 를 주면 그게 이긴다(유틸리티가 나중). */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
 }
 
 /* 웹 카드 호버 리프트 — 데스크탑 목록/카드에서 사용 */
