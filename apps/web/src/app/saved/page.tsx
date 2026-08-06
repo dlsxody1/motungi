@@ -2,13 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useCallback, useRef } from "react";
 import { BottomNav } from "@/components/bottom-nav";
-import {
-  BookmarkIcon,
-  LocationIcon,
-  UserIcon,
-} from "@/components/icons";
-import { Thumbnail } from "@/components/thumbnail";
+import { BookmarkIcon, LocationIcon, UserIcon } from "@/components/icons";
+import { SavedCard } from "@/components/saved-card";
 import { MobileScreen, SafeBottom, SafeTop, Skeleton } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { useSavedOpportunities } from "@/hooks/useSavedOpportunities";
@@ -26,7 +23,19 @@ export default function SavedPage() {
   // status를 버리면 **조회 실패가 "저장한 게 없어요"로 보인다** — 사용자에게 틀린 정보다.
   const { items, status, retry } = useSavedOpportunities();
   const failed = status === "error";
-  const openDetail = (id: string) => router.push(`/opportunity/${id}`);
+
+  /**
+   * memo된 카드가 걸리려면 두 콜백이 영원히 같은 참조여야 한다.
+   * `useCallback([router])`는 useRouter()가 새 객체를 주는 순간 무너지고,
+   * `toggleSaved`는 저장할 때마다 스토어가 새 배열을 만들어 리렌더를 유발하므로
+   * 여기서 새 콜백이 만들어지면 **남은 카드 전체**가 따라 그려진다.
+   */
+  const routerRef = useRef(router);
+  routerRef.current = router;
+  const toggleRef = useRef(toggleSaved);
+  toggleRef.current = toggleSaved;
+  const openDetail = useCallback((id: string) => routerRef.current.push(`/opportunity/${id}`), []);
+  const onToggle = useCallback((id: string) => toggleRef.current(id), []);
 
   /**
    * 로딩 중 자리표시자 개수 = 저장했지만 아직 해소 안 된 건수.
@@ -121,49 +130,13 @@ export default function SavedPage() {
               ) : (
                 <div className="divide-y divide-line-alt">
                   {items.map((s) => (
-                    <div
+                    <SavedCard
                       key={s.id}
-                      className="flex w-full items-center gap-3 py-4"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => openDetail(s.id)}
-                        aria-label={`${s.title} 상세 보기`}
-                        className="flex flex-1 items-start gap-3 text-left"
-                      >
-                        <div className="flex-1">
-                          <p
-                            className={`text-[12px] font-bold ${s.tone === "mint" ? "text-mint" : "text-primary"}`}
-                          >
-                            {s.categoryLabel}
-                          </p>
-                          <p className="mt-1 text-[16px] font-bold text-ink">
-                            {s.title}
-                          </p>
-                          <p className="mt-0.5 text-[13px] text-muted">
-                            {s.location?.dongName ?? ""}
-                          </p>
-                        </div>
-                        <p
-                          className={`text-[15px] font-extrabold ${s.tone === "mint" ? "text-mint" : "text-primary"}`}
-                        >
-                          {s.costLabel}
-                        </p>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleSaved(s.id)}
-                        aria-label="저장 취소"
-                        aria-pressed={true}
-                        className="shrink-0"
-                      >
-                        <BookmarkIcon
-                          size={20}
-                          filled
-                          className="text-primary"
-                        />
-                      </button>
-                    </div>
+                      o={s}
+                      onOpen={openDetail}
+                      onToggle={onToggle}
+                      variant="mobile"
+                    />
                   ))}
                   {/* 아직 못 받은 저장 항목 자리 — 도착하는 대로 하나씩 카드로 바뀐다. */}
                   {pendingCount > 0 && (
@@ -276,54 +249,13 @@ export default function SavedPage() {
               ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {items.map((s) => (
-                    <div
+                    <SavedCard
                       key={s.id}
-                      className="wcard-hover relative flex flex-col rounded-[18px] bg-surface p-5 shadow-web"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => openDetail(s.id)}
-                        aria-label={`${s.title} 상세 보기`}
-                        className="flex flex-1 flex-col text-left"
-                      >
-                        <Thumbnail
-                          src={s.imageUrl}
-                          tone={s.tone === "mint" ? "mint" : "brand"}
-                          sizeClass="size-12"
-                        />
-                        <p
-                          className={`mt-3 text-[12px] font-bold ${s.tone === "mint" ? "text-mint" : "text-primary"}`}
-                        >
-                          {s.categoryLabel}
-                        </p>
-                        <p className="mt-1 flex-1 text-[17px] font-bold text-ink">
-                          {s.title}
-                        </p>
-                        <p className="mt-0.5 text-[13px] text-muted">
-                          {s.location?.dongName ?? ""}
-                        </p>
-                        <p
-                          className={`mt-3 border-t border-line-alt pt-3 text-[18px] font-extrabold ${
-                            s.tone === "mint" ? "text-mint" : "text-primary"
-                          }`}
-                        >
-                          {s.costLabel}
-                        </p>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleSaved(s.id)}
-                        aria-label="저장 취소"
-                        aria-pressed={true}
-                        className="absolute right-5 top-5"
-                      >
-                        <BookmarkIcon
-                          size={20}
-                          filled
-                          className="text-primary"
-                        />
-                      </button>
-                    </div>
+                      o={s}
+                      onOpen={openDetail}
+                      onToggle={onToggle}
+                      variant="desktop"
+                    />
                   ))}
                   {/* 그리드 자식으로 둬야 실제 카드와 같은 열에 흐른다(별도 래퍼로 감싸면 한 칸을 통째로 먹는다). */}
                   {pendingCount > 0 &&

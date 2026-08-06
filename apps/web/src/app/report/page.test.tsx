@@ -1,18 +1,24 @@
 /**
- * ReportPage smoke test — 카탈로그가 비어 있을 때(ReportEmpty) 상태별 안내 문구를 렌더하는지 확인.
- * fetch 경로(useEnsureCatalog)는 스토어를 idle이 아닌 상태로 시딩해서 우회한다.
+ * ReportPage smoke test — 추천이 비어 있을 때(ReportEmpty) 상태별 안내 문구를 렌더하는지 확인.
+ *
+ * fallback 조회는 서버 상태라 useReportFallback(react-query)이 소유한다. 여기서 보려는 건
+ * 조회가 아니라 **상태별 화면**이므로 훅을 통째로 목한다(조회 동작 검증은 훅 테스트 몫).
  */
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as navigation from "next/navigation";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { MockOpportunity } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 
-// idle 시딩은 useReportFallback의 실제 조회를 태운다 — 끝나지 않게 막아 로딩 상태에 고정한다.
-vi.mock("@/data/opportunities", () => ({
-  fetchOpportunities: () => new Promise(() => {}),
-  fetchOpportunityById: () => new Promise(() => {}),
+vi.mock("@/hooks/useReportFallback", () => ({
+  useReportFallback: () => fallbackRef.current,
 }));
+
+/** seed가 채우는 fallback 뷰 — 목한 훅이 이걸 그대로 돌려준다. */
+const fallbackRef: {
+  current: { items: MockOpportunity[]; status: "idle" | "ok" | "empty" | "error" | "unconfigured" };
+} = { current: { items: [], status: "idle" } };
 
 import ReportPage from "./page";
 
@@ -24,16 +30,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function seedEmpty(catalogStatus: "empty" | "error" | "unconfigured") {
+function seedEmpty(status: "idle" | "empty" | "error" | "unconfigured") {
   useAppStore.setState({
     anchors: {},
     answers: null,
     results: [],
-    catalog: [],
-    catalogStatus,
     savedIds: [],
     user: null,
   });
+  fallbackRef.current = { items: [], status };
 }
 
 function mockRouter() {
@@ -55,15 +60,7 @@ describe("ReportPage", () => {
    * 없는 게 아니라 오는 중이므로, 원픽 자리를 스켈레톤으로 잡아둔다.
    */
   it("idle 상태(조회 중) → 빈 문구 대신 로딩을 알린다", () => {
-    useAppStore.setState({
-      anchors: {},
-      answers: null,
-      results: [],
-      catalog: [],
-      catalogStatus: "idle",
-      savedIds: [],
-      user: null,
-    });
+    seedEmpty("idle");
 
     render(<ReportPage />);
 

@@ -4,6 +4,52 @@
  */
 import "@testing-library/jest-dom/vitest";
 import { vi } from "vitest";
+import { createElement, type ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+/**
+ * 서버 상태 훅(useQuery)을 쓰는 컴포넌트는 QueryClientProvider 없이는 렌더 자체가 죽는다.
+ * 테스트 파일마다 wrapper를 넘기게 하면 render 호출부 전부를 고쳐야 하므로,
+ * @testing-library/react의 render/renderHook을 여기서 한 번 감싼다.
+ *
+ * 테스트용 클라이언트는 **캐시를 공유하지 않는다** — 매 렌더마다 새로 만든다.
+ * 공유하면 앞 테스트가 받아둔 데이터가 뒤 테스트에 남아, 조회를 mock하지 않은 테스트가
+ * 우연히 통과한다(가장 고약한 종류의 그린이다).
+ * retry도 끈다 — 실패 단언을 하는 테스트가 재시도를 기다리며 타임아웃된다.
+ */
+vi.mock("@testing-library/react", async () => {
+  const actual = await vi.importActual<typeof import("@testing-library/react")>(
+    "@testing-library/react",
+  );
+  const withClient = (ui: ReactNode) =>
+    createElement(
+      QueryClientProvider,
+      {
+        client: new QueryClient({
+          defaultOptions: { queries: { retry: false, gcTime: 0, staleTime: 0 } },
+        }),
+      },
+      ui,
+    );
+  return {
+    ...actual,
+    render: ((ui: ReactNode, options?: Parameters<typeof actual.render>[1]) =>
+      // 호출부가 wrapper를 직접 넘겼으면 그쪽을 존중한다(그쪽이 provider를 소유한 것).
+      options?.wrapper
+        ? actual.render(ui, options)
+        : actual.render(withClient(ui), options)) as typeof actual.render,
+    renderHook: ((
+      cb: (props: unknown) => unknown,
+      options?: Parameters<typeof actual.renderHook>[1],
+    ) =>
+      actual.renderHook(cb, {
+        ...options,
+        wrapper:
+          options?.wrapper ??
+          (({ children }: { children: ReactNode }) => withClient(children)),
+      })) as typeof actual.renderHook,
+  };
+});
 
 /**
  * jsdom은 레이아웃 엔진이 없어 ResizeObserver가 없고 getBoundingClientRect가 전부 0을 반환한다.

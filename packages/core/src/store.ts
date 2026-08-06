@@ -51,9 +51,16 @@ export interface AppState<
   answers: DiagnosisAnswers | null;
   /** 스코어링 결과(원픽 + 함께보면좋아요). 로딩 화면에서 채워진다. */
   results: TOpportunity[];
-  /** 전체 활동 카탈로그(서버 실데이터). 탐색/상세/보관함이 참조. 세션 캐시. */
+  /**
+   * 전체 활동 카탈로그(서버 실데이터). 세션 캐시.
+   *
+   * **서버 상태다 — 신규 코드에서 쓰지 마라.** web은 이걸 버리고 TanStack Query로 옮겼다
+   * (`apps/web/src/lib/query.tsx`). 서버 데이터를 클라 스토어에 두니 캐시 무효화·요청
+   * 취소·재시도를 전부 손으로 짜게 됐고, "마지막 좌표 하나"만 기억해 동네를 왕복하면
+   * 매번 다시 받았다. mobile이 아직 참조해서 남겨둔 것뿐이다.
+   */
   catalog: TOpportunity[];
-  /** 카탈로그 로드 상태. 아직 안 불러왔으면 "idle". */
+  /** 카탈로그 로드 상태. 아직 안 불러왔으면 "idle". (위와 같은 이유로 deprecated) */
   catalogStatus: TCatalogStatus | "idle";
   savedIds: string[];
   /** 로그인 사용자. null = 게스트. */
@@ -62,6 +69,7 @@ export interface AppState<
   setAnchor: (slot: AnchorSlot, location: Location) => void;
   setAnswers: (answers: DiagnosisAnswers) => void;
   setResults: (results: TOpportunity[]) => void;
+  /** @deprecated 서버 상태. mobile 전용 — web은 TanStack Query를 쓴다. */
   setCatalog: (catalog: TOpportunity[], status: TCatalogStatus) => void;
   setUser: (user: AuthUser | null) => void;
   setSavedIds: (ids: string[]) => void;

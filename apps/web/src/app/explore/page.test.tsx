@@ -1,13 +1,25 @@
 /**
- * ExplorePage가 catalogStatus(ok/empty/error/unconfigured)에 따라
- * 올바른 문구/카드를 렌더하는지 검증한다. fetch 경로(useEnsureCatalog)는
- * 스토어를 idle이 아닌 상태로 시딩해서 우회한다.
+ * ExplorePage가 카탈로그 상태(ok/empty/error/unconfigured)에 따라
+ * 올바른 문구/카드를 렌더하는지 검증한다.
+ *
+ * 카탈로그는 서버 상태라 이제 스토어가 아니라 useEnsureCatalog(react-query)가 소유한다.
+ * 여기서 보려는 건 조회 자체가 아니라 **상태별 화면**이므로 훅을 통째로 목한다
+ * (조회 동작 검증은 hooks/useEnsureCatalog.test.ts).
  */
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockOpportunity } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 import ExplorePage from "./page";
+
+vi.mock("@/hooks/useEnsureCatalog", () => ({
+  useEnsureCatalog: () => catalogRef.current,
+}));
+
+/** seed()가 채우는 카탈로그 뷰 — 목한 훅이 이걸 그대로 돌려준다. */
+const catalogRef: {
+  current: { catalog: MockOpportunity[]; status: "idle" | "ok" | "empty" | "error" | "unconfigured" };
+} = { current: { catalog: [], status: "ok" } };
 
 /**
  * 전역 setup의 next/navigation mock은 빈 searchParams를 준다.
@@ -56,11 +68,10 @@ function seed(
     anchors: {},
     answers: null,
     results: [],
-    catalog,
-    catalogStatus,
     savedIds: [],
     user: null,
   });
+  catalogRef.current = { catalog, status: catalogStatus };
 }
 
 describe("ExplorePage", () => {
