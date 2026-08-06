@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingTop: 4 },
   sub: { fontSize: 14, color: C.muted },
-  avatar: { width: 40, height: 40, borderRadius: 999, backgroundColor: C.surfaceAlt, alignItems: "center", justifyContent: "center" },
+  avatar: { width: 40, height: 40, borderRadius: 999, backgroundColor: C.gray100, alignItems: "center", justifyContent: "center" },
   banner: {
     marginTop: 16,
     flexDirection: "row",

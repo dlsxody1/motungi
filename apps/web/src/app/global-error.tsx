@@ -40,7 +40,7 @@ export default function GlobalError({
           gap: 8,
           padding: "0 32px",
           textAlign: "center",
-          background: "#f4f0eb",
+          background: "#ffffff",
           color: "#1c1a17",
           fontFamily: "system-ui, -apple-system, sans-serif",
         }}

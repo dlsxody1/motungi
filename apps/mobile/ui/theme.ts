@@ -13,9 +13,16 @@ export const C = {
   mint: color.brand.mint,
   mintTint: color.brand.mintTint,
 
+  /**
+   * ⚠️ bg === surface === #ffffff (2026-08-06 베이지 폐기).
+   * 배경색으로 면을 나눌 수 없다 — 카드는 borderColor: C.lineAlt + cardShadow로 띄운다.
+   * surfaceAlt는 "잠깐 눌린 면"(pressed/비활성)이고, 정지 상태의 회색 면은 gray100/200이다.
+   */
   bg: color.neutral.bg,
   surface: color.neutral.surface,
   surfaceAlt: color.neutral.surfaceAlt,
+  gray100: color.neutral.gray100,
+  gray200: color.neutral.gray200,
   ink: color.neutral.ink,
   label: color.neutral.label,
   muted: color.neutral.muted,
@@ -41,10 +48,14 @@ export const T = {
   caption: { fontSize: 12, lineHeight: 16, fontWeight: "500" as const },
 } as const;
 
-/** 그림자 — iOS/Android 공통 근사치 */
+/**
+ * 그림자 — iOS/Android 공통 근사치.
+ * 베이지 폐기 후 흰 배경 위 흰 카드를 띄우는 주 수단이라 예전보다 진하다(0.08 → 0.12).
+ * 색도 웜 브라운에서 순중립으로 — 베이지 없는 배경에서 갈색 그림자는 누렇게 보인다.
+ */
 export const cardShadow = {
-  shadowColor: "#2e2a24",
-  shadowOpacity: 0.08,
+  shadowColor: "#1c1a17",
+  shadowOpacity: 0.12,
   shadowRadius: 16,
   shadowOffset: { width: 0, height: 6 },
   elevation: 3,

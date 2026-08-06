@@ -59,8 +59,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   // maximumScale/userScalable 미설정 — 사용자 확대 허용(WCAG 1.4.4).
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f4f0eb" },
-    { media: "(prefers-color-scheme: dark)", color: "#f4f0eb" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#ffffff" },
   ],
 };
 

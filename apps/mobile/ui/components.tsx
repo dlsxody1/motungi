@@ -129,7 +129,7 @@ export function Chip({
 
 /** 카테고리 태그 */
 export function Tag({ label, tone = "brand" }: { label: string; tone?: "brand" | "mint" | "muted" }) {
-  const bg = tone === "brand" ? C.primary : tone === "mint" ? C.mint : C.surfaceAlt;
+  const bg = tone === "brand" ? C.primary : tone === "mint" ? C.mint : C.gray100;
   const fg = tone === "muted" ? C.muted : C.white;
   return (
     <View style={[styles.tag, { backgroundColor: bg }]}>

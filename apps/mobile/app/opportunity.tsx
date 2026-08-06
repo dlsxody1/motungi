@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   stepNum: { width: 24, height: 24, borderRadius: 999, backgroundColor: C.primary, alignItems: "center", justifyContent: "center" },
   stepNumText: { fontSize: 12, fontWeight: "700", color: C.white },
   stepText: { flex: 1, fontSize: 14, lineHeight: 22, color: C.label },
-  disclaimer: { marginTop: 24, backgroundColor: C.surfaceAlt, borderRadius: R.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 12, lineHeight: 18, color: C.muted },
+  disclaimer: { marginTop: 24, backgroundColor: C.gray100, borderRadius: R.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 12, lineHeight: 18, color: C.muted },
   actions: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8 },
   bookmark: { width: 52, height: 52, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
   bookmarkOn: { borderColor: C.primary, backgroundColor: C.tint },

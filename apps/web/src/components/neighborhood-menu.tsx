@@ -107,7 +107,7 @@ export function NeighborhoodMenu({
                         })
                       }
                       className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-[14px] ${
-                        active ? "bg-tint font-bold text-primary-deep" : "font-medium text-label hover:bg-bg"
+                        active ? "bg-tint font-bold text-primary-deep" : "font-medium text-label hover:bg-surface-alt"
                       }`}
                     >
                       <span className="flex items-center gap-2">
@@ -128,7 +128,7 @@ export function NeighborhoodMenu({
                 // 같은 다이얼로그 안에서 화면만 바뀌므로 포커스를 직접 옮겨준다.
                 requestAnimationFrame(() => inputRef.current?.focus());
               }}
-              className="w-full rounded-lg px-3 py-2.5 text-left text-[14px] font-semibold text-label hover:bg-bg"
+              className="w-full rounded-lg px-3 py-2.5 text-left text-[14px] font-semibold text-label hover:bg-surface-alt"
             >
               동네 검색하기
               <span className="mt-0.5 block text-[12px] font-normal text-muted">
@@ -141,7 +141,7 @@ export function NeighborhoodMenu({
                 close();
                 router.push("/location");
               }}
-              className="w-full rounded-lg px-3 py-2.5 text-left text-[14px] font-semibold text-label hover:bg-bg"
+              className="w-full rounded-lg px-3 py-2.5 text-left text-[14px] font-semibold text-label hover:bg-surface-alt"
             >
               리포트 다시 만들기
               <span className="mt-0.5 block text-[12px] font-normal text-muted">
@@ -155,13 +155,13 @@ export function NeighborhoodMenu({
               <button
                 type="button"
                 onClick={reset}
-                className="rounded-lg px-2 py-1 text-[13px] font-semibold text-muted hover:bg-bg"
+                className="rounded-lg px-2 py-1 text-[13px] font-semibold text-muted hover:bg-surface-alt"
               >
                 뒤로
               </button>
               <p className="text-[12px] font-semibold text-muted">동네 검색</p>
             </div>
-            <div className="mx-1 flex items-center gap-2 rounded-lg border border-line bg-bg px-3 py-2">
+            <div className="mx-1 flex items-center gap-2 rounded-lg border border-line bg-gray-100 px-3 py-2">
               <SearchIcon size={16} className="shrink-0 text-faint" />
               <input
                 ref={inputRef}
@@ -196,7 +196,7 @@ export function NeighborhoodMenu({
                             point: { lat: it.lat, lng: it.lng },
                           })
                         }
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-label hover:bg-bg"
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-label hover:bg-surface-alt"
                       >
                         {it.dongName}
                         <span className="text-[12px] font-normal text-muted">{it.sigungu}</span>

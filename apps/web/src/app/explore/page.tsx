@@ -317,7 +317,7 @@ function ExploreInner() {
               <NeighborhoodMenu
                 // 앵커가 없으면 "우리 동네"는 지명인 척하는 빈 값이다 — 눌러야 할 것을 눌러야 한다고 말한다.
                 dongLabel={homeDong ?? "동네 선택하기"}
-                triggerClassName="mt-3 flex h-10 w-full items-center justify-between gap-1.5 rounded-lg border border-line bg-surface px-3 text-[14px] font-medium text-label hover:bg-bg"
+                triggerClassName="mt-3 flex h-10 w-full items-center justify-between gap-1.5 rounded-lg border border-line bg-surface px-3 text-[14px] font-medium text-label hover:bg-surface-alt"
               />
 
               <div className="my-4 h-px bg-line-alt" />
@@ -331,7 +331,7 @@ function ExploreInner() {
                       key={c.label}
                       onClick={() => setFilter(c.label)}
                       className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-[14px] ${
-                        on ? "bg-tint font-bold text-primary-deep" : "font-medium text-label hover:bg-bg"
+                        on ? "bg-tint font-bold text-primary-deep" : "font-medium text-label hover:bg-surface-alt"
                       }`}
                     >
                       <span>{c.label}</span>

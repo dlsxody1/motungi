@@ -83,9 +83,16 @@ export function HeroPosterStage({
         />
       </div>
 
-      {/* 안내 문구 — 선택 전에는 조작법을, 선택 후에는 선택 UI가 대신한다. */}
+      {/*
+       * 안내 문구 — 선택 전에는 조작법을, 선택 후에는 선택 UI가 대신한다.
+       *
+       * 왜 음수 마진인가: 링 호스트는 340/440px **고정 박스**고 포스터는 그 안에서
+       * 원근으로 떠 있다. 카드 아래쪽엔 링이 쓰지 않는 빈 공간이 남아, mt-1로 붙이면
+       * 문구가 카드에서 한참 떨어져 붕 뜬 것처럼 보였다. 박스 안쪽으로 끌어올려
+       * 카드와 문구를 한 덩어리로 읽히게 한다.
+       */}
       {!picked && (
-        <p className="mt-1 text-center text-[13px] font-medium text-white/85">
+        <p className="-mt-8 text-center text-[13px] font-medium text-white/85 md:-mt-10">
           {mobile ? "밀어서 둘러보고, 탭해서 자세히" : "끌어서 둘러보고, 클릭해서 자세히"}
         </p>
       )}

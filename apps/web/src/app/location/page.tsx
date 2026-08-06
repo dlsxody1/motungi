@@ -290,13 +290,9 @@ export default function LocationPage() {
       <DesktopShell active="home" variant="marketing" footer={false}>
         <WebContainer className="py-14">
           <div className="mx-auto max-w-[560px]">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1 text-[14px] font-semibold text-muted hover:text-ink"
-            >
-              <ChevronLeftIcon size={18} /> 홈으로
-            </Link>
-            <h1 className="mt-4 text-[40px] font-extrabold leading-[1.2] tracking-[-0.025em] text-ink">
+            {/* '홈으로' 뒤로가기 링크를 뺐다 — 상단 내비에 이미 '홈'이 있어
+                같은 목적지로 가는 링크가 한 화면에 둘이었다(모바일은 내비가 없어 유지). */}
+            <h1 className="text-[40px] font-extrabold leading-[1.2] tracking-[-0.025em] text-ink">
               어느 동네 기준으로
               <br />
               찾아드릴까요?
@@ -398,7 +394,7 @@ export default function LocationPage() {
           <button
             type="button"
             onClick={() => primeRef.current?.close()}
-            className="h-[44px] w-full rounded-xl text-[14px] font-semibold text-muted hover:bg-bg"
+            className="h-[44px] w-full rounded-xl text-[14px] font-semibold text-muted hover:bg-surface-alt"
           >
             직접 고를게요
           </button>

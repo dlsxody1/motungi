@@ -18,7 +18,9 @@ SRC=packages/core/src/adapters
 rm -rf "$FN/_shared"
 mkdir -p "$FN/_shared"
 # seoul-jobs.ts는 퇴근후 판정(isAfterWorkShift 등)의 SoT라 함께 번들에 넣는다.
-cp "$SRC/util.ts" "$SRC/ingest-fetch.ts" "$SRC/seoul-jobs.ts" "$FN/_shared/"
+# audience.ts도 같은 성격 — 아동 전용 게이트(isKidsOnly)의 SoT. 빠뜨리면 배포 번들에서
+# import가 깨져 적재 자체가 안 된다(0017 컬럼도 영영 안 채워진다).
+cp "$SRC/util.ts" "$SRC/ingest-fetch.ts" "$SRC/seoul-jobs.ts" "$SRC/audience.ts" "$FN/_shared/"
 
 # seoul-jobs.ts는 core ../types를 import한다(번들엔 없는 경로) → types.ts도 함께 복사하고
 # 경로를 ./types로 맞춘다. types.ts는 자체 import가 없어 이 한 겹으로 닫힌다.

@@ -66,7 +66,7 @@ export default function SavedPage() {
                     {dongName} 기준
                   </p>
                 </div>
-                <span className="grid size-10 place-items-center rounded-full bg-surface-alt text-muted">
+                <span className="grid size-10 place-items-center rounded-full bg-gray-100 text-muted">
                   <UserIcon size={22} />
                 </span>
               </div>
