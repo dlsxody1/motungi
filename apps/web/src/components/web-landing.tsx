@@ -23,6 +23,7 @@ import { ArrowMiniIcon, CheckMiniIcon } from "./landing-icons";
 import { LandingLocationLink } from "./landing-location-link";
 import { LandingPhoto } from "./landing-photo";
 import { PaintEdge } from "./paint-edge";
+import { ScrollRowNav } from "./scroll-row-nav";
 import { PreviewDiagnosis, PreviewLocation, PreviewReport } from "./step-previews";
 import { WebContainer } from "./web-shell";
 
@@ -228,10 +229,13 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
           이전 1차: 카드 3개 + 01/02/03. 이전 2차: 손그림 경로(형태가 내용을 이김).
           지금: 각 걸음의 실제 화면 실루엣을 축소해 얹는다. 세 실루엣이 서로 달라서,
           "세 걸음이 각각 다른 일"이 카피를 읽기 전에 형태로 먼저 전달된다.
-          면은 베이지 유지 — 위 섹션(2)이 흰 면이라 여기까지 희게 하면 둘이 한 덩어리로 붙는다.
-          "가독성이 떨어진다"의 실제 원인은 대비가 아니라(ink/베이지 15.3:1, label 8.4:1 — AA 통과)
-          베이지 위에 아무것도 없어서 면 전체가 납작하게 읽힌 것. 흰 미니어처가 그 면을 깨뜨린다. */}
-      <section className="paint-paper relative bg-bg pt-[68px] pb-[84px]">
+          면은 회색 유지 — 위 섹션(2)이 흰 면이라 여기까지 희게 하면 둘이 한 덩어리로 붙는다.
+          (2026-08-06 베이지 폐기: bg-bg가 흰색이 되면서 이 교차가 사라졌다. 밴드 구분은
+          제품 UI와 달리 랜딩의 시각 언어라 gray-50으로 남긴다 — 흰 위 1.07:1의 아주 옅은
+          면이지만 PaintEdge 물결이 이 경계를 그리므로 이 정도로 충분하다.)
+          "가독성이 떨어진다"의 실제 원인은 대비가 아니라(ink 17.4:1, label 9.5:1 — AA 통과)
+          면 위에 아무것도 없어서 납작하게 읽힌 것. 흰 미니어처가 그 면을 깨뜨린다. */}
+      <section className="paint-paper relative bg-surface-alt pt-[68px] pb-[84px]">
         <PaintEdge color="var(--color-surface)" direction="down" grain className="absolute inset-x-0 top-0" />
         <WebContainer className="relative">
           <div className="reveal max-w-[46ch]">
@@ -276,7 +280,9 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
       {realPicks.length >= 4 && (
         /* pb에 파도 높이(clamp 40~72px)를 더해 아래 물결이 콘텐츠를 덮지 않게 한다. */
         <section className="relative overflow-hidden bg-ink-dark pt-[80px] pb-[calc(80px+clamp(40px,5vw,72px))]">
-          <PaintEdge color="var(--color-bg)" direction="down" grain className="absolute inset-x-0 top-0 z-10" />
+          {/* 위 물결은 **앞 섹션(3)의 면색**이어야 이음매가 없다 — 3이 surface-alt이므로 여기도 같은 값.
+              (베이지 시절엔 3도 bg여서 var(--color-bg) 하나로 위아래가 맞았다.) */}
+          <PaintEdge color="var(--color-surface-alt)" direction="down" grain className="absolute inset-x-0 top-0 z-10" />
           {/* 아래 물결을 이 섹션이 직접 그린다 — 다음 섹션의 면색(bg)으로 위를 덮는 방식.
               why: 이전엔 다음 섹션이 flat var(--color-ink-dark)로 물결을 칠했다. 그런데 이 다크
               면은 flat이 아니라 노이즈가 mix-blend-screen으로 밝혀진 면이라, 물결만 순수
@@ -314,8 +320,12 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
           </WebContainer>
 
           {/* 컨테이너 밖으로 흘러나가는 가로 스크롤 — 목록이 끝나지 않는다는 느낌을 준다.
-              네이티브 overflow 스크롤이라 스크롤 하이재킹 없음(키보드·터치 그대로). */}
-          <ul className="scroll-row reveal-slide relative mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-[max(1.5rem,calc((100vw-1280px)/2))] pb-2">
+              네이티브 overflow 스크롤이라 스크롤 하이재킹 없음(키보드·터치 그대로).
+              ScrollRowNav가 좌우 버튼만 얹는다 — 휠 마우스만 쓰면 넘길 방법이 없었다. */}
+          <ScrollRowNav
+            label="지금 동네에서 열리는 활동"
+            className="scroll-row reveal-slide relative mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-[max(1.5rem,calc((100vw-1280px)/2))] pb-2"
+          >
             {realPicks.map((o) => (
               <li key={o.id} className="w-[210px] shrink-0 snap-start">
                 <Link href={`/opportunity/${o.id}`} className="group block">
@@ -336,7 +346,7 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
                 </Link>
               </li>
             ))}
-          </ul>
+          </ScrollRowNav>
         </section>
       )}
 
