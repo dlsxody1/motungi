@@ -1,7 +1,7 @@
 import type { Opportunity } from "@motungi/core";
 import { useRouter } from "expo-router";
 import { memo, useCallback } from "react";
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useSavedOpportunities } from "@/hooks/useSavedOpportunities";
 import { useAppStore } from "@/store/useAppStore";
@@ -53,7 +53,7 @@ export default function SavedScreen() {
   const catalog = useAppStore((s) => s.catalog);
   // 저장 id를 해소. catalog(반경으로 좁힌 창)에 있으면 그대로 쓰고, 없으면 단건 조회한다
   // (M-045 — 이전엔 catalog.find만 써서 창 밖 저장 id가 조용히 사라졌다).
-  const { items } = useSavedOpportunities(savedIds, catalog);
+  const { items, status, retry } = useSavedOpportunities(savedIds, catalog);
   const openDetail = useCallback(
     (id: string) => router.push({ pathname: "/opportunity", params: { id } }),
     [router],
@@ -86,7 +86,10 @@ export default function SavedScreen() {
 
       <View style={styles.savedHead}>
         <Txt preset="headline">저장한 활동</Txt>
-        <Text style={styles.count}>{items.length}개</Text>
+        {/* 로딩·에러 중엔 count 노드 자체를 렌더하지 않는다 — "0개"로 오독되면 안 된다(M-046). */}
+        {status !== "loading" && status !== "error" && (
+          <Text style={styles.count}>{items.length}개</Text>
+        )}
       </View>
     </>
   );
@@ -102,14 +105,32 @@ export default function SavedScreen() {
         <SavedItem item={item} first={index === 0} onOpen={openDetail} onToggle={toggleSaved} />
       )}
       ListEmptyComponent={
-        <View style={styles.empty}>
-          <Bookmark size={28} color={C.faint} />
-          <Text style={styles.emptyTitle}>아직 저장한 활동이 없어요</Text>
-          <Text style={styles.emptySub}>마음에 드는 활동의 북마크를 눌러 담아두세요.</Text>
-          <Pressable style={styles.emptyCta} onPress={() => router.push("/explore")}>
-            <Text style={styles.emptyCtaLabel}>둘러보기</Text>
-          </Pressable>
-        </View>
+        status === "loading" ? (
+          <View style={styles.empty}>
+            <ActivityIndicator size="large" color={C.primary} />
+            <Text style={styles.emptyTitle}>저장한 활동을 불러오는 중…</Text>
+          </View>
+        ) : status === "error" ? (
+          <View style={styles.empty}>
+            <Bookmark size={28} color={C.faint} />
+            <Text style={styles.emptyTitle}>활동을 불러오지 못했어요</Text>
+            <Text style={styles.emptySub}>네트워크 상태를 확인하고 다시 시도해 주세요.</Text>
+            <Pressable style={styles.emptyCta} onPress={retry}>
+              <Text style={styles.emptyCtaLabel}>다시 시도</Text>
+            </Pressable>
+          </View>
+        ) : (
+          // status === "empty"(저장한 id 자체가 없음) 또는 status === "ok"인데 items가 0인
+          // 드문 경우(저장한 활동이 전부 삭제됨) — 둘 다 "보여줄 게 없다"는 점은 같다.
+          <View style={styles.empty}>
+            <Bookmark size={28} color={C.faint} />
+            <Text style={styles.emptyTitle}>아직 저장한 활동이 없어요</Text>
+            <Text style={styles.emptySub}>마음에 드는 활동의 북마크를 눌러 담아두세요.</Text>
+            <Pressable style={styles.emptyCta} onPress={() => router.push("/explore")}>
+              <Text style={styles.emptyCtaLabel}>둘러보기</Text>
+            </Pressable>
+          </View>
+        )
       }
       initialNumToRender={8}
       windowSize={7}

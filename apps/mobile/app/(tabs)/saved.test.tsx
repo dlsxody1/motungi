@@ -6,7 +6,7 @@
  * 나오는지만 본다. 카탈로그에 없는 저장 id는 fetchOpportunityById로 단건 조회해
  * 해소되는 분기(M-045)도 함께 고정한다 — 예전엔 여기서 조용히 빠졌다(버그).
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockOpportunity } from "@/data/opportunities";
 
@@ -103,7 +103,7 @@ describe("SavedScreen", () => {
     expect(screen.getByText("합정 재즈 라이브")).toBeInTheDocument();
   });
 
-  it("저장한 활동이 없으면 빈 상태 문구와 둘러보기 CTA를 렌더한다", () => {
+  it("저장한 활동이 없으면(진짜 무저장) 빈 상태 문구와 둘러보기 CTA를 렌더한다", () => {
     state.savedIds = [];
 
     render(<SavedScreen />);
@@ -111,5 +111,47 @@ describe("SavedScreen", () => {
     expect(screen.getByText("아직 저장한 활동이 없어요")).toBeInTheDocument();
     expect(screen.getByText("마음에 드는 활동의 북마크를 눌러 담아두세요.")).toBeInTheDocument();
     expect(screen.getByText("둘러보기")).toBeInTheDocument();
+  });
+
+  it("단건 조회가 진행 중이면 로딩 상태를 렌더하고 개수는 보여주지 않는다(M-046)", () => {
+    state.catalog = [];
+    state.savedIds = ["창밖-id"];
+    // 응답이 오지 않는 pending 프라미스로 고정 — 로딩 상태만 관찰한다.
+    fetchOpportunityByIdMock.mockReturnValueOnce(new Promise(() => {}));
+
+    render(<SavedScreen />);
+
+    expect(screen.getByText("저장한 활동을 불러오는 중…")).toBeInTheDocument();
+    // 로딩 중엔 "0개"로 오독될 수 있는 개수 표시를 렌더하지 않는다.
+    expect(screen.queryByText(/개$/)).not.toBeInTheDocument();
+  });
+
+  it("단건 조회가 실패하면 에러 상태 + 다시 시도 버튼을 렌더하고, 버튼을 누르면 재조회한다(M-046)", async () => {
+    state.catalog = [];
+    state.savedIds = ["창밖-id"];
+    fetchOpportunityByIdMock.mockResolvedValueOnce({ data: null, status: "error" });
+
+    render(<SavedScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText("활동을 불러오지 못했어요")).toBeInTheDocument();
+    });
+    expect(fetchOpportunityByIdMock).toHaveBeenCalledTimes(1);
+    // 에러 중에도 개수 표시는 렌더하지 않는다.
+    expect(screen.queryByText(/개$/)).not.toBeInTheDocument();
+
+    fetchOpportunityByIdMock.mockResolvedValueOnce({
+      data: makeOpp({ id: "창밖-id", title: "합정 재즈 라이브" }),
+      status: "ok",
+    });
+    fireEvent.click(screen.getByText("다시 시도"));
+
+    // retry()가 실제로 fetchOpportunityById를 다시 호출했는지(장식용 버튼이 아님을) 확인한다.
+    await waitFor(() => {
+      expect(fetchOpportunityByIdMock).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(screen.getByText("합정 재즈 라이브")).toBeInTheDocument();
+    });
   });
 });
