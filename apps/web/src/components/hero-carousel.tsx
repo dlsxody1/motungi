@@ -10,7 +10,7 @@
  *
  * 웹(히어로 우측)·모바일(CTA 위) 공용. 장식 아이콘 없음(화살표는 기능적 예외).
  */
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { normalizeGu } from "@motungi/core";
 import { DEFAULT_NEIGHBORHOOD, type MockOpportunity } from "@/data/opportunities";
@@ -71,8 +71,16 @@ function ArrowButton({
   );
 }
 
-/** 활동 카드 한 장 — 포스터 + 카테고리 라벨 + 제목·동네·참가비. 내부 상세로 링크. */
-function HeroCard({
+/**
+ * 활동 카드 한 장 — 포스터 + 카테고리 라벨 + 제목·동네·참가비. 내부 상세로 링크.
+ *
+ * memo인 이유: 캐러셀은 1.5초마다 setIndex로 자동 전환한다. memo가 없으면 **틱마다
+ * 카드 N개가 전부 다시 렌더**됐다 — 실제로 바뀌는 건 활성 카드와 직전 카드의 state뿐인데.
+ * 게다가 이 캐러셀은 WebGL(PosterRing) 실패 시의 폴백 경로라(hero-poster-stage.tsx),
+ * 가장 성능이 약한 기기에서 이 낭비가 돌고 있었다.
+ * props가 전부 원시값/안정 참조라 memo가 그대로 걸린다.
+ */
+const HeroCard = memo(function HeroCard({
   item,
   state,
 }: {
@@ -120,7 +128,7 @@ function HeroCard({
       </LandingPhoto>
     </Link>
   );
-}
+});
 
 export function HeroCarousel({ items }: { items: MockOpportunity[] }) {
   // 앵커(사용자가 /location에서 정한 집 기준). 없으면 기본 망원동.
@@ -131,7 +139,12 @@ export function HeroCarousel({ items }: { items: MockOpportunity[] }) {
   const gu = normalizeGu(home?.region ?? DEFAULT_NEIGHBORHOOD.region);
   // 활동의 dong_name은 구 단위(예: "마포구")라 앵커의 구로 좁힌다. 구를 모르거나 매칭 0건이면
   // 전체를 보여준다(빈 캐러셀 방지) — 라벨은 항상 앵커 동네를 명시한다.
-  const nearby = gu ? items.filter((o) => (o.location?.dongName ?? "").includes(gu)) : [];
+  // 1.5초마다 리렌더되므로 여기서 매번 filter를 돌리면 그때마다 새 배열이 나온다.
+  // shown이 새 배열이면 아래 map의 key/props 계산도 매번 다시 돈다.
+  const nearby = useMemo(
+    () => (gu ? items.filter((o) => (o.location?.dongName ?? "").includes(gu)) : []),
+    [gu, items],
+  );
   const shown = nearby.length >= 1 ? nearby : items;
   const scoped = nearby.length >= 1;
 

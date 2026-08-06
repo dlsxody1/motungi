@@ -2,7 +2,7 @@
 
 import { pickTop } from "@motungi/core";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
 import { fetchOpportunities } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
@@ -15,21 +15,34 @@ export default function LoadingPage() {
   const setResults = useAppStore((s) => s.setResults);
   const dongName = anchors.home?.dongName ?? "우리 동네";
 
+  /**
+   * anchors를 **값**으로 요약한 키. 객체를 그대로 deps에 넣으면 setAnchor가 매번
+   * 새 객체를 만들므로(core/store.ts), 앵커가 바뀔 때마다 fetch+스코어링이 다시 돌고
+   * 2.4초 타이머가 재시작된다 — 사용자는 리포트로 못 넘어간 채 로딩에 갇힌다.
+   */
+  const anchorKey = JSON.stringify([anchors.home?.point, anchors.work?.point]);
+  // 최신 anchors는 ref로 읽는다(위 키가 같으면 스코어링에 쓰이는 좌표도 같다).
+  const anchorsRef = useRef(anchors);
+  anchorsRef.current = anchors;
+
   useEffect(() => {
     let cancelled = false;
     // 리포트용으로 관심 카테고리만·소량 받아 진단 답변으로 스코어링 → 원픽+함께(최대 6) 저장.
     // 넓은 카탈로그(탐색용)는 여기서 채우지 않는다 — explore가 useEnsureCatalog로 별도 로드.
     void (async () => {
+      const anchorsNow = anchorsRef.current;
       const { data: candidates } = await fetchOpportunities({
         categories: answers?.interests,
         // 원픽은 거리로 스코어링하므로 후보도 앵커 주변에서 뽑는다(전 지역에서 받아 버리지 않게).
-        near: anchors.home?.point ? { point: anchors.home.point, radiusKm: 10 } : undefined,
+        near: anchorsNow.home?.point
+          ? { point: anchorsNow.home.point, radiusKm: 10 }
+          : undefined,
         limit: 30,
       });
       if (cancelled) return;
       // pickTop은 slice(0, topN)이라 후보가 적으면 그만큼만 — "나온 만큼" 렌더.
       const ranked = answers
-        ? pickTop(candidates, answers, anchors, 6).map((r) => {
+        ? pickTop(candidates, answers, anchorsNow, 6).map((r) => {
             return { ...r.opportunity, matchScore: Math.round(r.score * 100) };
           })
         : candidates.slice(0, 6);
@@ -44,7 +57,9 @@ export default function LoadingPage() {
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [router, answers, anchors, setResults]);
+    // anchors 객체가 아니라 anchorKey(좌표 값)에 의존한다 — 위 주석 참조.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, answers, anchorKey, setResults]);
 
   const Body = (
     <div
