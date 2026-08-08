@@ -81,3 +81,65 @@ Deno.test("M-028: EMPLYM_STLE_CMMN_MM이 문자열이 아니면 mapSeoulJob이 �
     mapSeoulJob({ EMPLYM_STLE_CMMN_MM: 42 as unknown as string }),
   );
 });
+
+/**
+ * M-029 — packages/core/src/adapters/seoul-culture.ts(죽은 SoT 미러, 삭제됨)에
+ * 있던 시나리오 중 이 파일(adapters.test.ts)에 없던 것만 이식한다. joinDescription
+ * (PROGRAM/PLAYER/ETC_DESC 원문 보존)은 mapSeoulCulture의 실동작인데 여태 검증이
+ * 없었다 — core 미러 쪽에만 테스트가 있었다.
+ */
+Deno.test("M-029(이식) — PROGRAM·PLAYER·ETC_DESC를 빈 줄로 이어 description에 싣는다", () => {
+  const row = mapSeoulCulture({
+    TITLE: "재즈의 밤",
+    PROGRAM: "크리스마스 캐롤 명곡을 재즈 트리오가 연주",
+    PLAYER: "Piano : Kazumi Tateishi",
+    ETC_DESC: "8세 이상 입장 가능",
+  });
+  assertEquals(
+    row?.description,
+    "크리스마스 캐롤 명곡을 재즈 트리오가 연주\n\nPiano : Kazumi Tateishi\n\n8세 이상 입장 가능",
+  );
+});
+
+Deno.test("M-029(이식) — PROGRAM/PLAYER/ETC_DESC가 전부 없으면 description은 null", () => {
+  const row = mapSeoulCulture({ TITLE: "재즈의 밤" });
+  assertEquals(row?.description, null);
+});
+
+Deno.test("M-029(이식) — IS_FREE=무료면 USE_FEE와 무관하게 cost_krw=0", () => {
+  const row = mapSeoulCulture({
+    TITLE: "무료 야외 공연",
+    IS_FREE: "무료",
+    USE_FEE: "",
+  });
+  assertEquals(row?.cost_krw, 0);
+});
+
+/**
+ * M-029 — packages/core/src/adapters/culture-info.ts(죽은 SoT 미러, 삭제됨)의
+ * 정규화 happy-path를 이식한다. 이 파일엔 그동안 필드없음/genre 테스트뿐이라
+ * deadline(endDate)·좌표(gpsX/gpsY)·이미지(thumbnail)·지역(area+sigungu) 조합은
+ * 검증된 적이 없었다.
+ */
+Deno.test("M-029(이식) — culture_info: endDate→deadline, area+sigungu→dong_name, gpsX/Y→lat/lng, thumbnail→image_url", () => {
+  const row = mapCultureInfo({
+    seq: "386189",
+    title: "미술은행 20주년 특별전",
+    endDate: "20260731",
+    place: "국립현대미술관 청주관",
+    realmName: "전시",
+    area: "충북",
+    sigungu: "청주시",
+    thumbnail: "http://www.culture.go.kr/img.png",
+    gpsX: "127.4290",
+    gpsY: "36.6357",
+  });
+  assertEquals(row?.deadline, "2026-07-31");
+  assertEquals(row?.dong_name, "충북 청주시");
+  assertEquals(row?.lat, 36.6357);
+  assertEquals(row?.lng, 127.429);
+  assertEquals(row?.image_url, "http://www.culture.go.kr/img.png");
+  // 이 소스는 요금/난이도를 API가 안 준다 — 지어내지 않고 null이 정답.
+  assertEquals(row?.cost_krw, null);
+  assertEquals(row?.difficulty, null);
+});
