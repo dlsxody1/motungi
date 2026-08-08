@@ -585,7 +585,7 @@ backlog:
   - id: M-028
     title: "ingest 외부 API 응답 런타임 미검증 — 필드 타입 불일치 시 소스 전체 실패"
     priority: medium
-    status: todo
+    status: doing
     scope: [supabase/functions/ingest, packages/core/src/adapters/ingest-fetch.ts]
     done_when:
       - "supabase/functions/ingest/index.ts:44-51의 fetchSeoul()과 packages/core/src/adapters/ingest-fetch.ts:31-38의 parseJsonItems()가 raw item의 각 필드를 매퍼(mapSeoulCulture 등)에 넘기기 전 런타임으로 타입 검증(문자열 기대 필드가 실제 문자열인지 등)한다"
@@ -598,10 +598,24 @@ backlog:
       catch가 해당 소스 전체(예: 문화행사 전량)를 이번 회차에서 누락시킨다. parseJsonItems도
       `items as Record<string, string>[]`로 unknown 배열 원소를 무검증 캐스트.
 
+      [2026-08-08 야간 파이프라인 완료] done_when의 라인 참조(index.ts:44-51 등)는 M-026 인증
+      로직 삽입으로 60-84행으로 밀려 있었음 — planner가 실코드 대조로 갱신. 가드는 매퍼 본문
+      (adapters.ts)이 아니라 호출부에 둠: packages/core/src/adapters/ingest-fetch.ts에
+      isPlainRecord()+safeMapItems<T,R>() 신설(mapper가 던지면 해당 항목만 skip+카운트, 예외
+      전파 없음), parseJsonItems가 배열 원소 중 plain object가 아닌 것을 필터링. index.ts의
+      네 매퍼 호출부(seoul_culture/culture_info/trail/seoul_jobs) 전부 safeMapItems로 교체,
+      스킵 시 console.warn. fetchSeoul()의 body.row도 반환 전 isPlainRecord로 필터링.
+      테스트: core에 5케이스(불량 항목 1건 스킵·나머지 유지 포함) + Deno adapters.test.ts에
+      2케이스(가드 없이는 매퍼가 여전히 던짐을 명시해 호출부 가드의 존재 이유를 고정) 추가.
+      core 252/mobile 54/web 247 통과, typecheck 4패키지 클린, lint·시크릿 스캔 클린.
+      Deno 테스트는 이 환경에 deno 런타임이 없어 실행 불가 — 코드 대조로 수동 검증만 함
+      (gate.sh도 애초에 vitest만 검사해 이 갭은 알려진 범위). 커밋 e0adac4, dev 직접 커밋
+      (트렁크 모델, PR 없음). qa PUSH GATE: PASS.
+
   - id: M-029
     title: "packages/core 어댑터 5종이 프로덕션 미도달 — ingest 함수가 동일 로직을 독립 재구현 유지"
     priority: medium
-    status: todo
+    status: doing
     scope: [packages/core/src/adapters, supabase/functions/ingest, docs]
     done_when:
       - "normalizeSeoulCulture/normalizeCultureInfo/normalizeTrail/normalizeSportsFacility/normalizeSeoulJobs(각 packages/core/src/adapters/*.ts)가 apps/web·apps/mobile·supabase/functions/ingest 어디서도 실호출되지 않음을 재확인한다"
@@ -614,6 +628,23 @@ backlog:
       5개 함수는 유닛테스트 전용 사문화 코드다. Deno가 npm 워크스페이스 패키지를 직접 resolve하지
       못해 생긴 의도된 분기였을 가능성이 크지만, 문서화되지 않은 채 유지비만 2배로 드는 상태 —
       결정만 남았다는 점에서 medium.
+
+      [2026-08-08 야간 파이프라인 완료] (a) 제거를 선택 — (b) 배선은 필드매핑 SoT 자체를
+      바꾸는 동일 밤 리스크가 커서 기각(architect 판단). seoul-culture/culture-info/
+      sports-facility/trail.ts + 각 .test.ts 삭제. seoul-jobs.ts는 normalizeSeoulJob(s)·
+      classifyEmployment·parseWageKrw 및 이들만 참조하던 RawSeoulJob·buildSummary·
+      PART_TIME_KEYWORDS까지 연쇄 제거(제거 후 그레핑으로 고아 코드임을 재확인) —
+      isAfterWorkShift/parseShiftHours/parseWorkRegion(ingest adapters.ts가 실사용)는 보존.
+      adapters/index.ts 배럴에서 4개 재노출 제거, 헤더에 SoT 설명 추가. packages/core/CLAUDE.md
+      에도 결정 근거 명시. 삭제 전 .test.ts에서 미커버 시나리오 3건(문화행사 설명 합치기·
+      무료 비용 처리·문화정보 happy path)만 골라 supabase/functions/ingest/adapters.test.ts로
+      이관(기계적 전량 이관 아님 — trail·sports-facility 시나리오는 M-036이 신규 작성하므로
+      중복 방지). core 299→252(예상된 감소, 회귀 아님)/mobile 54/web 247 통과, typecheck
+      4패키지 클린. qa가 audience.ts(scoring.ts의 isKidsOnly)·util.ts(trail-route/route.ts의
+      parseGpxPoints)가 그대로 살아있음을 별도 재확인. 잔여 사항(코드 미수정, qa가 발견):
+      supabase/functions/ingest/adapters.ts:226 부근 주석이 이제 존재하지 않는 core
+      PART_TIME_KEYWORDS를 가리킴 — adapters.ts는 이 이슈 scope 밖이라 그대로 두고 후속 과제로
+      남김. 커밋 eb45bed, dev 직접 커밋(트렁크 모델, PR 없음). qa PUSH GATE: PASS.
 
   - id: M-030
     title: "웹 primary 버튼 색상 WCAG AA 대비 미달 (#e25067 on white ≈ 3.77:1)"
@@ -715,7 +746,7 @@ backlog:
   - id: M-036
     title: "supabase/functions/ingest 테스트 0건 (매핑·페이지네이션·마감정리 로직)"
     priority: low
-    status: todo
+    status: doing
     scope: [supabase/functions/ingest]
     done_when:
       - "adapters.ts의 mapSeoulCulture/mapCultureInfo/mapTrail 등 매퍼 함수에 대한 테스트(Deno test 또는 vitest 이식)를 추가한다"
@@ -726,6 +757,21 @@ backlog:
       이슈는 인증과 무관한 일반 매핑·페이지네이션 로직 커버리지에 집중한다. priority low로 둔
       이유: 실서비스 영향은 낮고(현재 무사고 운영 중), 두 소스(sports_facility·seoul_jobs)는
       아직 게이팅 상태라 커버리지 우선순위가 상대적으로 낮음.
+
+      [2026-08-08 야간 파이프라인 완료] "테스트 0건" 전제가 stale임을 planner가 재확인
+      (adapters.test.ts가 2026-08-06 M-017류 부산물로 이미 존재, mapSeoulCulture/mapCultureInfo
+      만 8케이스 커버) — done_when을 실제 공백(mapTrail·mapSportsFacility·mapSeoulJob 매퍼 +
+      index.ts 로직)으로 좁혀 진행. adapters.test.ts에 세 매퍼 신규 케이스 추가. 신설
+      index.test.ts에 culture_info 페이지네이션+dedupByKey(core의 실제 export dedupByKey로
+      구동)와 deadline-purge 특성 스펙 추가 — 단 runSource 소스별 격리는 index.ts가
+      Deno.serve 모듈 최상단 실행+내부함수 미export 구조라 목업으로 직접 테스트 불가, 대신
+      코드(runSource try/catch가 Promise.all 전에 개별 소스를 감싸 한 소스의 예외가 형제
+      소스에 전파되지 않음, index.ts:160-171/186-249)를 손으로 대조해 그 성질을 리포트에
+      근거로 남김(가짜 목업 강행 대신 정직한 유예 — qa가 코드 재확인 후 합리적 판단으로 승인).
+      이 커밋은 테스트 전용, 프로덕션 코드 무변경(qa가 git show --stat으로 확인). Deno 실행은
+      환경에 deno 없어 불가 — 수동 코드 대조만. core 252/mobile 54/web 247 통과(무변경이라
+      당연), typecheck 클린. 커밋 d916a36, dev 직접 커밋(트렁크 모델, PR 없음).
+      qa PUSH GATE: PASS.
 
   - id: M-037
     title: "활동 상세 '즐기는 방법(steps)' 블록이 웹·모바일 모두 도달 불가능한 dead UI"
