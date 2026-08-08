@@ -13,8 +13,8 @@
  * 실행: deno test supabase/functions/ingest/adapters.test.ts
  * (게이트에는 넣지 않았다 — CI에 Deno 러너가 아직 없다. 백로그 감.)
  */
-import { assertEquals, assertNotEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { mapCultureInfo, mapSeoulCulture } from "./adapters.ts";
+import { assertEquals, assertNotEquals, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { mapCultureInfo, mapSeoulCulture, mapSeoulJob } from "./adapters.ts";
 
 Deno.test("아동 전용(USE_TRGT)은 적재하지 않는다", () => {
   assertEquals(mapSeoulCulture({ TITLE: "여름 독서교실", USE_TRGT: "어린이" }), null);
@@ -64,4 +64,20 @@ Deno.test("culture_info — genre=realmName, audience는 null(미상)", () => {
   const row = mapCultureInfo({ seq: "2", title: "현대미술전", realmName: "전시" });
   assertEquals(row?.genre, "전시");
   assertEquals(row?.audience, null);
+});
+
+/**
+ * M-028 — 이 테스트는 "가드가 필요한 이유"를 문서화한다. 매퍼 본문에는 방어 코드를
+ * 넣지 않는다(그건 이 클러스터의 결정이 아니다) — 대신 index.ts가 safeMapItems로
+ * 호출부에서 항목 단위 격리를 한다(packages/core/src/adapters/ingest-fetch.ts).
+ * 이 테스트는 매퍼가 여전히 이런 입력에 던진다는 사실만 고정해 둔다.
+ */
+Deno.test("M-028: TITLE이 문자열이 아니면(예: 숫자) mapSeoulCulture가 예외를 던진다", () => {
+  assertThrows(() => mapSeoulCulture({ TITLE: 42 as unknown as string }));
+});
+
+Deno.test("M-028: EMPLYM_STLE_CMMN_MM이 문자열이 아니면 mapSeoulJob이 예외를 던진다", () => {
+  assertThrows(() =>
+    mapSeoulJob({ EMPLYM_STLE_CMMN_MM: 42 as unknown as string }),
+  );
 });
