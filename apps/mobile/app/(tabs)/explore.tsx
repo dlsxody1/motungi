@@ -1,5 +1,5 @@
 import type { Opportunity, OpportunityCategory } from "@motungi/core";
-import { scoreAll } from "@motungi/core";
+import { nearestAnchorKm, normalizeGu, scoreAll } from "@motungi/core";
 import { useRouter } from "expo-router";
 import { memo, useCallback, useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -64,11 +64,18 @@ export default function ExploreScreen() {
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
   const [filter, setFilter] = useState<string>("전체");
   const [query, setQuery] = useState("");
+  const [region, setRegion] = useState<string | null>(null);
+  const [easyOnly, setEasyOnly] = useState(false);
 
   const catalog = useAppStore((s) => s.catalog);
   const catalogStatus = useAppStore((s) => s.catalogStatus);
   const answers = useAppStore((s) => s.answers);
   const anchors = useAppStore((s) => s.anchors);
+  const matchActive = answers != null;
+  const hasAnchor = anchors.home?.point != null || anchors.work?.point != null;
+  const [sort, setSort] = useState<"recommend" | "distance" | "deadline">(
+    matchActive ? "recommend" : "deadline",
+  );
   // 진단 답변이 있으면 전체를 재스코어링해 추천 순으로 정렬한다(매칭 %는 표시하지 않음).
   // 서버 실데이터만 사용(목업 폴백 없음).
   const source = useMemo(
@@ -82,15 +89,38 @@ export default function ExploreScreen() {
     [catalog, answers, anchors],
   );
 
+  // 웹(explore/page.tsx)과 동일한 decorate-sort-undecorate — 거리는 한 번만 계산해 붙인다.
+  const sorted = useMemo(() => {
+    if (sort === "distance" && hasAnchor) {
+      return source
+        .map((o) => ({ o, km: nearestAnchorKm(anchors, o.location) ?? Infinity }))
+        .sort((a, b) => a.km - b.km)
+        .map((x) => x.o);
+    }
+    return source;
+  }, [source, sort, hasAnchor, anchors]);
+
+  // 지역(구) 옵션 — 정규화한 dong_name distinct + 건수, 건수순.
+  const REGIONS = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const o of source) {
+      const gu = normalizeGu(o.location?.dongName);
+      if (gu) counts.set(gu, (counts.get(gu) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([label, count]) => ({ label, count }));
+  }, [source]);
+
   const list = useMemo(() => {
     const cat = FILTERS.find((f) => f.label === filter)?.category ?? null;
     const q = query.trim();
-    return source.filter((o) => {
+    return sorted.filter((o) => {
       if (cat && o.category !== cat) return false;
+      if (region && normalizeGu(o.location?.dongName) !== region) return false;
+      if (easyOnly && !(o.difficulty != null && o.difficulty <= 0.33)) return false;
       if (q && !`${o.title} ${o.summary}`.includes(q)) return false;
       return true;
     });
-  }, [filter, query, source]);
+  }, [filter, region, easyOnly, query, sorted]);
 
   // 데이터 있는 카테고리만 필터 칩으로 노출("전체"는 항상).
   const visibleFilters = useMemo(
@@ -137,6 +167,37 @@ export default function ExploreScreen() {
           <Chip key={f.label} label={f.label} active={filter === f.label} onPress={() => setFilter(f.label)} />
         ))}
       </ScrollView>
+
+      {/* 정렬: 추천순(진단 완료 시에만) · 거리순(앵커 보유 시에만 활성) · 마감임박순(기본) */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 8, paddingRight: 20 }}>
+        {matchActive && (
+          <Chip label="추천순" active={sort === "recommend"} onPress={() => setSort("recommend")} />
+        )}
+        <Chip
+          label="거리순"
+          active={sort === "distance"}
+          disabled={!hasAnchor}
+          onPress={hasAnchor ? () => setSort("distance") : undefined}
+        />
+        <Chip label="마감임박순" active={sort === "deadline"} onPress={() => setSort("deadline")} />
+        <Chip label="낮음만 보기" active={easyOnly} onPress={() => setEasyOnly((v) => !v)} />
+      </ScrollView>
+
+      {/* 지역(구) 필터 — 데이터가 있을 때만 노출 */}
+      {REGIONS.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 8, paddingRight: 20 }}>
+          <Chip label="전체 지역" active={region === null} onPress={() => setRegion(null)} />
+          {REGIONS.map((r) => (
+            <Chip
+              key={r.label}
+              label={`${r.label} (${r.count})`}
+              active={region === r.label}
+              onPress={() => setRegion(r.label)}
+            />
+          ))}
+        </ScrollView>
+      )}
+
       <View style={{ height: 8 }} />
     </>
   );

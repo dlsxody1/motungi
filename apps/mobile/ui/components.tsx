@@ -104,15 +104,18 @@ export function Chip({
   active,
   onPress,
   leading,
+  disabled,
 }: {
   label: string;
   active?: boolean;
   onPress?: () => void;
   leading?: ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       hitSlop={{ top: 6, bottom: 6 }}
       accessibilityRole="button"
       aria-selected={!!active}
@@ -121,6 +124,7 @@ export function Chip({
         active
           ? { borderColor: C.primary, backgroundColor: C.primary }
           : { borderColor: C.line, backgroundColor: C.surface },
+        disabled && { opacity: 0.4 },
       ]}
     >
       {leading}
