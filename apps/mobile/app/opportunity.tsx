@@ -156,6 +156,9 @@ export default function OpportunityScreen() {
           style={[styles.bookmark, saved && styles.bookmarkOn]}
           onPress={() => toggleSaved(o.id)}
           hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={saved ? "저장 취소" : "저장하기"}
+          aria-pressed={saved}
         >
           <Bookmark size={22} filled={saved} color={saved ? C.primary : C.label} />
         </Pressable>

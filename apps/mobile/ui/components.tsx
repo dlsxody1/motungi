@@ -114,6 +114,8 @@ export function Chip({
     <Pressable
       onPress={onPress}
       hitSlop={{ top: 6, bottom: 6 }}
+      accessibilityRole="button"
+      aria-selected={!!active}
       style={[
         styles.chip,
         active

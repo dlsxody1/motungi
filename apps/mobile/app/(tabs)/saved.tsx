@@ -34,7 +34,13 @@ const SavedItem = memo(function SavedItem({
       </View>
       <View style={{ alignItems: "flex-end", gap: 6 }}>
         <Text style={[styles.cost, { color: accent }]}>{item.costLabel}</Text>
-        <Pressable onPress={() => onToggle(item.id)} hitSlop={10}>
+        <Pressable
+          onPress={() => onToggle(item.id)}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="저장 취소"
+          aria-pressed={true}
+        >
           <Bookmark size={20} filled color={C.primary} />
         </Pressable>
       </View>

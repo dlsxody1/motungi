@@ -170,6 +170,21 @@ describe("OpportunityScreen", () => {
     expect(arg.message).toContain("/opportunity?id=op-1");
   });
 
+  it("북마크 토글에 저장 상태를 반영하는 접근 가능한 이름이 있다(M-031)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+    searchParamsState.id = "op-1";
+    state.savedIds = [];
+
+    render(<OpportunityScreen />);
+
+    const bookmark = screen.getByLabelText("저장하기");
+    expect(bookmark).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(bookmark);
+    expect(toggleSavedMock).toHaveBeenCalledWith("op-1");
+  });
+
   it("공유가 실패해도(rejected) 에러를 던지지 않는다", async () => {
     const shareSpy = vi.spyOn(RNShare, "share").mockRejectedValue(new Error("cancelled"));
     useOpportunityState.status = "ok";

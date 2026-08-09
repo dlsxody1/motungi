@@ -83,6 +83,19 @@ describe("SavedScreen", () => {
     expect(screen.getByText("망원동 기준")).toBeInTheDocument();
   });
 
+  it("저장 토글에 접근 가능한 이름과 44px 이상 터치영역이 있다(M-031)", () => {
+    state.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+    state.savedIds = ["op-1"];
+
+    render(<SavedScreen />);
+
+    const toggle = screen.getByLabelText("저장 취소");
+    expect(toggle).toHaveAttribute("role", "button");
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(toggle);
+    expect(toggleSavedMock).toHaveBeenCalledWith("op-1");
+  });
+
   it("카탈로그 창 밖의 저장 id는 단건 조회로 해소되어 렌더한다(M-045)", async () => {
     state.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
     state.savedIds = ["op-1", "창밖-id"];

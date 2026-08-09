@@ -54,4 +54,16 @@ describe("DiagnosisScreen", () => {
     // (React가 false 값의 aria-* 속성을 렌더하지 않음) — 활성화는 속성 부재로 확인한다.
     expect(cta).not.toHaveAttribute("aria-disabled");
   });
+
+  it("옵션 Pressable에 접근 가능한 role·선택 상태가 노출된다(M-031)", () => {
+    render(<DiagnosisScreen />);
+
+    const option = screen.getByText("문화·공연").closest('[role="button"]');
+    expect(option).not.toBeNull();
+    expect(option).toHaveAttribute("aria-selected", "false");
+
+    fireEvent.click(screen.getByText("문화·공연"));
+
+    expect(option).toHaveAttribute("aria-selected", "true");
+  });
 });

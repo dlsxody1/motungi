@@ -100,6 +100,8 @@ export default function DiagnosisScreen() {
                 key={o.value}
                 onPress={() => pick(o.value, o.soon)}
                 disabled={o.soon}
+                accessibilityRole="button"
+                aria-selected={on}
                 style={[
                   styles.opt,
                   o.soon
