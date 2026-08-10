@@ -805,7 +805,7 @@ backlog:
   - id: M-037
     title: "활동 상세 '즐기는 방법(steps)' 블록이 웹·모바일 모두 도달 불가능한 dead UI"
     priority: medium
-    status: todo
+    status: doing
     scope: [packages/core, apps/web, apps/mobile]
     done_when:
       - "MockOpportunity.steps(packages/core/src/catalog.ts:66)를 실제로 채우는 데이터소스가 있는지 확인한다"
@@ -951,7 +951,7 @@ backlog:
   - id: M-042
     title: "loading.tsx / error.tsx 경계가 0개 — 스트리밍·실패 UX 부재"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/app]
     done_when:
       - "최소 /explore·/report에 loading.tsx가 있어 대기 중 빈 화면 대신 스켈레톤이 보인다"
@@ -1068,7 +1068,7 @@ backlog:
   - id: M-047
     title: "모바일 동네 검색 한글 IME 요청 폭주 — 자모마다 네트워크 요청"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/mobile/app/location.tsx]
     done_when:
       - "한글 조합 중(자모 입력)에는 요청이 나가지 않는다"
