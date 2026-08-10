@@ -127,23 +127,6 @@ export default function OpportunityScreen() {
           ))}
         </View>
 
-        {/* 즐기는 방법 (스텝이 있을 때만) */}
-        {!!o.steps && o.steps.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>즐기는 방법</Text>
-            <View style={{ gap: 16 }}>
-              {o.steps.map((s, i) => (
-                <View key={i} style={styles.step}>
-                  <View style={styles.stepNum}>
-                    <Text style={styles.stepNumText}>{i + 1}</Text>
-                  </View>
-                  <Text style={styles.stepText}>{s}</Text>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-
         <Text style={styles.disclaimer}>
           보러 가기를 누르면 주최·출처 채널로 이동해요. 모퉁이는 공공·제휴 정보를 모아 소개할 뿐,
           예약·주최 당사자가 아니에요.
@@ -197,11 +180,6 @@ const styles = StyleSheet.create({
   metaCard: { flex: 1, backgroundColor: C.surface, borderRadius: R.lg, paddingVertical: 12, alignItems: "center", ...cardShadow },
   metaLabel: { fontSize: 11, color: C.muted },
   metaValue: { marginTop: 4, fontSize: 15, fontWeight: "700", color: C.ink },
-  sectionTitle: { marginTop: 24, marginBottom: 12, fontSize: 17, fontWeight: "700", color: C.ink },
-  step: { flexDirection: "row", gap: 12 },
-  stepNum: { width: 24, height: 24, borderRadius: 999, backgroundColor: C.primary, alignItems: "center", justifyContent: "center" },
-  stepNumText: { fontSize: 12, fontWeight: "700", color: C.white },
-  stepText: { flex: 1, fontSize: 14, lineHeight: 22, color: C.label },
   disclaimer: { marginTop: 24, backgroundColor: C.gray100, borderRadius: R.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 12, lineHeight: 18, color: C.muted },
   actions: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8 },
   bookmark: { width: 52, height: 52, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
