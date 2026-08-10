@@ -136,7 +136,8 @@ describe("LocationScreen — 검색 디바운스", () => {
     });
 
     expect(searchNeighborhoodsMock).toHaveBeenCalledTimes(1);
-    expect(searchNeighborhoodsMock).toHaveBeenCalledWith("역삼");
+    // 두 번째 인자는 요청 취소용 AbortSignal — 값 자체보다 "취소 가능한 요청"인지가 계약이다.
+    expect(searchNeighborhoodsMock).toHaveBeenCalledWith("역삼", expect.any(AbortSignal));
   });
 
   it("연속 입력 시 이전 타이머는 취소되고 최종 검색어에 대해서만 호출된다", () => {
@@ -160,7 +161,49 @@ describe("LocationScreen — 검색 디바운스", () => {
     });
 
     expect(searchNeighborhoodsMock).toHaveBeenCalledTimes(1);
-    expect(searchNeighborhoodsMock).toHaveBeenCalledWith("역삼동");
+    expect(searchNeighborhoodsMock).toHaveBeenCalledWith("역삼동", expect.any(AbortSignal));
+  });
+
+  it("빠르게 이어친 키 입력(망→망원→망원동)은 최종 검색어에 대해 정확히 1회만 호출한다", () => {
+    vi.useFakeTimers();
+    searchNeighborhoodsMock.mockResolvedValue([]);
+
+    render(<LocationScreen />);
+    const input = screen.getByPlaceholderText("동네 또는 구 검색 (예: 역삼동, 강남구)");
+
+    fireEvent.change(input, { target: { value: "망" } });
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    fireEvent.change(input, { target: { value: "망원" } });
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    fireEvent.change(input, { target: { value: "망원동" } });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(searchNeighborhoodsMock).toHaveBeenCalledTimes(1);
+    expect(searchNeighborhoodsMock).toHaveBeenCalledWith("망원동", expect.any(AbortSignal));
+  });
+
+  it("한 글자만 입력하면(MIN_QUERY_LEN 미만) 디바운스가 지나도 조회하지 않는다", () => {
+    vi.useFakeTimers();
+    searchNeighborhoodsMock.mockResolvedValue([]);
+
+    render(<LocationScreen />);
+    const input = screen.getByPlaceholderText("동네 또는 구 검색 (예: 역삼동, 강남구)");
+
+    fireEvent.change(input, { target: { value: "역" } });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(searchNeighborhoodsMock).not.toHaveBeenCalled();
+    // 결과 없음 드롭다운도 뜨지 않는다 — 아직 검색하지 않은 상태를 "없음"으로 오해시키지 않는다.
+    expect(screen.queryByText("검색 결과가 없어요.")).not.toBeInTheDocument();
+    expect(screen.getByText("최근 · 인기 동네")).toBeInTheDocument();
   });
 
   it("검색어를 지우면 타이머 경과 없이 드롭다운이 닫힌다(결과 초기화)", () => {
