@@ -986,7 +986,7 @@ backlog:
   - id: M-044
     title: "LLM 계층 — 추천 근거 생성(주력) + 자연어 의도 파싱(보조)"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/app/api, packages/core/src/view.ts, packages/core/src/scoring.ts(무변경 유지)]
     done_when:
       - "폴백을 **먼저** 세운다 — LLM을 429/500으로 강제 목킹했을 때 whyReasons로 떨어지고 UI가 정상 렌더되는 테스트가 있다"
@@ -1005,6 +1005,26 @@ backlog:
       **whyReasons는 지우지 말고 폴백으로 유지** — 이미 테스트됐고 빈 배열을 반환하지 않음을 보장한다.
       모델은 Gemini Flash 무료 티어(비용 0, rate limit 존재) → 429를 정상 경로로 취급해
       폴백을 먼저 구현할 것. pgvector는 이 규모에서 과투자라 쓰지 않는다.
+
+      [2026-08-11 야간 파이프라인 완료 — "추천 근거 생성(주력)"만] scope를 architect 단계에서
+      done_when 충족에 필요한 파일까지 확장(원 scope는 apps/web/src/app/api·core/view.ts뿐이라
+      "페이지가 블로킹되지 않는다" 요건을 검증할 UI 소비 지점이 빠져 있었음 — 상세는
+      nightly-2026-08-11.md "아키텍처 검토" 참조). packages/core/src/view.ts에 순수 함수
+      buildWhyReasonsPrompt 추가(breakdown 5축 + 표시라벨만 입력, description/summary는
+      시그니처에 아예 없음 — 환각 방지 구조를 view.test.ts 4케이스로 고정). 신규
+      apps/web/src/app/api/why-reasons/route.ts: 키미설정·429·5xx·4s AbortController 타임아웃·
+      네트워크에러·malformed 응답 전부 {fallback:true} 200(에러 아님), 요청당 fallback/tokens
+      구조화 로그. 신규 apps/web/src/hooks/useWhyReasons.ts: whyReasons() 규칙기반을 즉시
+      반환(react-query enabled 게이팅, 페이지 비블로킹) 후 성공시만 LLM 산문으로 교체,
+      opportunity-detail.tsx가 이 훅을 사용하도록 교체. GEMINI_API_KEY는 .env.example·
+      turbo.json에 서버전용으로 문서화(NEXT_PUBLIC_ 미사용). done_when 6개 중 5개 코드로 충족,
+      3번째("20행 유니크 비율 개선")는 실제 Gemini 응답 없이는 측정 불가 — GEMINI_API_KEY는
+      에이전트가 발급·등록할 수 없다(M-026/M-040과 동일 제약). **사람 후속 필요**: 키 발급 후
+      실측 확인, 그리고 원 제목의 "자연어 의도 파싱(보조)"는 이번 밤 done_when에 없어 손대지
+      않음(별도 이슈로 남겨둘지 사람 판단). core 4 / web route 14 / web hook 7 신규 테스트,
+      429/500/네트워크실패 전부 규칙기반 폴백 유지를 직접 검증. 4패키지 typecheck·lint 클린,
+      web build 27/27 라우트 성공. 커밋 d277dd4. qa PUSH GATE: PASS(시크릿 스캔 오탐 1건,
+      nightly-2026-08-11.md 참조). status는 사람의 최종 리뷰 전까지 doing으로 둠.
 
   - id: M-045
     title: "보관함 저장 항목 실종 — 모바일이 카탈로그 창 밖 id를 조용히 버린다"
@@ -1108,7 +1128,7 @@ backlog:
   - id: M-049
     title: "진단 Q1(관심사) 다중선택 — core는 이미 배열인데 UI만 단일선택"
     priority: medium
-    status: todo
+    status: doing
     scope: [packages/core/src/diagnosis.ts, apps/web/src/app/diagnosis/page.tsx, apps/mobile/app/diagnosis.tsx]
     done_when:
       - "Q1에서 관심사를 2개 이상 고를 수 있고, 고른 것이 모두 DiagnosisAnswers.interests에 담긴다"
@@ -1134,3 +1154,15 @@ backlog:
       함정: web은 데스크톱·모바일 두 트리에 옵션 렌더가 **중복**돼 있다(page.tsx:125와 254). 한쪽만
       고치면 반쪽만 다중선택이 된다. mobile은 React Native라 web 컴포넌트를 복사하지 말 것.
       `side_job`(가벼운 부업)은 옛 일자리 기획 잔재로 보이나 이 이슈에서 건드리지 않는다 — 별건이다.
+
+      [2026-08-11 야간 파이프라인 완료] draftToAnswers(diagnosis.ts)가
+      `Record<number, string | string[] | undefined>`를 받도록 확장 — draft[0]이 배열이면 유효
+      카테고리만 걸러 중복제거 후 담고, 기존 단일 문자열도 하위호환으로 `[interest]`로 감싼다(두
+      경로 다 테스트, done_when 마지막 항목의 "하위호환" 분기 선택). web·mobile 둘 다 Q1만
+      토글 다중선택(`MULTI_SELECT_STEP = 0`), Q2·Q3는 단일선택 그대로. web은 데스크톱·모바일
+      두 트리(page.tsx:125·254 예상 지점) 모두 수정 확인 — 함정으로 지목된 중복 렌더 반쪽 수정
+      없음. web 데스크탑 스텝 레일의 완료 미리보기(answers[i] 참조)도 배열 케이스로 갱신(콤마
+      조인) — done_when에 없었지만 안 고치면 다중선택 후 미리보기가 깨져 안전상 포함. side_job은
+      건드리지 않음. core 17개(+8)/web 12개(+3)/mobile 6개(+2) 신규·갱신 테스트. 4패키지
+      typecheck·lint 클린. 커밋 adf4c02. qa PUSH GATE: PASS. status는 사람의 최종 리뷰 전까지
+      doing으로 둠.
