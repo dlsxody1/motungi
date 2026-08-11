@@ -29,6 +29,11 @@ export const queryKeys = {
     ["report-fallback", point ? `${point.lat},${point.lng}` : "no-anchor"] as const,
   /** 걷기길 경로. */
   trailRoute: (id: string) => ["trail-route", id] as const,
+  /**
+   * LLM 근거 생성(M-044). breakdownKey는 breakdown 5축 직렬화값 —
+   * 진단답변·앵커가 바뀌어 breakdown이 달라지면 자동으로 다른 캐시 항목이 된다.
+   */
+  whyReasons: (id: string, breakdownKey: string) => ["why-reasons", id, breakdownKey] as const,
 } as const;
 
 export function QueryProvider({ children }: { children: ReactNode }) {

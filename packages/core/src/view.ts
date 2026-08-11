@@ -337,3 +337,37 @@ export function whyReasons(
 
   return reasons.slice(0, 3);
 }
+
+/**
+ * LLM 근거 생성(M-044) 입력. **scoring의 breakdown만** 받는다 — description·summary
+ * 같은 원문(raw row)은 의도적으로 포함하지 않는다. 모델이 점수에 없는 사실(가격·위치·
+ * 후기 등)을 지어낼 표면 자체를 없애기 위함이다. category/title/costLabel/timeLabel은
+ * 이미 규칙엔진이 계산해둔 표시용 값이라 "사실 생성"이 아니라 "표시값 인용"에 해당한다.
+ */
+export interface WhyReasonsPromptInput {
+  category: OpportunityCategory;
+  title: string;
+  costHeading: string;
+  costLabel: string;
+  timeLabel: string | null;
+  /** scoreOpportunity(scoring.ts)의 breakdown. 0~1 범위, 축 5개 전부. */
+  breakdown: Record<"fit" | "distance" | "time" | "difficulty" | "cost", number>;
+}
+
+/**
+ * whyReasons()의 4분기 고정 문구를 대체할 LLM 프롬프트를 만든다(순수 함수, 네트워크 없음).
+ * 입력이 breakdown 숫자 + 표시용 라벨뿐이므로, 이 프롬프트만 보고는 존재하지 않는 사실을
+ * 만들어낼 수 없다 — 그 구조를 테스트로 고정한다(view.test.ts).
+ */
+export function buildWhyReasonsPrompt(input: WhyReasonsPromptInput): string {
+  const { category, title, costHeading, costLabel, timeLabel, breakdown } = input;
+  const lines = [
+    `활동: "${title}" (${CATEGORY_LABEL[category]})`,
+    `${costHeading}: ${costLabel}`,
+    timeLabel ? `시간대: ${timeLabel}` : null,
+    `적합도 점수(0~1, 높을수록 좋음): 관심사 일치 ${breakdown.fit.toFixed(2)} · 거리 ${breakdown.distance.toFixed(2)} · 시간대 ${breakdown.time.toFixed(2)} · 난이도 적합도 ${breakdown.difficulty.toFixed(2)} · 비용 ${breakdown.cost.toFixed(2)}`,
+    "위 점수만 근거로 삼아, 이 활동이 사용자에게 왜 맞는지 2~3개의 짧은 한국어 문장을 줄바꿈으로 구분해 제시하세요.",
+    "점수에 없는 사실(정확한 가격·위치·후기·리뷰 등)은 절대 지어내지 마세요. 문장 앞에 번호나 기호를 붙이지 마세요.",
+  ].filter((l): l is string => l != null);
+  return lines.join("\n");
+}

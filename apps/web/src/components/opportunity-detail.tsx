@@ -27,12 +27,12 @@ import {
   displayNameOf,
   isWeekendOuting,
   timeRangeLabel,
-  whyReasons,
 } from "@motungi/core";
 import { CourseGuide } from "@/components/course-guide";
 import type { MockOpportunity } from "@/data/opportunities";
 import { useTrailRoute } from "@/hooks/useTrailRoute";
 import { useOpportunity } from "@/hooks/useOpportunity";
+import { useWhyReasons } from "@/hooks/useWhyReasons";
 import { shareContent } from "@/lib/kakao";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -69,8 +69,12 @@ export function OpportunityDetail({
   const saved = useAppStore((s) => (o ? s.savedIds.includes(o.id) : false));
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const answers = useAppStore((s) => s.answers);
+  const anchors = useAppStore((s) => s.anchors);
   const user = useAppStore((s) => s.user);
   const homeDong = useAppStore((s) => s.anchors.home?.dongName);
+  // 규칙기반 근거를 즉시 반환하고, 가능하면 LLM 산문으로 교체한다(M-044) — early return보다
+  // 앞에서 불러야 하는 훅이라 o가 아직 null(로딩 중)이어도 여기서 호출한다.
+  const { reasons: why } = useWhyReasons(o, answers, anchors);
 
   // memo된 자식(지도·코스안내)이 걸리려면 콜백이 매 렌더 새로 만들어지면 안 된다.
   const toggleRef = useRef(toggleSaved);
@@ -114,7 +118,6 @@ export function OpportunityDetail({
   }
 
   const displayName = displayNameOf(user);
-  const why = whyReasons(o, answers);
   const hasLink = !!o.ctaUrl && o.ctaUrl !== "#";
 
   // 사이드바/헤더 보강 표시값 (row에 있는 데이터를 실제로 노출).
