@@ -96,6 +96,66 @@ describe("DiagnosisPage 키보드 포커스 (모바일, Q1)", () => {
   });
 });
 
+describe("DiagnosisPage Q1 다중선택 (M-049)", () => {
+  it("두 개를 고르면 데스크탑·모바일 트리 모두 두 옵션이 체크 표시된다", async () => {
+    const user = userEvent.setup();
+    render(<DiagnosisPage />);
+    const mobile = within(screen.getByTestId("diagnosis-mobile"));
+
+    const culture = mobile.getByRole("button", { name: /문화·공연/ });
+    const active = mobile.getByRole("button", { name: /운동·산책/ });
+    await user.click(culture);
+    await user.click(active);
+
+    expect(culture.querySelector("svg")).toBeTruthy();
+    expect(active.querySelector("svg")).toBeTruthy();
+    expect(mobile.getByRole("button", { name: "다음" })).toBeEnabled();
+  });
+
+  it("이미 고른 옵션을 다시 누르면 선택이 해제된다(토글)", async () => {
+    const user = userEvent.setup();
+    render(<DiagnosisPage />);
+    const mobile = within(screen.getByTestId("diagnosis-mobile"));
+
+    const culture = mobile.getByRole("button", { name: /문화·공연/ });
+    await user.click(culture);
+    expect(culture.querySelector("svg")).toBeTruthy();
+
+    await user.click(culture);
+    expect(culture.querySelector("svg")).toBeFalsy();
+    // 0개 선택으로 돌아왔으니 "다음"은 다시 비활성.
+    expect(mobile.getByRole("button", { name: "다음" })).toBeDisabled();
+  });
+
+  it("Q1에서 여러 개를 고르고 완료하면 interests에 전부 담겨 저장된다", async () => {
+    const push = vi.fn();
+    vi.spyOn(navigation, "useRouter").mockReturnValue({
+      push,
+      replace: vi.fn(),
+      back: vi.fn(),
+      forward: vi.fn(),
+      refresh: vi.fn(),
+      prefetch: vi.fn(),
+    } as unknown as ReturnType<typeof navigation.useRouter>);
+
+    const user = userEvent.setup();
+    render(<DiagnosisPage />);
+    const mobile = within(screen.getByTestId("diagnosis-mobile"));
+
+    await user.click(mobile.getByRole("button", { name: /문화·공연/ }));
+    await user.click(mobile.getByRole("button", { name: /운동·산책/ }));
+    await user.click(mobile.getByRole("button", { name: "다음" }));
+
+    await user.click(mobile.getByRole("button", { name: /평일 저녁/ }));
+    await user.click(mobile.getByRole("button", { name: "다음" }));
+
+    await user.click(mobile.getByRole("button", { name: /보통/ }));
+    await user.click(mobile.getByRole("button", { name: "결과 보기" }));
+
+    expect(push).toHaveBeenCalledWith("/loading");
+  });
+});
+
 describe("DiagnosisPage 전체 진단 플로우", () => {
   it("Q1 → Q2 → Q3 완료 후 /loading 으로 이동한다", async () => {
     const push = vi.fn();

@@ -66,4 +66,27 @@ describe("DiagnosisScreen", () => {
 
     expect(option).toHaveAttribute("aria-selected", "true");
   });
+
+  it("Q1은 다중선택된다 — 두 개를 고르면 둘 다 선택 상태가 유지된다(M-049)", () => {
+    render(<DiagnosisScreen />);
+
+    fireEvent.click(screen.getByText("문화·공연"));
+    fireEvent.click(screen.getByText("운동·산책"));
+
+    const culture = screen.getByText("문화·공연").closest('[role="button"]');
+    const active = screen.getByText("운동·산책").closest('[role="button"]');
+    expect(culture).toHaveAttribute("aria-selected", "true");
+    expect(active).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("Q1에서 이미 고른 옵션을 다시 누르면 선택이 해제된다(토글)", () => {
+    render(<DiagnosisScreen />);
+
+    const culture = screen.getByText("문화·공연").closest('[role="button"]');
+    fireEvent.click(screen.getByText("문화·공연"));
+    expect(culture).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.click(screen.getByText("문화·공연"));
+    expect(culture).toHaveAttribute("aria-selected", "false");
+  });
 });
