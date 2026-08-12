@@ -1107,7 +1107,7 @@ backlog:
   - id: M-048
     title: "앱↔웹 간극 정리 — 웹에서 고친 것이 모바일에 반영 안 되는 패턴"
     priority: medium
-    status: done
+    status: doing
     scope: [docs/ux/web-mobile-parity.md, docs/backlog/backlog.yml]
     done_when:
       - "웹↔모바일 기능 대조표가 docs에 있고, 각 항목이 '의도된 차이'인지 '누락'인지 표시된다"
@@ -1143,6 +1143,14 @@ backlog:
       구체적으로 제시. 이 이슈 자체는 조사·분류용이라 apps/mobile·apps/web·packages/core는
       전혀 건드리지 않음(scope를 실제 손댄 파일로 좁혀 기록). qa PUSH GATE 결과는 야간
       리포트 참조.
+
+      [2026-08-12 reviewer 정정] frontend-impl 커밋(d5f8b94)이 status를 done으로 직접
+      세팅했는데, 이 파일 상단 필드 설명(14행: "status todo | doing | done (reviewer가
+      PR 열 때 todo→doing, 사람이 머지 후 done)")과 reviewer.md의 완료 정의(45행: "되돌린
+      이슈는 todo 유지 — doing으로 바꾸면 큐에서 사라진다") 둘 다 밤이 낼 수 있는 값은
+      doing까지이고 done은 사람이 dev→main 승격 후에만 매긴다고 명시한다. architect·
+      frontend-impl·qa 3단계 모두 놓쳤음 — reviewer가 doing으로 되돌림. 상세는
+      nightly-2026-08-12.md §아키텍처 검토 참조.
 
   - id: M-049
     title: "진단 Q1(관심사) 다중선택 — core는 이미 배열인데 UI만 단일선택"
