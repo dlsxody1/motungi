@@ -1107,8 +1107,8 @@ backlog:
   - id: M-048
     title: "앱↔웹 간극 정리 — 웹에서 고친 것이 모바일에 반영 안 되는 패턴"
     priority: medium
-    status: todo
-    scope: [apps/mobile, docs]
+    status: done
+    scope: [docs/ux/web-mobile-parity.md, docs/backlog/backlog.yml]
     done_when:
       - "웹↔모바일 기능 대조표가 docs에 있고, 각 항목이 '의도된 차이'인지 '누락'인지 표시된다"
       - "누락 중 사용자가 막히는 항목이 개별 M-NNN 이슈로 등재된다"
@@ -1124,6 +1124,25 @@ backlog:
       북마크 accessibilityLabel 없음, 상세 메타데이터(마감 D-day·출처·시간대) 미표시.
       **이 이슈는 조사·분류용이다** — 여기서 구현하지 말고 개별 이슈로 쪼갤 것.
       우선순위는 사람이 정한다: 하이퍼로컬 제품에서 지도 부재가 제일 크다는 의견이 있었다.
+
+      [2026-08-12 야간 파이프라인 완료] docs/ux/web-mobile-parity.md 신설 — 홈/랜딩·진단·
+      리포트·탐색·상세·보관함·위치 7화면을 실코드(dev HEAD 694a563) 대조해 표로 정리, 각 행에
+      해소됨/의도된 차이/누락(user-blocking)/누락(연출·품질) 4태그 부여. 원 notes의 3건 중
+      **보관함 실종(M-045)·IME 폭주(M-047)는 이미 다른 밤이 해소**(커밋 291e0e8/ebaeb27, 표에
+      🟢로 반영). **랜딩 2차 CTA 문제만 아직 미해결**로 확인돼(현재 코드 기준 apps/mobile/app/
+      index.tsx:75-77) M-050으로 신규 등재. 원 notes의 "나머지 확인된 공백" 중 탐색 정렬/지역/
+      난이도 필터는 M-032(커밋 fec028b)로, 북마크 accessibilityLabel은 M-031(커밋 f5f800c)로
+      이미 해소돼 있었음을 확인 — notes 작성 시점(2026-08-05)엔 아직 todo였으나 그 사이 다른
+      클러스터가 처리한 것. 나머지(이미지 렌더 부재·지도/폴리라인 부재·상세 메타데이터 미표시·
+      탐색 스켈레톤 부재)는 여전히 실재해 M-051~M-054로 쪼개 등재했고, 조사 중 새로 발견한
+      M-044(LLM 근거) 모바일 미소비는 M-055(선택, GEMINI_API_KEY 미등록 제약)로 등재. 총
+      신규 이슈 5건 필수 + 1건 선택. 재발 방지책은 "공유 로직=packages/core로 이동"만으론
+      불충분하다는 실증(view.ts의 deadlineLabel/timeRangeLabel/isWeekendOuting이 이미 core에
+      있는데 apps/mobile 참조 0건, grep 확인)을 근거로, 문서 §10에 커밋 단위 소비 확인
+      체크리스트 항목(frontend-impl.md DoD + nightly-pipeline.md reviewer 단계에 추가 제안)을
+      구체적으로 제시. 이 이슈 자체는 조사·분류용이라 apps/mobile·apps/web·packages/core는
+      전혀 건드리지 않음(scope를 실제 손댄 파일로 좁혀 기록). qa PUSH GATE 결과는 야간
+      리포트 참조.
 
   - id: M-049
     title: "진단 Q1(관심사) 다중선택 — core는 이미 배열인데 UI만 단일선택"
@@ -1166,3 +1185,127 @@ backlog:
       건드리지 않음. core 17개(+8)/web 12개(+3)/mobile 6개(+2) 신규·갱신 테스트. 4패키지
       typecheck·lint 클린. 커밋 adf4c02. qa PUSH GATE: PASS. status는 사람의 최종 리뷰 전까지
       doing으로 둠.
+
+  # ── 2026-08-12 M-048 조사 산출물: 웹↔모바일 패리티 신규 이슈 5건(+선택 1건) ──────────
+  # 근거·표는 docs/ux/web-mobile-parity.md 참조. 각 항목은 실코드(dev HEAD 694a563) 확인 완료.
+
+  - id: M-050
+    title: "랜딩 2차 CTA가 웹과 달리 폴백 리포트(/report)로 빠짐"
+    priority: medium
+    status: todo
+    scope: [apps/mobile/app/index.tsx]
+    done_when:
+      - "모바일 랜딩(app/index.tsx)의 2차 CTA가 웹(app/page.tsx)과 동등한 목적지(/explore, '동네 활동 둘러보기')로 이동한다"
+      - "'로그인 없이 바로 시작' 문구는 웹처럼 안내 텍스트로 남기거나, 실제 CTA로 유지한다면 /report가 아니라 의도한 목적지로 보낸다 — 둘 중 하나로 웹과 의미를 맞춘다"
+      - "웹·모바일 두 화면이 랜딩에서 제공하는 경로(1차: 동네 설정, 2차: 탐색)가 같은 개수·같은 의미로 대응된다"
+      - "index.test.tsx에 2차 CTA의 목적지를 검증하는 테스트가 있다"
+    notes: >
+      docs/ux/web-mobile-parity.md §1 근거. 웹은 apps/web/src/app/page.tsx:56 주석에
+      "예전엔 /report로 가는 링크였는데, 진단을 건너뛴 폴백 리포트로 떨어졌다"고 명시하며
+      2차 CTA를 /explore로 고쳤다(page.tsx:64-69). 모바일 apps/mobile/app/index.tsx:75-77은
+      여전히 그 옛 동작 그대로 router.push("/report")다 — 웹이 이미 버그로 인정하고 고친
+      패턴이 모바일에 살아있다. M-048 원 notes(2026-08-05)가 지목한 3건 중 유일하게 아직
+      미해결로 확인된 건(나머지 2건 보관함 실종·IME 폭주는 이미 다른 밤이 해소).
+
+  - id: M-051
+    title: "모바일 탐색·상세 화면에 활동 이미지 렌더 없음"
+    priority: medium
+    status: todo
+    scope: ["apps/mobile/app/(tabs)/explore.tsx", apps/mobile/app/opportunity.tsx]
+    done_when:
+      - "탐색 목록의 각 행(ActivityItem)에 활동 imageUrl이 있으면 썸네일 이미지를 렌더한다 — 웹 explore-card.tsx의 Thumbnail과 동등한 폴백(이미지 없으면 카테고리 톤 플레이스홀더) 규칙을 따른다"
+      - "상세 화면 상단에 대표 이미지 배너를 렌더한다 — 웹 opportunity-detail.tsx의 Thumbnail과 동등한 폴백 규칙을 따른다"
+      - "RN Image 컴포넌트가 레이아웃을 밀지 않는다(고정 aspect ratio 또는 고정 높이로 CLS 방지)"
+      - "이미지 로드 실패 시에도 카드/화면이 깨지지 않는 테스트가 있다"
+    notes: >
+      docs/ux/web-mobile-parity.md §4·§5 근거. 웹은 apps/web/src/components/thumbnail.tsx
+      기반 Thumbnail을 explore-card.tsx:25-32(탐색 카드)와 opportunity-detail.tsx:163-169·
+      320-326(상세 배너)에서 쓴다. 모바일은 apps/mobile/app/(tabs)/explore.tsx의
+      ActivityItem(24-47행)과 apps/mobile/app/opportunity.tsx 전체에 이미지 관련 컴포넌트가
+      0건이다(grep 확인) — imageUrl 필드는 데이터에 들어오는데 안 쓴다. 참고로
+      apps/mobile/ui/hero-carousel.tsx:23은 이미 RN Image를 온보딩 히어로용으로 쓰고 있으니
+      RN Image 사용 패턴 자체는 이미 코드베이스에 선례가 있다(그대로 재사용 가능).
+      apps/mobile/app/(tabs)/saved.tsx의 SavedItem도 같은 문제가 있으나(웹 saved-card.tsx는
+      이미지 있음) 이번 scope에는 포함하지 않았다 — docs/ux/web-mobile-parity.md §8-3 참조,
+      후속 이슈 후보로 남김.
+
+  - id: M-052
+    title: "모바일 상세 화면에 위치 지도·산책로 폴리라인 없음"
+    priority: medium
+    status: todo
+    scope: [apps/mobile/app/opportunity.tsx]
+    done_when:
+      - "상세 화면에 활동 위치(o.location.point)를 지도로 보여준다 — 웹 opportunity-detail.tsx의 VenueMap과 동등한 정보(좌표·장소명)를 제공한다"
+      - "산책로(source: 'trail') 활동은 웹의 useTrailRoute처럼 경로를 선으로 표시한다(또는 최소한 경로 존재 여부를 알린다)"
+      - "**구현 방식(react-native-maps 신규 의존성 추가 vs 정적 지도 이미지 URL 방식)을 결정하고 이 결정을 done_when 이행 근거에 문서로 남긴다** — react-native-maps는 신규 네이티브 의존성이라 Expo prebuild(및 EAS 빌드 설정)에 영향을 줄 수 있으므로, 이 경로를 택할 경우 사람 승인이 필요할 수 있다는 점을 architect/구현 단계에서 명시한다"
+      - "지도 로드 실패 시에도 화면 나머지가 정상 동작하는 테스트가 있다"
+    notes: >
+      docs/ux/web-mobile-parity.md §5 근거. 웹은 apps/web/src/components/venue-map.tsx +
+      apps/web/src/hooks/useTrailRoute.ts로 NaverMapSDK 기반 지도·경로를 그린다
+      (opportunity-detail.tsx:234-245·368-381). 모바일은 apps/mobile 전체에
+      react-native-maps나 MapView 참조가 0건이다(grep 확인) — apps/mobile/package.json에도
+      지도 관련 의존성이 없다. 두 방식(네이티브 지도 라이브러리 추가 vs 정적 지도 이미지)은
+      트레이드오프가 다르다 — 전자는 인터랙티브하지만 Expo prebuild·네이티브 빌드에 영향을
+      주는 신규 의존성이고, 후자는 의존성 추가 없이 이미지 URL만으로 되지만 인터랙션이 없다.
+      사람 의견: 하이퍼로컬 제품에서 지도 부재가 체감상 가장 큰 간극이라는 평가가 있었으나
+      우선순위는 사람이 최종 판단.
+
+  - id: M-053
+    title: "모바일 상세 화면에 마감 D-day·출처 미표시"
+    priority: medium
+    status: todo
+    scope: [apps/mobile/app/opportunity.tsx]
+    done_when:
+      - "activity.deadline이 있으면 packages/core의 deadlineLabel()로 D-day를 계산해 표시한다 — 웹 opportunity-detail.tsx의 DdayPill과 동등한 톤 구분(지남/임박≤3일/여유)을 따른다"
+      - "activity.sourceLabel이 있으면 출처를 표시한다"
+      - "기존 o.meta 3칸 표시는 유지한 채 마감·출처를 추가한다(대체가 아니라 보강)"
+      - "마감 지남/임박/여유 3가지 톤이 렌더되는 테스트가 있다"
+    notes: >
+      docs/ux/web-mobile-parity.md §5 근거. packages/core/src/view.ts:193의 deadlineLabel()과
+      apps/web/src/components/opportunity-detail.tsx:211-230·430-449의 dl 블록(마감 D-day +
+      출처)이 웹엔 있는데 모바일 apps/mobile/app/opportunity.tsx는 o.meta 배열(120-128행)만
+      렌더하고 deadlineLabel·timeRangeLabel을 전혀 참조하지 않는다(grep 확인, apps/mobile
+      전체에서 0건). 함수는 이미 packages/core에 있어 순수 함수 그대로 가져다 쓰면 된다 —
+      새 로직을 짤 필요가 없다는 점에서 M-051·M-052보다 구현 비용이 낮다.
+
+  - id: M-054
+    title: "모바일 탐색 화면에 로딩 스켈레톤 없음"
+    priority: low
+    status: todo
+    scope: ["apps/mobile/app/(tabs)/explore.tsx"]
+    done_when:
+      - "catalogStatus가 로딩 중(카탈로그 아직 idle)일 때 '아직 등록된 활동이 없어요' 문구 대신 스켈레톤이 보인다 — 웹 explore-skeleton.tsx의 ExploreRowSkeleton과 동등한 정보 상태(빈 것과 로딩 중을 구분)를 따른다"
+      - "로딩 스켈레톤 개수는 첫 화면을 채울 만큼만(과도하게 그리지 않는다)"
+      - "실제 빈 결과(카탈로그는 왔는데 필터 결과가 0건)와 로딩 중이 다른 화면으로 렌더되는 테스트가 있다"
+    notes: >
+      docs/ux/web-mobile-parity.md §4 근거. 웹은 apps/web/src/app/explore/page.tsx:246-264가
+      catalogStatus === "idle"일 때 ExploreRowSkeleton(apps/web/src/components/
+      explore-skeleton.tsx)을 보여준다. 모바일 apps/mobile/app/(tabs)/explore.tsx의
+      ListEmptyComponent(215-223행)는 catalogStatus의 error/unconfigured만 구분하고, idle
+      (로딩 중)은 그냥 "아직 등록된 활동이 없어요"로 표시한다 — 로딩 중에 "없음"으로 오독될
+      수 있다. 과거 웹의 M-042(loading.tsx 부재)와 같은 패턴의 재발. priority를 low로 둔 건
+      기능이 아니라 로딩 중 짧은 순간의 UX 품질 문제이기 때문.
+
+  - id: M-055
+    title: "모바일 상세가 M-044 LLM 근거(useWhyReasons)를 소비하지 않음"
+    priority: low
+    status: todo
+    scope: [apps/mobile/app/opportunity.tsx]
+    done_when:
+      - "모바일 상세 화면이 (가능하면) LLM 산문 근거를 시도하고, 실패·미설정 시 whyReasons() 규칙기반으로 폴백한다 — 웹 useWhyReasons.ts와 동등한 우아한 열화(graceful degradation) 계약을 따른다"
+      - "규칙기반 근거를 먼저 렌더해 화면이 네트워크에 블로킹되지 않는다(M-044 원 계약 유지)"
+      - "GEMINI_API_KEY 미설정 상태에서도 whyReasons() 폴백으로 정상 동작하는 테스트가 있다"
+      - "실제 Gemini 응답을 받는 경로는 GEMINI_API_KEY 등록 후 사람이 최종 검증한다(에이전트는 키를 발급·등록할 수 없음)"
+    notes: >
+      docs/ux/web-mobile-parity.md §5 근거. apps/web/src/hooks/useWhyReasons.ts(M-044, 커밋
+      d277dd4)는 whyReasons() 규칙기반을 즉시 반환한 뒤 /api/why-reasons가 성공하면 LLM
+      산문으로 교체한다. 모바일 apps/mobile/app/opportunity.tsx:12,66은 core의 whyReasons()를
+      그대로 직접 호출할 뿐 LLM 경로가 없다 — 동등한 훅이 apps/mobile/hooks에 없다(find 확인).
+      웹 훅은 @tanstack/react-query 기반인데 모바일엔 이 의존성이 없다(package.json 확인,
+      M-045 notes와 동일한 제약) — 웹 코드를 그대로 옮기지 말고 plain useState/useEffect로
+      재구현할 것(M-045가 이미 쓴 전략).
+      ⚠️ **GEMINI_API_KEY가 이 환경에 등록돼 있지 않다**(.env.example의 값이 비어 있음,
+      M-026/M-040/M-044와 동일 제약) — 에이전트가 키를 발급·등록할 수 없으므로 규칙기반
+      폴백 경로까지만 이 밤에서 구현·검증 가능하고, 실제 LLM 응답 경로는 사람이 키 등록 후
+      종단 검증해야 한다. priority low + optional로 둔 이유: 기능 없음이 아니라 산문 품질
+      저하(규칙기반 근거는 이미 정상 동작)일 뿐이라서.
