@@ -84,6 +84,13 @@ function makeOpp(overrides: Partial<MockOpportunity> & { id: string; title: stri
   };
 }
 
+/** deadlineLabel(o.deadline, today)이 UTC 자정 기준으로 일수 차를 세므로 UTC로 오프셋한다. */
+function isoDaysFromNow(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 beforeEach(() => {
   pushMock.mockReset();
   replaceMock.mockReset();
@@ -178,6 +185,74 @@ describe("OpportunityScreen", () => {
 
     expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
     expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("deadline·sourceLabel이 둘 다 없으면 마감·출처 블록을 렌더하지 않는다(M-053)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.queryByText("마감")).not.toBeInTheDocument();
+    expect(screen.queryByText("출처")).not.toBeInTheDocument();
+    // 기존 메타 3칸 표시엔 영향 없음(추가일 뿐 대체 아님).
+    expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
+  });
+
+  it("마감일이 지났으면 '마감' 배지를 회색 톤으로 표시한다(M-053)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", deadline: isoDaysFromNow(-2) }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    // "마감" 라벨(dt) + 지난 배지 텍스트 — 둘 다 "마감" 문구로 렌더된다.
+    const matches = screen.getAllByText("마감");
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+    const pill = matches.find((el) => getComputedStyle(el.parentElement!).backgroundColor === "rgb(241, 241, 243)");
+    expect(pill).toBeTruthy();
+  });
+
+  it("마감이 3일 이내로 임박하면 D-day 배지를 강조(primary) 톤으로 표시한다(M-053)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", deadline: isoDaysFromNow(2) }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    const pill = screen.getByText("D-2");
+    expect(getComputedStyle(pill.parentElement!).backgroundColor).toBe("rgb(212, 47, 74)");
+  });
+
+  it("마감이 여유 있게 남아있으면 D-day 배지를 은은한(tint) 톤으로 표시한다(M-053)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", deadline: isoDaysFromNow(10) }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    const pill = screen.getByText("D-10");
+    expect(getComputedStyle(pill.parentElement!).backgroundColor).toBe("rgb(251, 232, 236)");
+  });
+
+  it("sourceLabel이 있으면 출처 행을 렌더한다(M-053)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", sourceLabel: "서울시 문화행사" }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.getByText("출처")).toBeInTheDocument();
+    expect(screen.getByText("서울시 문화행사")).toBeInTheDocument();
   });
 
   it("공유하면 딥링크 URL이 포함된 메시지로 공유한다", () => {

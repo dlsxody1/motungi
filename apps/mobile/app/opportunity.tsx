@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { displayNameOf, whyReasons } from "@motungi/core";
+import { deadlineLabel, displayNameOf, whyReasons } from "@motungi/core";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useOpportunity } from "@/hooks/useOpportunity";
 import { useAppStore } from "@/store/useAppStore";
@@ -66,6 +66,10 @@ export default function OpportunityScreen() {
   const displayName = displayNameOf(user);
   const why = whyReasons(o, answers);
   const hasLink = !!o.ctaUrl && o.ctaUrl !== "#";
+
+  // 마감(D-day)·출처 — 웹(opportunity-detail.tsx)과 동일하게 순수 deadlineLabel로 계산(M-053).
+  const today = new Date().toISOString().slice(0, 10);
+  const deadline = deadlineLabel(o.deadline, today);
 
   const onShare = () => {
     RNShare.share({
@@ -131,6 +135,27 @@ export default function OpportunityScreen() {
           ))}
         </View>
 
+        {/* 마감·출처 — 있는 것만(M-053) */}
+        {(deadline || o.sourceLabel) && (
+          <View style={styles.factsCard}>
+            {deadline && (
+              <View style={styles.factsRow}>
+                <Text style={styles.factsLabel}>마감</Text>
+                <View style={styles.factsValueRow}>
+                  <Text style={styles.factsValue}>{deadline.date}</Text>
+                  <DdayPill deadline={deadline} />
+                </View>
+              </View>
+            )}
+            {!!o.sourceLabel && (
+              <View style={[styles.factsRow, deadline && styles.factsRowBorder]}>
+                <Text style={styles.factsLabel}>출처</Text>
+                <Text style={styles.factsValue}>{o.sourceLabel}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         <Text style={styles.disclaimer}>
           보러 가기를 누르면 주최·출처 채널로 이동해요. 모퉁이는 공공·제휴 정보를 모아 소개할 뿐,
           예약·주최 당사자가 아니에요.
@@ -162,6 +187,22 @@ export default function OpportunityScreen() {
   );
 }
 
+/**
+ * 마감 임박도 배지. D-day에 따라 톤이 달라진다:
+ * 지남=회색, 임박(≤3일)=강조, 여유=은은. 웹 DdayPill(opportunity-detail.tsx)과 동일 톤 규칙.
+ */
+function DdayPill({ deadline }: { deadline: { dday: number; past: boolean } }) {
+  const { dday, past } = deadline;
+  const text = past ? "마감" : dday === 0 ? "오늘 마감" : `D-${dday}`;
+  const pillTone = past ? styles.pillPast : dday <= 3 ? styles.pillImminent : styles.pillComfortable;
+  const textTone = past ? styles.pillTextPast : dday <= 3 ? styles.pillTextImminent : styles.pillTextComfortable;
+  return (
+    <View style={[styles.pill, pillTone]}>
+      <Text style={[styles.pillText, textTone]}>{text}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   iconBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
@@ -185,6 +226,20 @@ const styles = StyleSheet.create({
   metaCard: { flex: 1, backgroundColor: C.surface, borderRadius: R.lg, paddingVertical: 12, alignItems: "center", ...cardShadow },
   metaLabel: { fontSize: 11, color: C.muted },
   metaValue: { marginTop: 4, fontSize: 15, fontWeight: "700", color: C.ink },
+  factsCard: { marginTop: 12, backgroundColor: C.surface, borderRadius: R.lg, paddingHorizontal: 16, ...cardShadow },
+  factsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10 },
+  factsRowBorder: { borderTopWidth: 1, borderTopColor: C.lineAlt },
+  factsLabel: { fontSize: 13, color: C.muted },
+  factsValueRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  factsValue: { fontSize: 14, fontWeight: "700", color: C.ink },
+  pill: { borderRadius: R.pill, paddingHorizontal: 8, paddingVertical: 2 },
+  pillText: { fontSize: 11, fontWeight: "700" },
+  pillPast: { backgroundColor: C.gray100 },
+  pillTextPast: { color: C.muted },
+  pillImminent: { backgroundColor: C.primary },
+  pillTextImminent: { color: C.white },
+  pillComfortable: { backgroundColor: C.tint },
+  pillTextComfortable: { color: C.primaryDeep },
   disclaimer: { marginTop: 24, backgroundColor: C.gray100, borderRadius: R.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 12, lineHeight: 18, color: C.muted },
   actions: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8 },
   bookmark: { width: 52, height: 52, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
