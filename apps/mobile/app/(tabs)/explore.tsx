@@ -7,6 +7,7 @@ import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
 import { Chip, Txt } from "@/ui/components";
 import { ChevronDown, Search } from "@/ui/icons";
+import { Thumbnail } from "@/ui/thumbnail";
 import { C, R, cardShadow } from "@/ui/theme";
 
 /** 탐색 목록에 들어가는 활동 뷰 모델 — catalog 원소 또는 scoreAll 결과(matchScore 부여)에 뷰 필드가 붙은 형태. */
@@ -33,6 +34,11 @@ const ActivityItem = memo(function ActivityItem({
   const accent = item.tone === "mint" ? C.mint : C.primary;
   return (
     <Pressable onPress={() => onPress(item.id)} style={[styles.item, !first && styles.itemBorder]}>
+      <Thumbnail
+        imageUrl={item.imageUrl}
+        tone={item.tone === "mint" ? "mint" : "brand"}
+        style={styles.thumb}
+      />
       <View style={{ flex: 1 }}>
         <Text style={[styles.cat, { color: accent }]}>{item.categoryLabel}</Text>
         <Text style={styles.title}>{item.title}</Text>
@@ -258,6 +264,7 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 15, color: C.ink },
   item: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 16 },
   itemBorder: { borderTopWidth: 1, borderTopColor: C.lineAlt },
+  thumb: { width: 64, height: 64 },
   cat: { fontSize: 12, fontWeight: "700" },
   title: { marginTop: 4, fontSize: 16, fontWeight: "700", color: C.ink },
   summary: { marginTop: 2, fontSize: 13, color: C.muted },

@@ -138,6 +138,29 @@ describe("ExploreScreen", () => {
     expect(distanceChip).toBeDisabled();
   });
 
+  it("imageUrl이 있는 활동은 썸네일 이미지를 렌더한다(M-051)", () => {
+    state.catalogStatus = "ok";
+    state.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", imageUrl: "https://example.test/a.jpg" }),
+    ];
+
+    const { container } = render(<ExploreScreen />);
+
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+    expect(img).toHaveAttribute("src", "https://example.test/a.jpg");
+  });
+
+  it("imageUrl이 없는 활동은 이미지 태그 없이 플레이스홀더만 렌더한다(M-051)", () => {
+    state.catalogStatus = "ok";
+    state.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+
+    const { container } = render(<ExploreScreen />);
+
+    expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
+    expect(container.querySelector("img")).toBeNull();
+  });
+
   it("앵커가 있으면 거리순 정렬이 가까운 활동을 먼저 보여준다(M-032)", () => {
     state.catalogStatus = "ok";
     state.anchors = { home: { dongName: "망원동", point: { lat: 37.5556, lng: 126.9019 } } };

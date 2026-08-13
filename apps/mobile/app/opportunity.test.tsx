@@ -155,6 +155,31 @@ describe("OpportunityScreen", () => {
     expect(screen.queryByText("활동을 찾을 수 없어요")).not.toBeInTheDocument();
   });
 
+  it("imageUrl이 있으면 상세 배너에 썸네일 이미지를 렌더한다(M-051)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", imageUrl: "https://example.test/a.jpg" }),
+    ];
+    searchParamsState.id = "op-1";
+
+    const { container } = render(<OpportunityScreen />);
+
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+    expect(img).toHaveAttribute("src", "https://example.test/a.jpg");
+  });
+
+  it("imageUrl이 없으면 이미지 태그 없이 플레이스홀더 배너만 렌더한다(M-051)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+    searchParamsState.id = "op-1";
+
+    const { container } = render(<OpportunityScreen />);
+
+    expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
+    expect(container.querySelector("img")).toBeNull();
+  });
+
   it("공유하면 딥링크 URL이 포함된 메시지로 공유한다", () => {
     const shareSpy = vi.spyOn(RNShare, "share").mockResolvedValue({ action: "sharedAction" });
     useOpportunityState.status = "ok";

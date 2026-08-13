@@ -15,6 +15,7 @@ import { useOpportunity } from "@/hooks/useOpportunity";
 import { useAppStore } from "@/store/useAppStore";
 import { Button, FlowHeader, Screen, Tag } from "@/ui/components";
 import { Bookmark, CheckCircle, ExternalLink, Location, Share } from "@/ui/icons";
+import { Thumbnail } from "@/ui/thumbnail";
 import { C, R, cardShadow } from "@/ui/theme";
 
 const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://motungi.app";
@@ -83,6 +84,9 @@ export default function OpportunityScreen() {
       />
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}>
+        {/* 대표 이미지 배너 — 없거나 로드 실패하면 카테고리 톤 플레이스홀더로 폴백(M-051) */}
+        <Thumbnail imageUrl={o.imageUrl} tone={o.tone} style={styles.banner} />
+
         <Tag label={o.categoryLabel} />
         <Text style={styles.title}>{o.title}</Text>
         <View style={styles.locRow}>
@@ -163,6 +167,7 @@ const styles = StyleSheet.create({
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
   nfTitle: { fontSize: 20, fontWeight: "800", color: C.ink, textAlign: "center" },
   nfDesc: { marginTop: 8, fontSize: 14, lineHeight: 21, color: C.muted, textAlign: "center", maxWidth: 320 },
+  banner: { marginTop: 4, width: "100%", aspectRatio: 16 / 9, borderRadius: R.lg },
   title: { marginTop: 12, fontSize: 23, lineHeight: 30, fontWeight: "800", color: C.ink },
   locRow: { marginTop: 8, flexDirection: "row", alignItems: "center", gap: 4 },
   locText: { fontSize: 14, color: C.muted },
