@@ -72,9 +72,12 @@ export default function OnboardingScreen() {
             <Pressable style={styles.cta} onPress={() => router.push("/location")}>
               <Text style={styles.ctaLabel}>내 동네에서 찾기</Text>
             </Pressable>
-            <Pressable style={styles.ghost} onPress={() => router.push("/report")}>
-              <Text style={styles.ghostLabel}>로그인 없이 바로 시작</Text>
+            {/* 예전엔 /report(진단 건너뛴 폴백 리포트)로 가는 죽은 링크였다.
+                웹(apps/web/src/app/page.tsx)과 동일하게 /explore로 보내는 실제 둘러보기 경로로 교체(M-050). */}
+            <Pressable style={styles.ghost} onPress={() => router.push("/explore")}>
+              <Text style={styles.ghostLabel}>동네 활동 둘러보기</Text>
             </Pressable>
+            <Text style={styles.caption}>로그인 없이 바로 시작 · 저장할 때만 가입</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -101,4 +104,10 @@ const styles = StyleSheet.create({
   ctaLabel: { fontSize: 16, fontWeight: "700", color: C.primaryDeep },
   ghost: { height: 44, alignItems: "center", justifyContent: "center" },
   ghostLabel: { fontSize: 14, fontWeight: "600", color: "rgba(255,255,255,0.8)" },
+  caption: {
+    marginTop: 2,
+    textAlign: "center",
+    fontSize: 13,
+    color: "rgba(255,255,255,0.7)",
+  },
 });

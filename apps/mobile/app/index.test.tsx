@@ -5,7 +5,7 @@
  * 고정 마케팅 카피(TEASERS)만 노출했다 — fetchOpportunities로 실데이터를 가져와
  * 캐러셀로 렌더하되, 4건 미만이면 TEASERS 폴백을 유지하는지를 검증한다.
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockOpportunity } from "@/data/opportunities";
 
@@ -100,6 +100,27 @@ describe("OnboardingScreen", () => {
     render(<OnboardingScreen />);
 
     expect(screen.getByText("내 동네에서 찾기")).toBeInTheDocument();
-    expect(screen.getByText("로그인 없이 바로 시작")).toBeInTheDocument();
+    expect(screen.getByText("동네 활동 둘러보기")).toBeInTheDocument();
+  });
+
+  it("첫 번째 CTA는 /location으로 이동한다", () => {
+    fetchOpportunitiesMock.mockResolvedValueOnce({ data: [], status: "empty" });
+
+    render(<OnboardingScreen />);
+
+    fireEvent.click(screen.getByText("내 동네에서 찾기"));
+
+    expect(pushMock).toHaveBeenCalledWith("/location");
+  });
+
+  it("두 번째 CTA(M-050)는 더 이상 죽은 /report로 가지 않고 /explore로 이동한다", () => {
+    fetchOpportunitiesMock.mockResolvedValueOnce({ data: [], status: "empty" });
+
+    render(<OnboardingScreen />);
+
+    fireEvent.click(screen.getByText("동네 활동 둘러보기"));
+
+    expect(pushMock).toHaveBeenCalledWith("/explore");
+    expect(pushMock).not.toHaveBeenCalledWith("/report");
   });
 });
