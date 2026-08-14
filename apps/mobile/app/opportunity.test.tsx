@@ -24,6 +24,7 @@ const { pushMock, replaceMock, backMock, toggleSavedMock, state, searchParamsSta
       savedIds: [] as string[],
       answers: null as unknown,
       user: null as unknown,
+      anchors: {} as unknown,
     },
     searchParamsState: { id: undefined as string | undefined },
   }),
@@ -40,6 +41,15 @@ vi.mock("@/store/useAppStore", () => ({
 }));
 
 vi.mock("@/hooks/useEnsureCatalog", () => ({ useEnsureCatalog: vi.fn() }));
+
+// useWhyReasons는 자체 테스트(hooks/useWhyReasons.test.ts)가 있으므로 여기서는 규칙기반
+// 근거를 그대로 반환하는 얇은 흉내로 우회한다(네트워크·LLM 경로는 화면 테스트 관심사가 아님).
+vi.mock("@/hooks/useWhyReasons", () => ({
+  useWhyReasons: (opp: MockOpportunity | null) => ({
+    reasons: opp ? ["테스트용 근거"] : [],
+    isLlm: false,
+  }),
+}));
 
 /**
  * useOpportunity는 자체 테스트가 있으므로 여기선 "카탈로그 캐시 우선" 계약만 얇게
@@ -99,6 +109,7 @@ beforeEach(() => {
   state.savedIds = [];
   state.answers = null;
   state.user = null;
+  state.anchors = {};
   searchParamsState.id = undefined;
   useOpportunityState.catalog = [];
   useOpportunityState.status = "idle";

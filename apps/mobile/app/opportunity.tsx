@@ -9,9 +9,10 @@ import {
   Text,
   View,
 } from "react-native";
-import { deadlineLabel, displayNameOf, whyReasons } from "@motungi/core";
+import { deadlineLabel, displayNameOf } from "@motungi/core";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useOpportunity } from "@/hooks/useOpportunity";
+import { useWhyReasons } from "@/hooks/useWhyReasons";
 import { useAppStore } from "@/store/useAppStore";
 import { Button, FlowHeader, Screen, Tag } from "@/ui/components";
 import { Bookmark, CheckCircle, ExternalLink, Location, Share } from "@/ui/icons";
@@ -32,6 +33,10 @@ export default function OpportunityScreen() {
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const answers = useAppStore((s) => s.answers);
   const user = useAppStore((s) => s.user);
+  const anchors = useAppStore((s) => s.anchors);
+  // 규칙기반 근거를 즉시 반환하고, 가능하면 LLM 산문으로 교체한다(M-055) — early return보다
+  // 앞에서 불러야 하는 훅이라 o가 아직 null(로딩 중)이어도 여기서 호출한다.
+  const { reasons: why } = useWhyReasons(o, answers, anchors);
 
   if (!o) {
     // 아직 불러오는 중(idle/loading)이면 "없음"이 아니라 로딩 스피너.
@@ -64,7 +69,6 @@ export default function OpportunityScreen() {
   const saved = savedIds.includes(o.id);
 
   const displayName = displayNameOf(user);
-  const why = whyReasons(o, answers);
   const hasLink = !!o.ctaUrl && o.ctaUrl !== "#";
 
   // 마감(D-day)·출처 — 웹(opportunity-detail.tsx)과 동일하게 순수 deadlineLabel로 계산(M-053).
