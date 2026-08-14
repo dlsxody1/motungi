@@ -1276,6 +1276,11 @@ backlog:
       status는 미착수라 todo 유지. 상세 기각 사유는 docs/nightly/nightly-2026-08-13.md
       §아키텍처 검토 참조 — 다음 밤이 다시 씨앗으로 집기 전에 사람이 위 세 옵션 중 하나를
       승인/제공해야 재발 없이 진행 가능.
+      [2026-08-14 야간 파이프라인] 이번 밤 씨앗(유일한 medium todo)으로 다시 집혔으나, 08-13
+      이후 지도 방식에 대한 사람 승인·제공이 전혀 없었음을 재확인(.env.example·
+      security-policy.md·apps/mobile/package.json 재검토, 변경 없음) — 08-13의 3개 접근 전부
+      부적합 판정이 그대로 유효해 재차 제외. status는 todo 유지. scope가 같은 파일인 M-055
+      (모바일 opportunity.tsx)만 클러스터로 진행, 상세는 docs/nightly/nightly-2026-08-14.md.
 
   - id: M-053
     title: "모바일 상세 화면에 마감 D-day·출처 미표시"
@@ -1323,7 +1328,7 @@ backlog:
   - id: M-055
     title: "모바일 상세가 M-044 LLM 근거(useWhyReasons)를 소비하지 않음"
     priority: low
-    status: todo
+    status: doing
     scope: [apps/mobile/app/opportunity.tsx]
     done_when:
       - "모바일 상세 화면이 (가능하면) LLM 산문 근거를 시도하고, 실패·미설정 시 whyReasons() 규칙기반으로 폴백한다 — 웹 useWhyReasons.ts와 동등한 우아한 열화(graceful degradation) 계약을 따른다"
@@ -1343,3 +1348,18 @@ backlog:
       폴백 경로까지만 이 밤에서 구현·검증 가능하고, 실제 LLM 응답 경로는 사람이 키 등록 후
       종단 검증해야 한다. priority low + optional로 둔 이유: 기능 없음이 아니라 산문 품질
       저하(규칙기반 근거는 이미 정상 동작)일 뿐이라서.
+      [2026-08-14 야간 파이프라인 완료] 신규 apps/mobile/hooks/useWhyReasons.ts —
+      apps/mobile/lib/geo.ts와 동일한 "상대경로 /api 없음 → EXPO_PUBLIC_WEB_ORIGIN 경유"
+      패턴으로 plain useState/useEffect 구현(react-query 없이, M-045 전략 재사용).
+      whyReasons()를 즉시 반환해 블로킹 없음, WEB_ORIGIN이 설정되고 /api/why-reasons가
+      { fallback:false, reasons } 을 주면 LLM 산문으로 교체. opportunity.tsx가 early
+      return(로딩 스피너) 이전에 훅을 호출하도록 배치(Rules of Hooks, 웹 useWhyReasons와
+      동일 이유). GEMINI_API_KEY·EXPO_PUBLIC_WEB_ORIGIN 둘 다 이 환경엔 미설정이라 실제
+      LLM 응답 경로는 검증 불가 — done_when대로 규칙기반 폴백 경로만 테스트로 고정
+      (useWhyReasons.test.ts 6케이스: 즉시반환·null opp·오리진 미설정·성공 교체·
+      fallback:true 유지·네트워크 실패 유지). opportunity.test.tsx는 useWhyReasons를
+      얇게 목업(자체 테스트가 커버하므로)하도록 갱신. 커밋은 reviewer 단계에서 push 시
+      해시 기록. qa 게이트(bash scripts/gate.sh) PASS(typecheck·test 633/633·lint·secrets
+      전부 ✅). 상세는 docs/nightly/nightly-2026-08-14.md.
+      실제 LLM 응답 경로 종단 검증은 사람이 GEMINI_API_KEY·EXPO_PUBLIC_WEB_ORIGIN 등록 후
+      진행해야 한다(에이전트는 키 발급·등록 불가, done_when 4번째 항목).
