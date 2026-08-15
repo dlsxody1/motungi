@@ -822,7 +822,7 @@ backlog:
   - id: M-038
     title: "packages/core/src/scoring.ts 외부 미사용 export 4종 정리 (ScoreWeights/DEFAULT_WEIGHTS/ScoredOpportunity/distanceKm)"
     priority: low
-    status: todo
+    status: doing
     scope: [packages/core]
     done_when:
       - "ScoreWeights·DEFAULT_WEIGHTS·ScoredOpportunity·distanceKm(scoring.ts:11,19,48,55)가 scoring.ts 내부 전용으로만 쓰이고 packages/core/src/index.ts 재노출을 포함해 외부 소비처가 없음을 재확인한다"
@@ -833,6 +833,10 @@ backlog:
       재확인 — scoring.ts 내부(가중치 기본값 파라미터, distanceKm 호출)에서만 쓰이고
       scoring.test.ts를 포함해 외부 참조가 전무하다. priority low: 기능적 결함은 아니고
       공개 API 표면 정리 수준.
+      [2026-08-15 야간 파이프라인] shipped. apps/web·apps/mobile 전체 grep으로 재확인해도
+      4개 식별자(ScoreWeights/DEFAULT_WEIGHTS/ScoredOpportunity/distanceKm) 참조가 없어
+      export 키워드 제거로 module 내부 전용으로 좁힘(scoreOpportunity/scoreAll/pickTop 등
+      실사용 함수는 export 유지). 커밋 1272e50. gate.sh(typecheck·test·lint·secrets) PASS.
 
   - id: M-039
     title: "dev HEAD가 이미 typecheck·test 모두 깨져있음 — normalizeDong 미존재 함수 참조"
