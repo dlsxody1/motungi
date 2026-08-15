@@ -9,7 +9,7 @@ import { isKidsOnly } from "./adapters/audience";
 import type { DiagnosisAnswers, Energy, TimeSlot } from "./diagnosis";
 import type { Location, Opportunity, TimeWindow, UserAnchors } from "./types";
 
-export interface ScoreWeights {
+interface ScoreWeights {
   fit: number; // 적합도(관심사↔카테고리)
   distance: number; // 거리(가까울수록 가점, 2앵커 중 min)
   time: number; // 시간 겹침(퇴근후 18~22시 / timeSlot)
@@ -17,7 +17,7 @@ export interface ScoreWeights {
   cost: number; // 비용(무료·저예산 가점)
 }
 
-export const DEFAULT_WEIGHTS: ScoreWeights = {
+const DEFAULT_WEIGHTS: ScoreWeights = {
   fit: 0.35,
   distance: 0.2,
   time: 0.15,
@@ -51,14 +51,14 @@ const TIMESLOT_WINDOW: Record<TimeSlot, TimeWindow | null> = {
 /** cost 스코어 정규화 기준(원). 무료=만점, 이 값 이상이면 0점. */
 const COST_CEILING_KRW = 50_000;
 
-export interface ScoredOpportunity {
+interface ScoredOpportunity {
   opportunity: Opportunity;
   score: number;
   breakdown: Record<keyof ScoreWeights, number>;
 }
 
 /** haversine 거리(km). point 없으면 null. */
-export function distanceKm(a?: Location, b?: Location): number | null {
+function distanceKm(a?: Location, b?: Location): number | null {
   if (!a?.point || !b?.point) return null;
   const R = 6371;
   const dLat = ((b.point.lat - a.point.lat) * Math.PI) / 180;
