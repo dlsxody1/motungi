@@ -972,7 +972,7 @@ backlog:
   - id: M-043
     title: "culture_info 154행 산문 백필 — detail2 배치(요청제한 대응 필수)"
     priority: low
-    status: todo
+    status: doing
     scope: [supabase/functions/ingest, scripts/]
     done_when:
       - "culture_info 행의 description 보유율이 0%에서 유의미하게 오른다(목표 50%+)"
@@ -986,6 +986,19 @@ backlog:
       50회를 4초에 몰아쳤더니 LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR가 떴다.
       이게 되면 코퍼스가 12.1% → 약 50%로 올라 검색형 RAG의 전제가 살아난다.
       안 되면 M-044는 설명 생성만으로 진행한다. M-040(적재 정상화) 이후에 착수할 것.
+      [2026-08-16 야간 파이프라인] shipped(로직·픽스처 테스트까지, 실 커버리지 검증은 후속).
+      순수 로직은 packages/core/src/adapters/culture-info-detail.ts(신규, buildDetail2Url·
+      parseDetail2Description·isRateLimitError·nextRetryDelayMs·selectPendingSeqs·
+      summarizeBackfillOutcomes) + culture-info-detail.test.ts(신규 23테스트), 오케스트레이션은
+      scripts/backfill-culture-info-detail.ts(신규, vitest 게이트 밖 — gen-neighborhoods.ts와
+      동일 위치). scope 필드는 supabase/functions/ingest였지만 architect가 그 파일은 의도적으로
+      미접촉 — (a) seq당 ≈1200회 순차 호출이 일일 cron 1회 실행 예산에 안 맞고, (b) 그 디렉터리의
+      Deno 테스트는 gate.sh에서 아예 제외돼 거기 두면 검증이 안 됨. 새 마이그레이션 없음 — 0015가
+      이미 열어둔 nullable description을 `WHERE description IS NULL` 재개 체크포인트로 재사용.
+      실 데이터 대상 0%→50%+ 커버리지 검증은 이 샌드박스에 실 시크릿·네트워크가 없어 사람/QA가
+      후속 수행(architect 결정, 오늘 밤 미달성으로 카운트하지 않음) — done_when 1번은 실행 전까지
+      미확정. 커밋 06e66c1, dev 직접 커밋(트렁크 모델, PR 없음). gate.sh(typecheck 4/4·test core
+      286(신규 23)+web 279+mobile 91·lint·secrets) PASS. 상세는 docs/nightly/nightly-2026-08-16.md.
 
   - id: M-044
     title: "LLM 계층 — 추천 근거 생성(주력) + 자연어 의도 파싱(보조)"
@@ -1285,6 +1298,19 @@ backlog:
       security-policy.md·apps/mobile/package.json 재검토, 변경 없음) — 08-13의 3개 접근 전부
       부적합 판정이 그대로 유효해 재차 제외. status는 todo 유지. scope가 같은 파일인 M-055
       (모바일 opportunity.tsx)만 클러스터로 진행, 상세는 docs/nightly/nightly-2026-08-14.md.
+      [2026-08-15 야간 파이프라인] 오케스트레이터가 재검증 후 사전 제외(architect 단계까지
+      가지 않고 씨앗 단계에서 즉시 배제) — 08-13/08-14와 동일 사유, 변경 없음 재확인. 이 밤은
+      이 backlog 노트에 기록을 남기지 못했다(리포트에만 남고 여기엔 누락) — 08-16 재검증 중
+      이 공백을 발견해 아래에 소급 언급. 상세는 docs/nightly/nightly-2026-08-15.md.
+      [2026-08-16 야간 파이프라인] 4일 연속(08-13·08-14·08-15·08-16) 동일 결과 — 오케스트레이터가
+      씨앗 단계에서 사전 재검증 후 제외(`grep -i map apps/mobile/package.json` 여전히 공백,
+      `.env.example`에 신규 지도 관련 키 없음 — 기존 NAVER_MAP_CLIENT_ID/NAVER_MAP_Client_SECRET는
+      역지오코딩/웹 SDK용이라 모바일 지도와 무관, security-policy.md에 지도 관련 내용 0). 08-13이
+      제시한 3개 구현 경로(react-native-maps 신규 네이티브 의존성 / NAVER 정적지도 백엔드 프록시
+      신설 / 키리스 서드파티 정적지도) 전부 여전히 사람 승인 대기. status는 todo 유지. **4일
+      연속 동일 벽에 부딪히는 이 사전제외 워크어라운드 자체가 planner.md/architect.md 어디에도
+      성문화돼 있지 않다** — 사람이 세 경로 중 하나를 승인하거나 M-052를 medium에서 내려야
+      이 패턴이 반복되지 않는다. 상세는 docs/nightly/nightly-2026-08-16.md §리스크&후속.
 
   - id: M-053
     title: "모바일 상세 화면에 마감 D-day·출처 미표시"
