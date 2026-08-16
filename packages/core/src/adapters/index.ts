@@ -16,3 +16,4 @@
 export * from "./util";
 export * from "./seoul-jobs";
 export * from "./ingest-fetch";
+export * from "./culture-info-detail";
