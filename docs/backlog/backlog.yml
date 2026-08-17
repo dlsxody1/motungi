@@ -1311,6 +1311,15 @@ backlog:
       연속 동일 벽에 부딪히는 이 사전제외 워크어라운드 자체가 planner.md/architect.md 어디에도
       성문화돼 있지 않다** — 사람이 세 경로 중 하나를 승인하거나 M-052를 medium에서 내려야
       이 패턴이 반복되지 않는다. 상세는 docs/nightly/nightly-2026-08-16.md §리스크&후속.
+      [2026-08-17 야간 파이프라인] 5일 연속(08-13~08-17) 동일 결과 — planner와 architect가
+      각자 독립적으로 재검증(`grep -i map apps/mobile/package.json`·`.env.example`·
+      security-policy.md·`grep -rn "react-native-maps|MapView" apps/mobile` 전부 재확인, 변경
+      없음). architect가 이번 밤 공식 판정으로 명시: 3개 경로 모두 여전히 사람의 정책 결정
+      (의존성 승인/시크릿 프록시 신설/서드파티 신뢰) 없이는 무인 야간 파이프라인이 뚫을 수
+      없는 차단이며, 5일 연속 동일 사유 재확인 자체가 이 오케스트레이터 사전제외 워크어라운드를
+      `blocked-human` 같은 정식 상태로 성문화할 필요가 있다는 신호라고 아키텍트 권한 밖 관찰로
+      명시. status는 todo 유지. scope 겹침 없어(파일도 다르고 priority도 다름) M-054가 단독
+      클러스터로 진행. 상세는 docs/nightly/nightly-2026-08-17.md.
 
   - id: M-053
     title: "모바일 상세 화면에 마감 D-day·출처 미표시"
@@ -1340,13 +1349,20 @@ backlog:
   - id: M-054
     title: "모바일 탐색 화면에 로딩 스켈레톤 없음"
     priority: low
-    status: todo
+    status: doing
     scope: ["apps/mobile/app/(tabs)/explore.tsx"]
     done_when:
       - "catalogStatus가 로딩 중(카탈로그 아직 idle)일 때 '아직 등록된 활동이 없어요' 문구 대신 스켈레톤이 보인다 — 웹 explore-skeleton.tsx의 ExploreRowSkeleton과 동등한 정보 상태(빈 것과 로딩 중을 구분)를 따른다"
       - "로딩 스켈레톤 개수는 첫 화면을 채울 만큼만(과도하게 그리지 않는다)"
       - "실제 빈 결과(카탈로그는 왔는데 필터 결과가 0건)와 로딩 중이 다른 화면으로 렌더되는 테스트가 있다"
     notes: >
+      [2026-08-17 야간 파이프라인 완료] scope 겹침 없어 단독 클러스터로 진행(유일한 non-M-052
+      todo). apps/mobile/ui/explore-skeleton.tsx 신규(RN View/StyleSheet 정적 블록, 신규 의존성
+      없음, ActivityItem과 동일 골격) + explore.tsx ListEmptyComponent에 catalogStatus==="idle"
+      분기 추가(6개 렌더, 웹과 동일 카운트). idle→스켈레톤 / ok+빈결과→기존 문구 두 케이스를
+      회귀 테스트로 구분. 커밋 aa1cc59, dev 직접 커밋(트렁크 모델, PR 없음). qa 게이트
+      (bash scripts/gate.sh) PASS(typecheck 4/4·test core 286+mobile 95+web 279·lint·secrets
+      전부 ✅) — qa가 diff 전체를 직접 읽고 재확인. 상세는 docs/nightly/nightly-2026-08-17.md.
       docs/ux/web-mobile-parity.md §4 근거. 웹은 apps/web/src/app/explore/page.tsx:246-264가
       catalogStatus === "idle"일 때 ExploreRowSkeleton(apps/web/src/components/
       explore-skeleton.tsx)을 보여준다. 모바일 apps/mobile/app/(tabs)/explore.tsx의
