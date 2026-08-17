@@ -6,6 +6,7 @@ import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } fr
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
 import { Chip, Txt } from "@/ui/components";
+import { ExploreRowSkeleton } from "@/ui/explore-skeleton";
 import { ChevronDown, Search } from "@/ui/icons";
 import { Thumbnail } from "@/ui/thumbnail";
 import { C, R, cardShadow } from "@/ui/theme";
@@ -219,13 +220,23 @@ export default function ExploreScreen() {
         <ActivityItem item={item} first={index === 0} onPress={openDetail} />
       )}
       ListEmptyComponent={
-        <Text style={styles.empty}>
-          {source.length === 0
-            ? catalogStatus === "error" || catalogStatus === "unconfigured"
-              ? "활동을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
-              : "아직 등록된 활동이 없어요. 곧 채워질 거예요."
-            : "조건에 맞는 활동이 아직 없어요."}
-        </Text>
+        // catalogStatus는 조회가 끝나야 ok/empty/error로 바뀐다 — "idle"이 곧 로딩이다.
+        // 구분하지 않으면 조회 중에도 "아직 등록된 활동이 없어요"가 떠서 없다고 거짓말한다(M-054).
+        catalogStatus === "idle" ? (
+          <View>
+            {Array.from({ length: 6 }, (_, i) => (
+              <ExploreRowSkeleton key={i} />
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.empty}>
+            {source.length === 0
+              ? catalogStatus === "error" || catalogStatus === "unconfigured"
+                ? "활동을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
+                : "아직 등록된 활동이 없어요. 곧 채워질 거예요."
+              : "조건에 맞는 활동이 아직 없어요."}
+          </Text>
+        )
       }
       keyboardShouldPersistTaps="handled"
       initialNumToRender={8}

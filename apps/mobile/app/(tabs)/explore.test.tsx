@@ -77,6 +77,28 @@ describe("ExploreScreen", () => {
     expect(screen.getByText("성수 팝업 전시")).toBeInTheDocument();
   });
 
+  it("catalogStatus가 idle이면 스켈레톤을 렌더하고 빈 문구는 렌더하지 않는다(M-054)", () => {
+    state.catalogStatus = "idle";
+    state.catalog = [];
+
+    const { container } = render(<ExploreScreen />);
+
+    expect(
+      container.querySelectorAll('[data-testid="explore-row-skeleton"]'),
+    ).toHaveLength(6);
+    expect(screen.queryByText("아직 등록된 활동이 없어요. 곧 채워질 거예요.")).not.toBeInTheDocument();
+  });
+
+  it("catalogStatus가 idle을 벗어나 진짜 비어있으면 빈 문구를 렌더하고 스켈레톤은 렌더하지 않는다(M-054)", () => {
+    state.catalogStatus = "ok";
+    state.catalog = [];
+
+    const { container } = render(<ExploreScreen />);
+
+    expect(screen.getByText("아직 등록된 활동이 없어요. 곧 채워질 거예요.")).toBeInTheDocument();
+    expect(container.querySelectorAll('[data-testid="explore-row-skeleton"]')).toHaveLength(0);
+  });
+
   it("카탈로그가 비어있고 catalogStatus가 error면 로드 실패 문구를 렌더한다", () => {
     state.catalogStatus = "error";
 
