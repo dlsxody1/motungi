@@ -1409,3 +1409,306 @@ backlog:
       전부 ✅). 상세는 docs/nightly/nightly-2026-08-14.md.
       실제 LLM 응답 경로 종단 검증은 사람이 GEMINI_API_KEY·EXPO_PUBLIC_WEB_ORIGIN 등록 후
       진행해야 한다(에이전트는 키 발급·등록 불가, done_when 4번째 항목).
+
+  - id: M-056
+    title: "모바일 OAuth/세션 흐름(apps/mobile/lib/auth.ts) 테스트 0건"
+    priority: high
+    status: todo
+    scope: [apps/mobile/lib/auth.ts]
+    done_when:
+      - "signInWithKakao의 5개 에러 분기(클라이언트 없음/signInWithOAuth 실패·URL 없음/브라우저 세션 취소·일반 실패/딥링크 code 없음·비문자열/exchangeCodeForSession 실패)가 각각 테스트로 커버된다"
+      - "promoteLocalToAccount의 profiles upsert + savedIds 병합 경로, 그리고 savedIds.length === 0일 때 병합을 스킵하는 분기가 테스트로 커버된다"
+      - "initAuthListener의 서버·로컬 saved id Set 병합, userId == null 분기, user_metadata.name 런타임 타입가드가 테스트로 커버된다"
+      - "pnpm --filter mobile test 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · test-coverage. apps/web/src/lib/auth.ts는 M-034로 이미
+      auth.test.ts가 있으나(웹 커버) apps/mobile/lib/auth.ts:16-125는 동일 계층의 모바일
+      대응 모듈인데 테스트 파일이 없다(find apps/mobile -iname "auth*" → auth.ts, app/auth
+      디렉토리만 존재, *.test.ts 없음 확인). 이 앱의 유일한 계정/로그인 표면이라 회귀가
+      조용히 배포될 위험이 크다. M-034와 겹치지 않음(웹은 이미 커버됨, 모바일만 공백).
+
+  - id: M-057
+    title: "웹 리포트 반경 사다리 폴백(useReportFallback.ts) 테스트 0건 — 재발 이력 있는 로직"
+    priority: high
+    status: todo
+    scope: [apps/web/src/hooks/useReportFallback.ts]
+    done_when:
+      - "useReportFallback.ts:52-73의 5→10→20km 반경 루프(조기종료 조건 포함)가 훅을 직접 호출하는 테스트로 커버된다(소비처 목킹이 아니라 훅 자체)"
+      - "needsFallback=false→ok, isError→error, pending→idle 세 가지 status 매핑이 각각 테스트로 검증된다"
+      - "pnpm --filter web test 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · test-coverage. report/page.test.tsx와
+      render-isolation.test.tsx 둘 다 useReportFallback을 통째로 mock해 실제 로직은 어느
+      테스트에서도 실행되지 않는다(grep 확인, 이 훅을 직접 import하는 *.test.ts 없음).
+      코드 자체 주석이 "강남 앵커인데 경기도 산책로가 나오던" 실제 프로덕션 버그를 이
+      반경 사다리로 고쳤다고 명시하는데(useReportFallback.ts 상단 주석), 그 수정 자체를
+      지키는 테스트가 없어 동일 버그가 소리 없이 재발할 수 있다.
+
+  - id: M-058
+    title: "모바일 핵심 인터랙션 요소에 accessibilityRole 누락 스윕 (Button 프리미티브 + 진단/상세 CTA + 홈/탐색 카드)"
+    priority: high
+    status: todo
+    scope:
+      - apps/mobile/ui/components.tsx
+      - apps/mobile/app/diagnosis.tsx
+      - apps/mobile/app/opportunity.tsx
+      - "apps/mobile/app/(tabs)/report.tsx"
+      - "apps/mobile/app/(tabs)/explore.tsx"
+    done_when:
+      - "ui/components.tsx의 공용 Button(69-99행)에 accessibilityRole=\"button\" 추가 — 같은 파일 Chip(102-134행)은 M-031에서 이미 처리됨, 동일 처리"
+      - "diagnosis.tsx의 다음/결과 보기 버튼(145-151행)과 opportunity.tsx의 보러 가기 버튼(181-188행)에 accessibilityRole=\"button\" 추가 — 두 화면의 다른 컨트롤들은 이미 role이 있음(diagnosis 옵션 카드 112-117행, opportunity 북마크 토글 171-180행), 이 두 개만 누락"
+      - "report.tsx의 오늘의 원픽 히어로 카드(73-96행)·재진단(62-65행)·함께보면좋아요 행(109-127행)에 accessibilityRole=\"button\" 추가"
+      - "explore.tsx의 ActivityItem(26-54행, 37행 Pressable)에 accessibilityRole=\"button\" 추가"
+      - "TalkBack/VoiceOver 시뮬레이션 또는 RTL 접근성 쿼리로 각 컨트롤이 button으로 노출됨을 검증하는 테스트가 있다"
+      - "pnpm --filter mobile test 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · a11y. M-004/M-013/M-014/M-030/M-031을 실코드 대조로
+      재검증(모두 실제로 고쳐져 있음, 재보고 아님). 패턴: M-031 수정이 지정한 파일·행만
+      정확히 고쳤고, 같은 파일의 형제 컴포넌트(Button↔Chip)나 다른 화면의 주력 CTA는
+      스코프 밖이라 그대로 남았다. Button은 앱 전체 주요 CTA("60초 진단하기"·"다시 시도"
+      등)에 쓰이는 공용 프리미티브라 high로 올림. 5개 파일이지만 "같은 결함 패턴(Pressable
+      에 accessibilityRole 없음)의 반복"이라 M-013/M-014 선례처럼 하나의 스윕 이슈로 묶음.
+
+  - id: M-059
+    title: "ingest 산책로 GPX fetch — 호스트/스킴 검증 없이 SSRF 가능 (읽기 경로는 이미 방어됨)"
+    priority: medium
+    status: todo
+    scope: [supabase/functions/ingest/index.ts]
+    done_when:
+      - "fetchTrailStartCoord(index.ts:112-129)가 gpxUrl을 fetch하기 전에 protocol===\"https:\" && hostname===\"www.durunubi.kr\"를 검증한다 — apps/web/src/app/api/trail-route/route.ts:72-74와 동일 규칙"
+      - "검증 실패 시 좌표 없이(null) 넘어가고 적재 전체를 막지 않는다(기존 실패 삼킴 동작 유지)"
+      - "허용 호스트가 아닌 gpx_url이 주어졌을 때 fetch가 호출되지 않음을 검증하는 테스트가 있다"
+      - "pnpm --filter supabase-functions test 또는 해당 vitest 프로젝트 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · security. 두루누비 courseList API의 gpxpath 값을 읽기
+      경로(apps/web/src/app/api/trail-route/route.ts)는 protocol/hostname 화이트리스트로
+      막아뒀고 그 파일 주석에도 "SSRF 방지"라 명시돼 있다. 그런데 같은 값을 처음 받아
+      fetch하는 적재 경로(supabase/functions/ingest/index.ts:112-129, fetchTrailStartCoord)
+      는 동일 검증이 없다 — SERVICE_ROLE 권한으로 매일 1회(pg_cron) 실행되는 Edge Function
+      안에서 무검증 fetch(redirect:"follow")를 돈다. 상류(data.go.kr 공공데이터)가 오염되면
+      내부망 스캔에 쓰일 수 있는 blind SSRF primitive. 이미 같은 필드에 대해 읽기 경로를
+      고친 선례가 있으므로 적재 경로에도 동일 패턴을 적용하면 된다(신규 설계 불필요).
+
+  - id: M-060
+    title: "apps/web 아이콘 컴포넌트 미사용 export 11개 정리 (icons.tsx 6개 + landing-icons.tsx 5개)"
+    priority: low
+    status: todo
+    scope:
+      - apps/web/src/components/icons.tsx
+      - apps/web/src/components/landing-icons.tsx
+    done_when:
+      - "icons.tsx의 ArrowRightIcon·FireIcon·SparkleIcon·BoltIcon·SavingsIcon·ShieldIcon(154-212행) 중 실사용처가 없는 것을 삭제한다"
+      - "landing-icons.tsx의 PinIcon·TargetIcon·SparkIcon·FlashIcon·CompassMiniIcon(31-78행) 중 실사용처가 없는 것을 삭제한다"
+      - "삭제 전 apps packages supabase scripts docs .claude 전체에 word-boundary grep으로 재확인해 오탐(실사용 중인데 삭제)이 없음을 보인다"
+      - "pnpm typecheck 통과(미사용 import 등으로 깨지지 않음)"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · dead-code. M-018/M-037/M-038 재검증 결과 모두 여전히
+      깨끗함(재보고 아님). 두 파일 각각에서 grep -rn -w로 11개 심볼 전부 정의 위치 1건만
+      매치(호출부 0건) 확인. 같은 결함 패턴(아이콘 모듈의 고아 export)이라 두 파일을 한
+      이슈로 묶음 — 우선순위 낮음(죽은 코드일 뿐 오작동 없음), 실제 삭제 시 이 밤이 다시
+      전체 grep으로 재확인 후 진행할 것(다음 밤 사이 새 참조가 생겼을 수 있음).
+
+  - id: M-061
+    title: "apps/mobile/tsconfig.json에 noUncheckedIndexedAccess 미설정 — 다른 3개 워크스페이스와 다름"
+    priority: medium
+    status: todo
+    scope: [apps/mobile/tsconfig.json]
+    done_when:
+      - "apps/mobile/tsconfig.json이 noUncheckedIndexedAccess: true를 갖도록 한다 — tsconfig.base.json에 이미 있는 값을 mobile도 상속하거나(base를 extends로 갈아끼우고 expo 필요 오버라이드를 layer) 직접 추가한다"
+      - "옵션 켠 뒤 발생하는 신규 타입 에러(있다면)를 실제 undefined 가능 지점에 옵셔널 체이닝/가드로 고친다"
+      - "pnpm --filter mobile typecheck 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · type-safety. tsconfig.base.json:noUncheckedIndexedAccess
+      =true를 apps/web·packages/core·packages/tokens는 상속하는데, apps/mobile/tsconfig.json
+      은 "expo/tsconfig.base"를 extends하고 strict만 재설정할 뿐 이 옵션을 켜지 않는다(직접
+      확인: cat apps/mobile/tsconfig.json). 지금 당장 크래시가 있는 건 아니지만(diagnosis.tsx
+      의 QUESTIONS[step] 등은 현재 bounds가 구조적으로 보장됨), 이 축이 지키려는 안전망
+      자체가 모바일 로컬 코드에는 아예 없다는 설정 공백 — 이 감사 축의 취지에 정면으로
+      해당하는 항목이라 별도 이슈로 등재.
+
+  - id: M-062
+    title: "모바일 상세화면(opportunity.tsx)에 활동 요약(summary)·주말나들이 배지 누락 — 웹엔 있음"
+    priority: medium
+    status: todo
+    scope: [apps/mobile/app/opportunity.tsx]
+    done_when:
+      - "o.summary가 있으면 제목/위치 아래에 한 줄 요약을 렌더한다 — 웹 opportunity-detail.tsx:185-187·346-348과 동등"
+      - "isWeekendOuting(o)이 참이면 카테고리 Tag 옆에 \"주말 나들이\" 배지를 렌더한다(@motungi/core의 isWeekendOuting import) — 웹 opportunity-detail.tsx:172-176·329-333과 동등"
+      - "두 항목 모두 없을 때(summary 없음/주말나들이 아님) 기존 레이아웃이 깨지지 않는 회귀 테스트가 있다"
+      - "pnpm --filter mobile test 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · UX 일관성(web↔mobile). apps/mobile/app/opportunity.tsx
+      전체를 읽어 o.summary/isWeekendOuting 참조가 0건임을 확인(모바일 탐색·리포트 화면은
+      이미 item.summary를 쓰고 있어 필드 자체는 존재·populate됨 — 상세 화면만 누락).
+      M-053(마감·출처) 선례와 같은 파일·같은 유형의 마무리 후속이라 하나의 이슈로 묶음.
+      M-050~M-055 등 기존 패리티 이슈와 겹치지 않음(실코드 대조로 확인).
+
+  - id: M-063
+    title: "모바일 카탈로그 조회가 웹과 달리 캐시 없이 순차 3왕복(M-041 서버 캐시가 모바일엔 없음)"
+    priority: medium
+    status: todo
+    scope: [apps/mobile/hooks/useEnsureCatalog.ts, apps/mobile/data/opportunities.ts]
+    done_when:
+      - "모바일 카탈로그 조회가 반복 방문/저밀도 앵커에서 매번 Supabase에 직접 순차 왕복하지 않도록 한다 — 웹처럼 /api/opportunities를 경유하거나 앱 자체 요청 캐시를 둔다"
+      - "저밀도 좌표(반경 사다리가 10km/20km까지 가는 경우)에서 왕복 횟수가 기존보다 늘지 않음을 확인한다"
+      - "실패 시 기존처럼 화면이 깨지지 않는 테스트가 있다"
+      - "pnpm --filter mobile test 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · perf. M-041이 웹의 /api/opportunities/route.ts에
+      unstable_cache(6시간)와 반경 사다리 서버 이전을 적용한 이유(2026-08-03 실측: 저밀도
+      구는 5km→10km 순차 2회 왕복, 앵커 없음 300행 222.8KB)가 스코프상 web만이었다.
+      apps/mobile/data/opportunities.ts는 지금도 coreFetchOpportunities(supabase,...)를
+      기기에서 직접 호출하고, useEnsureCatalog.ts:44-52가 동일한 5→10→20km 순차 루프를
+      캐시 없이 돈다 — M-041이 고친 것과 같은 문제가 모바일에 그대로 있다.
+
+  - id: M-064
+    title: "웹 보관함이 저장 건수만큼 개별 쿼리(N+1) — 코드 주석에 이미 명시된 부채"
+    priority: medium
+    status: todo
+    scope: [apps/web/src/hooks/useSavedOpportunities.ts]
+    done_when:
+      - "저장 id가 여러 건일 때 id별 useQueries 대신 단일 .in(\"id\", ids) 조회(또는 이미 로드된 카탈로그 재사용)로 승격한다 — 파일 자체 주석의 제안(32행)을 따른다"
+      - "저장 순서 유지, 마감 지난 활동도 계속 표시, 실패/재시도 동작 등 기존 done_when(SavedView 계약)이 그대로 유지된다"
+      - "저장 30건 시나리오에서 네트워크 요청 수가 1(또는 캐시 히트 제외 건수)로 줄었음을 테스트로 확인한다"
+      - "pnpm --filter web test 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · perf. useSavedOpportunities.ts:32 자체 주석("ponytail:
+      저장 건수만큼 요청. 수십 건을 넘기면 .in(\"id\", ids) 단일 조회로 승격")이 이미 부채를
+      인지하고 있었으나 backlog에 등재된 적은 없다(M-045는 모바일의 실종 버그만 다룸, 이
+      이슈와 다름). 모바일 대응 훅(useSavedOpportunities.ts:39-40)은 이미 로드된 catalog를
+      먼저 재사용하는 더 나은 전략을 쓰고 있어 웹만 남은 격차.
+
+  - id: M-065
+    title: "웹 동네 검색 IME 조합(composition) 처리(useNeighborhoodSearch.ts) 테스트 0건"
+    priority: medium
+    status: todo
+    scope: [apps/web/src/hooks/useNeighborhoodSearch.ts]
+    done_when:
+      - "composingRef 기반 조합 중 debounce 스킵(45-99행 내)과 onCompositionEnd 재검색 트리거가 테스트로 검증된다"
+      - "\"망원동\"처럼 조합 중간값(\"망원\")에서 끊기지 않고 최종 완성 값으로 검색됨을 시뮬레이션하는 테스트가 있다"
+      - "pnpm --filter web test 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · test-coverage. useNeighborhoodSearch.ts 자체에도, 이를
+      쓰는 location/page.test.tsx·neighborhood-menu.tsx 테스트에도 이 훅을 직접 호출하거나
+      "composition" 관련 어서션을 넣은 곳이 전혀 없다(grep 확인). 코드 주석이 "망원동" 검색이
+      "망원"에서 끊기던 실제 버그를 고친 것이라 명시하는데, 한국어 서비스의 핵심 검색 경로인
+      이 로직이 회귀해도 잡아낼 테스트가 없다. M-047(모바일 IME 요청 폭주)과는 다른 버그·
+      다른 파일이라 별도 이슈.
+
+  - id: M-066
+    title: "/api/why-reasons가 category 문자열을 멤버십 검증 없이 도메인 유니온으로 캐스트"
+    priority: low
+    status: todo
+    scope: [apps/web/src/app/api/why-reasons/route.ts]
+    done_when:
+      - "parseInput()이 b.category를 OpportunityCategory 6종 중 하나인지 확인한 뒤에만 통과시킨다(@motungi/core의 isOpportunityCategory 재사용)"
+      - "잘못된 category 값이 오면 400을 반환하고 CATEGORY_LABEL 조회에서 undefined가 프롬프트에 섞여 들어가지 않는다"
+      - "유효/무효 category 각각에 대한 테스트가 있다"
+      - "pnpm --filter web test 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · type-safety. route.ts:110에서 typeof만 검사하고
+      125행에서 `category: b.category as WhyReasonsPromptInput["category"]`로 바로
+      캐스트한다 — DB 경로(database.types.ts의 isOpportunityCategory)와 달리 멤버십
+      검증이 없다. 공개 API 라우트라 앱의 useWhyReasons.ts 호출자 외에 임의 HTTP 클라이언트
+      도 도달 가능. 크래시는 안 나고 프롬프트에 "undefined" 문자열이 섞여 LLM 호출로
+      나가는 조용한 데이터 오염이라 low로 둠.
+
+  - id: M-067
+    title: "packages/tokens의 MIN_HIT_TARGET이 코드에서 미사용 — 문서·백로그는 '적용됨'으로 서술"
+    priority: low
+    status: todo
+    scope: [packages/tokens/src/index.ts, apps/mobile]
+    done_when:
+      - "apps/mobile의 hitSlop 하드코딩 값들(예: saved.tsx:39 hitSlop={12}, ui/components.tsx:119 등)을 MIN_HIT_TARGET 기준으로 실제 계산해 상수를 참조하도록 배선한다 — 또는 강제할 의도가 아니면 export와 docs/ux/ux-design.md:87·backlog.yml의 관련 서술을 함께 정리한다(둘 중 하나를 사람이 결정)"
+      - "코드에서 MIN_HIT_TARGET을 최소 1곳 이상 실제로 import·참조한다(정리 방향을 택했다면 이 항목 대신 문서 정합만 확인)"
+      - "pnpm --filter mobile typecheck 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · dead-code. grep -rn -w MIN_HIT_TARGET 결과 정의(
+      packages/tokens/src/index.ts:152) 외엔 전부 산문(docs/nightly/nightly-2026-08-09.md,
+      docs/ux/ux-design.md:87, backlog.yml:672)뿐 — 실제 코드에서 import한 곳이 없다.
+      단순 dead export보다 한 단계 나쁨: 문서가 "이 상수로 44px를 강제한다"고 말하는데
+      실제로는 모바일 hitSlop이 전부 하드코딩 숫자라 향후 회귀를 못 잡는다. 방향 결정
+      (배선 vs 문서 정리)이 필요해 scope에 apps/mobile도 포함 — planner가 실제 hitSlop
+      값들을 다시 훑어 어느 쪽이 더 적절한지 판단할 것.
+
+  - id: M-068
+    title: "웹 카카오 공유(kakao.ts shareContent) 3단 폴백 캐스케이드 테스트 0건"
+    priority: medium
+    status: todo
+    scope: [apps/web/src/lib/kakao.ts]
+    done_when:
+      - "shareContent(68-123행)의 Kakao SDK 경로(imageUrl 폴백 유도 포함)·navigator.share 경로(취소/실패 스왈로우)·클립보드 복사 경로(스왈로우)·최종 \"none\" 폴백까지 4가지 반환값이 각각 테스트로 커버된다"
+      - "pnpm --filter web test 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · test-coverage. grep 결과 shareContent/initKakao를
+      참조하는 테스트 파일이 전혀 없다. 세 단계 폴백 중 하나가 깨져도(특히 스왈로우된
+      catch 블록 안의 실패) 신호 없이 공유 기능이 조용히 저하될 수 있다.
+
+  - id: M-069
+    title: "웹 geo.ts(reverseGeocode/searchNeighborhoods)가 항상 mock되고 직접 테스트된 적 없음 — 모바일과 비대칭"
+    priority: medium
+    status: todo
+    scope: [apps/web/src/lib/geo.ts]
+    done_when:
+      - "reverseGeocode(13-28행)·searchNeighborhoods(45-63행)를 실제로 호출하는 geo.test.ts를 추가한다 — apps/mobile/lib/geo.test.ts와 대칭"
+      - "!res.ok 폴백, data.items ?? [] 폴백, AbortError 특수 처리(58행, 에러 보고 억제)가 각각 테스트로 커버된다"
+      - "pnpm --filter web test 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · test-coverage. location/page.test.tsx·
+      neighborhood-menu.tsx 관련 테스트가 전부 이 모듈을 vi.mock/vi.spyOn으로 대체해
+      실제 구현은 어느 테스트에서도 실행되지 않는다. 반면 apps/mobile/lib/geo.ts는
+      geo.test.ts로 직접 커버돼 있어 비대칭 — 같은 성격의 로직인데 웹만 공백.
+
+  - id: M-070
+    title: "zustand persist 재수화(rehydrate) 시 answers에 런타임 검증 없음 — 쓰기만 검증되고 읽기는 무방비"
+    priority: low
+    status: todo
+    scope: [packages/core/src/store.ts]
+    done_when:
+      - "persist storage에서 읽어온 answers가 rehydrate 시 draftToAnswers류의 검증(VALID_INTERESTS/VALID_TIME_SLOTS/VALID_ENERGIES 멤버십)을 다시 통과하도록 한다 — 통과 못 하면 null로 되돌린다"
+      - "구버전 스키마(예: interests가 배열이 아닌 단일 string이던 M-049 이전 형태)로 저장된 데이터가 새 코드에서 크래시 없이 안전하게 무효화됨을 테스트로 확인한다"
+      - "pnpm --filter @motungi/core test 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · type-safety. createAppStore의 persist 설정(store.ts,
+      partialize에 answers 포함)에 migrate/version이 없어 저장된 JSON을 타입 단언만으로
+      신뢰한다 — 쓰기 경로(diagnosis.ts의 draftToAnswers)는 검증하지만 읽기(rehydrate)는
+      안 한다. 이 앱이 interests를 이미 한 번(string→string[], M-049) 바꾼 이력이 있어
+      가정성이 아니라 실제로 벌어졌던 종류의 스키마 변경 리스크. 심각도는 낮음(재현에
+      과거 버전 클라이언트 데이터가 필요) — low로 둠.
+
+  - id: M-071
+    title: "웹 동네선택 다이얼로그의 현재 선택 상태가 스크린리더에 노출 안 됨"
+    priority: low
+    status: todo
+    scope: [apps/web/src/components/neighborhood-menu.tsx]
+    done_when:
+      - "POPULAR_NEIGHBORHOODS 목록(95-118행)에서 currentDong과 일치하는 항목의 <button>에 aria-current 또는 aria-selected를 추가한다"
+      - "선택된 항목이 스크린리더에 '선택됨'으로 노출됨을 RTL 접근성 쿼리로 검증하는 테스트가 있다"
+      - "pnpm --filter web test 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · a11y. M-013이 Chip(aria-pressed)·bottom-nav
+      (aria-current="page")에 적용한 것과 같은 결함 패턴인데 이 다이얼로그는 그 스윕
+      스코프 밖이었다. 현재는 bg-tint 배경색과 장식용 CheckIcon만으로 선택 상태를
+      표시해 스크린리더 사용자는 어떤 동네가 선택돼 있는지 알 수 없다.
+
+  - id: M-072
+    title: "카탈로그 반경 사다리 정책이 core가 아니라 web/mobile에 각각 중복 구현됨"
+    priority: medium
+    status: todo
+    scope: [packages/core/src/catalog.ts, apps/web/src/app/api/opportunities/route.ts, apps/mobile/hooks/useEnsureCatalog.ts]
+    done_when:
+      - "RADII/MIN_RESULTS/NO_ANCHOR_LIMIT과 '반경을 순차로 넓혀가며 MIN_RESULTS 채우면 멈춘다'는 정책을 packages/core에 순수 함수로 승격한다(단일 반경 fetch를 주입받는 형태 — core가 react-query/캐시 구현 세부를 몰라도 되게)"
+      - "apps/web/src/app/api/opportunities/route.ts와 apps/mobile/hooks/useEnsureCatalog.ts 둘 다 그 core 함수를 호출하도록 바꾼다 — 두 곳에 동일 상수·동일 루프가 리터럴로 반복되지 않는다"
+      - "웹 서버측 unstable_cache 메모이제이션(M-041)과 모바일 세션 캐치업 동작은 각 앱 레이어에서 유지된다(core로 옮기는 건 정책 로직만)"
+      - "core에 정책 함수 단위 테스트(5km에서 채워짐/10km로 넘어감/20km에서도 못 채움/앵커 없음 분기)가 추가되고, web·mobile 기존 테스트가 회귀 없이 통과한다"
+      - "npx turbo run typecheck --force 통과"
+    notes: >
+      [2026-08-18 audit] 8축 감사 · FSD/의존성 경계. apps/web/src/app/api/opportunities/
+      route.ts:24-30,90-98과 apps/mobile/hooks/useEnsureCatalog.ts:6-12,44-52가 RADII=
+      [5,10,20]/MIN_RESULTS=20/NO_ANCHOR_LIMIT=300과 동일한 반경 확장 루프를 리터럴로
+      각각 갖고 있다(mobile 쪽 주석이 "웹과 같은 정책이지만 store/data alias가 앱별이라
+      훅은 각자 둔다"고 스스로 인정). packages/core/src/catalog.ts는 메커니즘(단건 fetch·
+      boundingBox)만 갖고 있고 "언제 멈출지"를 결정하는 정책은 안 갖고 있어, 이 정책이
+      바뀔 때(사다리 튜닝 이력이 이미 한 번 있었음, route.ts 주석 참조) 두 파일을 항상
+      같이 고쳐야 한다 — 하나를 빠뜨려도 컴파일 타임 신호가 없다. M-008(catalog 승격)·
+      M-029(어댑터 이관)와는 다른 잔여 범위(둘 다 이미 완료 확인됨).
