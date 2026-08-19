@@ -1413,7 +1413,7 @@ backlog:
   - id: M-056
     title: "모바일 OAuth/세션 흐름(apps/mobile/lib/auth.ts) 테스트 0건"
     priority: high
-    status: todo
+    status: doing
     scope: [apps/mobile/lib/auth.ts]
     done_when:
       - "signInWithKakao의 5개 에러 분기(클라이언트 없음/signInWithOAuth 실패·URL 없음/브라우저 세션 취소·일반 실패/딥링크 code 없음·비문자열/exchangeCodeForSession 실패)가 각각 테스트로 커버된다"
@@ -1447,7 +1447,7 @@ backlog:
   - id: M-058
     title: "모바일 핵심 인터랙션 요소에 accessibilityRole 누락 스윕 (Button 프리미티브 + 진단/상세 CTA + 홈/탐색 카드)"
     priority: high
-    status: todo
+    status: doing
     scope:
       - apps/mobile/ui/components.tsx
       - apps/mobile/app/diagnosis.tsx
