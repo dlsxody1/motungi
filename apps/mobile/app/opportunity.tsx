@@ -182,6 +182,7 @@ export default function OpportunityScreen() {
           style={[styles.startBtn, !hasLink && styles.startBtnDisabled]}
           onPress={() => hasLink && Linking.openURL(o.ctaUrl!)}
           disabled={!hasLink}
+          accessibilityRole="button"
         >
           <Text style={styles.startLabel}>{hasLink ? "보러 가기" : "링크 준비 중"}</Text>
           {hasLink && <ExternalLink size={18} color={C.white} />}

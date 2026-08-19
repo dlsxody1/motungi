@@ -99,4 +99,18 @@ describe("ReportScreen", () => {
     expect(screen.getByText("활동을 불러오지 못했어요")).toBeInTheDocument();
     expect(screen.getByText("다시 시도")).toBeInTheDocument();
   });
+
+  it("재진단·원픽 히어로·함께보면좋아요 행이 접근 가능한 button role로 노출된다(M-058)", () => {
+    state.catalogStatus = "ok";
+    state.results = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" }),
+      makeOpp({ id: "op-2", title: "성수 팝업 전시" }),
+    ];
+
+    render(<ReportScreen />);
+
+    expect(screen.getByText("재진단").closest('[role="button"]')).not.toBeNull();
+    expect(screen.getByText("망원 한강 러닝 클래스").closest('[role="button"]')).not.toBeNull();
+    expect(screen.getByText("성수 팝업 전시").closest('[role="button"]')).not.toBeNull();
+  });
 });

@@ -145,6 +145,7 @@ export default function DiagnosisScreen() {
           <Pressable
             onPress={goNext}
             disabled={!hasSelection}
+            accessibilityRole="button"
             style={[styles.resultBtn, { opacity: hasSelection ? 1 : 0.4 }]}
           >
             <Text style={styles.resultLabel}>{step === total - 1 ? "결과 보기" : "다음"}</Text>

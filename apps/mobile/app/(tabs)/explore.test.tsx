@@ -205,4 +205,13 @@ describe("ExploreScreen", () => {
     const titles = screen.getAllByText(/활동$/).map((el) => el.textContent);
     expect(titles.indexOf("가까운 활동")).toBeLessThan(titles.indexOf("먼 활동"));
   });
+
+  it("활동 행이 접근 가능한 button role로 노출된다(M-058)", () => {
+    state.catalogStatus = "ok";
+    state.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+
+    render(<ExploreScreen />);
+
+    expect(screen.getByText("망원 한강 러닝 클래스").closest('[role="button"]')).not.toBeNull();
+  });
 });

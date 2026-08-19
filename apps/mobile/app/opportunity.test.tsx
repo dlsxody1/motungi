@@ -296,6 +296,18 @@ describe("OpportunityScreen", () => {
     expect(toggleSavedMock).toHaveBeenCalledWith("op-1");
   });
 
+  it("보러 가기 버튼이 접근 가능한 button role로 노출된다(M-058)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", ctaUrl: "https://example.test" }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.getByRole("button", { name: /보러 가기/ })).toBeInTheDocument();
+  });
+
   it("공유가 실패해도(rejected) 에러를 던지지 않는다", async () => {
     const shareSpy = vi.spyOn(RNShare, "share").mockRejectedValue(new Error("cancelled"));
     useOpportunityState.status = "ok";

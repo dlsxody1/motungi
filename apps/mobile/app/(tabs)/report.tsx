@@ -59,7 +59,7 @@ export default function ReportScreen() {
             퇴근하고 즐길 거 {list.length}개 골랐어요
           </Txt>
         </View>
-        <Pressable style={styles.redo} hitSlop={8} onPress={() => router.push("/diagnosis")}>
+        <Pressable style={styles.redo} hitSlop={8} accessibilityRole="button" onPress={() => router.push("/diagnosis")}>
           <Refresh size={15} color={C.label} />
           <Text style={styles.redoLabel}>재진단</Text>
         </Pressable>
@@ -70,7 +70,7 @@ export default function ReportScreen() {
         오늘의 원픽
       </Txt>
 
-      <Pressable style={styles.hero} onPress={() => openDetail(onePick.id)}>
+      <Pressable style={styles.hero} accessibilityRole="button" onPress={() => openDetail(onePick.id)}>
         <View style={styles.heroBody}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Tag label={onePick.categoryLabel} />
@@ -109,6 +109,7 @@ export default function ReportScreen() {
           <Pressable
             key={o.id}
             onPress={() => openDetail(o.id)}
+            accessibilityRole="button"
             style={[styles.relItem, i > 0 && styles.relBorder]}
           >
             <View style={{ flex: 1 }}>

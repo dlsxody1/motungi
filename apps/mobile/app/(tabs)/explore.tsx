@@ -34,7 +34,11 @@ const ActivityItem = memo(function ActivityItem({
 }) {
   const accent = item.tone === "mint" ? C.mint : C.primary;
   return (
-    <Pressable onPress={() => onPress(item.id)} style={[styles.item, !first && styles.itemBorder]}>
+    <Pressable
+      onPress={() => onPress(item.id)}
+      accessibilityRole="button"
+      style={[styles.item, !first && styles.itemBorder]}
+    >
       <Thumbnail
         imageUrl={item.imageUrl}
         tone={item.tone === "mint" ? "mint" : "brand"}

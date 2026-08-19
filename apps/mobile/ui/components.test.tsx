@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("expo-router", () => ({ useRouter: () => ({ push: vi.fn(), back: vi.fn() }) }));
 
-import { Chip } from "./components";
+import { Button, Chip } from "./components";
 
 describe("Chip", () => {
   it("접근 가능한 button role과 선택 상태를 노출한다", () => {
@@ -29,5 +29,18 @@ describe("Chip", () => {
 
     const chip = screen.getByText("전체").closest('[role="button"]');
     expect(chip).toHaveAttribute("aria-selected", "true");
+  });
+});
+
+describe("Button", () => {
+  it("접근 가능한 button role로 노출된다(M-058)", () => {
+    const onPress = vi.fn();
+    render(<Button label="확인" onPress={onPress} />);
+
+    const btn = screen.getByRole("button", { name: "확인" });
+    expect(btn).toBeInTheDocument();
+
+    fireEvent.click(btn);
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

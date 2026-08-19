@@ -89,4 +89,10 @@ describe("DiagnosisScreen", () => {
     fireEvent.click(screen.getByText("문화·공연"));
     expect(culture).toHaveAttribute("aria-selected", "false");
   });
+
+  it("다음/결과 보기 CTA가 접근 가능한 button role로 노출된다(M-058)", () => {
+    render(<DiagnosisScreen />);
+
+    expect(screen.getByRole("button", { name: "다음" })).toBeInTheDocument();
+  });
 });
