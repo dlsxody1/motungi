@@ -1430,7 +1430,7 @@ backlog:
   - id: M-057
     title: "웹 리포트 반경 사다리 폴백(useReportFallback.ts) 테스트 0건 — 재발 이력 있는 로직"
     priority: high
-    status: todo
+    status: doing
     scope: [apps/web/src/hooks/useReportFallback.ts]
     done_when:
       - "useReportFallback.ts:52-73의 5→10→20km 반경 루프(조기종료 조건 포함)가 훅을 직접 호출하는 테스트로 커버된다(소비처 목킹이 아니라 훅 자체)"
@@ -1564,7 +1564,7 @@ backlog:
   - id: M-064
     title: "웹 보관함이 저장 건수만큼 개별 쿼리(N+1) — 코드 주석에 이미 명시된 부채"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/hooks/useSavedOpportunities.ts]
     done_when:
       - "저장 id가 여러 건일 때 id별 useQueries 대신 단일 .in(\"id\", ids) 조회(또는 이미 로드된 카탈로그 재사용)로 승격한다 — 파일 자체 주석의 제안(32행)을 따른다"
@@ -1581,7 +1581,7 @@ backlog:
   - id: M-065
     title: "웹 동네 검색 IME 조합(composition) 처리(useNeighborhoodSearch.ts) 테스트 0건"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/hooks/useNeighborhoodSearch.ts]
     done_when:
       - "composingRef 기반 조합 중 debounce 스킵(45-99행 내)과 onCompositionEnd 재검색 트리거가 테스트로 검증된다"
