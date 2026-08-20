@@ -14,11 +14,11 @@ import { toHaveNoViolations } from "vitest-axe/dist/matchers";
 import type { MockOpportunity } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 
-// 보관함 항목은 이제 항상 id 조회로 해소된다(스토어 카탈로그 경유가 사라졌다).
+// 보관함 항목은 이제 항상 벌크 id 조회(.in)로 해소된다(스토어 카탈로그 경유·개별 조회 모두 사라졌다, M-064).
 // 기본은 성공 응답이고, 로딩·에러 테스트에서만 개별로 덮어쓴다.
-const fetchOpportunityById = vi.fn();
+const fetchOpportunitiesByIds = vi.fn();
 vi.mock("@/data/opportunities", () => ({
-  fetchOpportunityById: (id: string) => fetchOpportunityById(id),
+  fetchOpportunitiesByIds: (ids: string[]) => fetchOpportunitiesByIds(ids),
 }));
 
 import SavedPage from "./page";
@@ -47,7 +47,7 @@ const PICK: MockOpportunity = {
 
 /**
  * 데이터 슬라이스를 통째로 덮어써 이전 테스트 잔여 상태를 제거한다.
- * 저장 항목 본문은 id 조회로 오므로 기본 성공 응답도 함께 깔아둔다.
+ * 저장 항목 본문은 벌크 id 조회로 오므로 기본 성공 응답도 함께 깔아둔다.
  */
 function seed() {
   useAppStore.setState({
@@ -57,7 +57,7 @@ function seed() {
     savedIds: [PICK.id],
     user: null,
   });
-  fetchOpportunityById.mockResolvedValue({ data: PICK, status: "ok" });
+  fetchOpportunitiesByIds.mockResolvedValue({ data: [PICK], status: "ok" });
 }
 
 // SavedPage는 MobileScreen(<main>)과 DesktopShell(<main id="main">)을 동시에 렌더한다
@@ -171,7 +171,7 @@ describe("SavedPage 조회 중 상태", () => {
       user: null,
     });
     // 영원히 안 끝나는 조회 — 로딩 상태에 화면을 묶어둔다.
-    fetchOpportunityById.mockReturnValue(new Promise(() => {}));
+    fetchOpportunitiesByIds.mockReturnValue(new Promise(() => {}));
 
     render(<SavedPage />);
 
@@ -193,7 +193,7 @@ describe("SavedPage 조회 중 상태", () => {
  */
 describe("SavedPage 조회 실패 상태", () => {
   beforeEach(() => {
-    // 카탈로그에 없는 id를 저장해둔 상태 → 훅이 단건 조회를 타고, 그 조회가 실패한다.
+    // 카탈로그에 없는 id를 저장해둔 상태 → 훅이 벌크 조회를 타고, 그 조회가 실패한다.
     useAppStore.setState({
       anchors: {},
       answers: null,
@@ -203,7 +203,7 @@ describe("SavedPage 조회 실패 상태", () => {
       savedIds: ["missing-1"],
       user: null,
     });
-    fetchOpportunityById.mockResolvedValue({ data: null, status: "error" });
+    fetchOpportunitiesByIds.mockResolvedValue({ data: [], status: "error" });
   });
 
   it("실패하면 빈 상태 대신 에러 상태를 보여준다", async () => {
@@ -232,10 +232,10 @@ describe("SavedPage 조회 실패 상태", () => {
     render(<SavedPage />);
     await screen.findAllByText("저장한 활동을 불러오지 못했어요");
 
-    const callsBefore = fetchOpportunityById.mock.calls.length;
+    const callsBefore = fetchOpportunitiesByIds.mock.calls.length;
     const [retryButton] = screen.getAllByRole("button", { name: "다시 시도" });
     await userEvent.click(retryButton!);
 
-    expect(fetchOpportunityById.mock.calls.length).toBeGreaterThan(callsBefore);
+    expect(fetchOpportunitiesByIds.mock.calls.length).toBeGreaterThan(callsBefore);
   });
 });

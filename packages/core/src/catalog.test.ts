@@ -25,7 +25,13 @@
 import type { OpportunityRow } from "./view";
 import type { OpportunityCategory } from "./types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { boundingBox, fetchOpportunities, fetchOpportunityById, rowToMock } from "./catalog";
+import {
+  boundingBox,
+  fetchOpportunities,
+  fetchOpportunitiesByIds,
+  fetchOpportunityById,
+  rowToMock,
+} from "./catalog";
 
 type FakeClient = {
   from: ReturnType<typeof vi.fn>;
@@ -608,6 +614,98 @@ describe("fetchOpportunityById", () => {
     const client = makeSingleClient({ data: drifted, error: null });
     const r = await fetchOpportunityById(asClient(client as unknown as FakeClient), "op-1");
     expect(r).toEqual({ data: null, status: "empty" });
+  });
+});
+
+/**
+ * 벌크 id 조회 체인 fake — client.from(...).select(...).in(...) 순으로 끝난다
+ * (order/limit 없음 — 전량 필터 없이 요청한 id만 그대로 받는다).
+ * 다른 필터 메서드(or/not/gte/lte/order/limit)도 함께 노출해, "이 메서드들은
+ * 호출되지 않는다"(=근접/카테고리/마감 필터를 걸지 않는다)를 검증할 수 있게 한다.
+ */
+function makeByIdsClient(result: { data: unknown; error: unknown }): FakeClient {
+  const inFn = vi.fn().mockResolvedValue(result);
+  const chain = {
+    or: vi.fn(),
+    in: inFn,
+    not: vi.fn(),
+    gte: vi.fn(),
+    lte: vi.fn(),
+    order: vi.fn(),
+    limit: vi.fn(),
+  };
+  const select = vi.fn(() => chain);
+  const from = vi.fn(() => ({ select }));
+  return {
+    from,
+    select,
+    or: chain.or,
+    in: chain.in,
+    not: chain.not,
+    gte: chain.gte,
+    lte: chain.lte,
+    order: chain.order,
+    limit: chain.limit,
+  };
+}
+
+describe("fetchOpportunitiesByIds", () => {
+  it("client가 null이면(ids가 있어도) 쿼리 없이 unconfigured", async () => {
+    const r = await fetchOpportunitiesByIds(null, ["op-1"]);
+    expect(r).toEqual({ data: [], status: "unconfigured" });
+  });
+
+  it("ids가 빈 배열이면 클라이언트를 호출하지 않고 즉시 empty를 반환한다", async () => {
+    const client = makeByIdsClient({ data: [ROW], error: null });
+
+    const result = await fetchOpportunitiesByIds(asClient(client), []);
+
+    expect(result).toEqual({ data: [], status: "empty" });
+    expect(client.from).not.toHaveBeenCalled();
+  });
+
+  it("DETAIL_COLUMNS(description 포함)로 select하고 .in(\"id\", ids)만 걸며, near/카테고리/마감 필터는 걸지 않는다", async () => {
+    const client = makeByIdsClient({ data: [ROW], error: null });
+
+    await fetchOpportunitiesByIds(asClient(client), ["op-1", "op-2"]);
+
+    expect(client.from).toHaveBeenCalledWith("opportunities");
+    const selectedCols = client.select.mock.calls[0]?.[0] as string;
+    expect(selectedCols).toContain("description");
+    expect(client.in).toHaveBeenCalledWith("id", ["op-1", "op-2"]);
+    // near/카테고리/마감/정렬/상한 — 목록 조회와 달리 이 함수는 전혀 걸지 않는다.
+    expect(client.gte).not.toHaveBeenCalled();
+    expect(client.lte).not.toHaveBeenCalled();
+    expect(client.or).not.toHaveBeenCalled();
+    expect(client.not).not.toHaveBeenCalled();
+    expect(client.order).not.toHaveBeenCalled();
+    expect(client.limit).not.toHaveBeenCalled();
+  });
+
+  it("정상 응답이면 ok 상태로 매핑된 데이터를 반환한다", async () => {
+    const client = makeByIdsClient({ data: [ROW], error: null });
+
+    const result = await fetchOpportunitiesByIds(asClient(client), ["op-1"]);
+
+    expect(result.status).toBe("ok");
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]).toMatchObject({ id: "op-1", title: "망원동 재즈 공연" });
+  });
+
+  it("클라이언트 에러면 error 상태를 반환한다", async () => {
+    const client = makeByIdsClient({ data: null, error: { message: "boom" } });
+
+    const result = await fetchOpportunitiesByIds(asClient(client), ["op-1"]);
+
+    expect(result).toEqual({ data: [], status: "error" });
+  });
+
+  it("id가 있어도 응답 데이터가 빈 배열이면 empty 상태를 반환한다", async () => {
+    const client = makeByIdsClient({ data: [], error: null });
+
+    const result = await fetchOpportunitiesByIds(asClient(client), ["op-999"]);
+
+    expect(result).toEqual({ data: [], status: "empty" });
   });
 });
 

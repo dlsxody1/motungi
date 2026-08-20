@@ -266,3 +266,33 @@ export async function fetchOpportunityById(
   }
   return { data: rowToMock(data), status: "ok" };
 }
+
+/**
+ * 여러 id를 한 번에 조회한다(보관함용). N건을 각각 fetchOpportunityById로 조회하던
+ * useSavedOpportunities의 useQueries를 단일 쿼리로 묶기 위한 벌크 버전.
+ *
+ * DETAIL_COLUMNS를 쓴다(CATALOG_COLUMNS 아님) — description 포함. 이 결과가
+ * queryKeys.opportunity(id)에 그대로 시딩돼 상세 캐시 슬롯을 채우므로, 상세 화면이
+ * 기대하는 필드(description)가 처음부터 있어야 한다.
+ *
+ * near/카테고리/마감(today) 필터를 걸지 않는다 — fetchOpportunityById와 같은 이유로,
+ * 저장 항목은 반경 밖·카테고리 밖·마감 지남과 무관하게 보여야 한다
+ * (useSavedOpportunities.ts 주석 참조: 이게 예전 "300건 창 밖 실종" 버그의 수정이다).
+ *
+ * @param client Supabase 클라이언트. null이면(ids가 있어도) 쿼리 없이 unconfigured 반환.
+ * @param ids 조회할 활동 id 목록. 빈 배열이면 클라이언트 호출 없이 즉시 empty.
+ */
+export async function fetchOpportunitiesByIds(
+  client: SupabaseClient<Database> | null,
+  ids: string[],
+): Promise<CatalogResult> {
+  if (ids.length === 0) return { data: [], status: "empty" };
+  if (!client) return { data: [], status: "unconfigured" };
+  const { data, error } = await client.from("opportunities").select(DETAIL_COLUMNS).in("id", ids);
+  if (error) return { data: [], status: "error" };
+  if (!data || data.length === 0) return { data: [], status: "empty" };
+  // 목록 조회와 동일한 구조 가드(M-011/M-027) — 레거시·드리프트 row는 제외.
+  const rows: OpportunityRow[] = (data as unknown[]).filter(isOpportunityRow);
+  if (rows.length === 0) return { data: [], status: "empty" };
+  return { data: rows.map(rowToMock), status: "ok" };
+}
