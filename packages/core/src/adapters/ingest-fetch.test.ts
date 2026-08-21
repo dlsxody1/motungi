@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   dedupByKey,
   inMetro,
+  isAllowedGpxUrl,
   isCronAuthorized,
   isPlainRecord,
   judgeIngest,
@@ -154,6 +155,32 @@ describe("isCronAuthorized — M-026 cron 시크릿 검증", () => {
     expect(isCronAuthorized(undefined, "anything")).toBe(false);
     expect(isCronAuthorized(null, "anything")).toBe(false);
     expect(isCronAuthorized("", "")).toBe(false);
+  });
+});
+
+describe("isAllowedGpxUrl — M-059 SSRF 방지 (두루누비 GPX fetch 화이트리스트)", () => {
+  it("https + 두루누비 호스트면 true", () => {
+    expect(isAllowedGpxUrl("https://www.durunubi.kr/kor/gpx/course.gpx")).toBe(true);
+  });
+  it("http(비-https)면 false", () => {
+    expect(isAllowedGpxUrl("http://www.durunubi.kr/kor/gpx/course.gpx")).toBe(false);
+  });
+  it("다른 호스트면 false (내부망/임의 서버 SSRF 시도)", () => {
+    expect(isAllowedGpxUrl("https://evil.example.com/course.gpx")).toBe(false);
+    expect(isAllowedGpxUrl("https://internal.durunubi.kr.evil.com/course.gpx")).toBe(false);
+  });
+  it("서브도메인이 정확히 일치하지 않으면 false", () => {
+    expect(isAllowedGpxUrl("https://durunubi.kr/course.gpx")).toBe(false);
+    expect(isAllowedGpxUrl("https://api.durunubi.kr/course.gpx")).toBe(false);
+  });
+  it("형식이 깨진 URL이면 false (new URL 실패)", () => {
+    expect(isAllowedGpxUrl("not a url")).toBe(false);
+    expect(isAllowedGpxUrl("durunubi.kr/course.gpx")).toBe(false);
+  });
+  it("null/undefined/빈 문자열이면 false", () => {
+    expect(isAllowedGpxUrl(null)).toBe(false);
+    expect(isAllowedGpxUrl(undefined)).toBe(false);
+    expect(isAllowedGpxUrl("")).toBe(false);
   });
 });
 

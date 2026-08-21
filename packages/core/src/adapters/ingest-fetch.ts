@@ -135,6 +135,30 @@ export function isCronAuthorized(
   return headerValue === serverSecret;
 }
 
+/** 두루누비 GPX fetch에 허용할 호스트(M-059). */
+const ALLOWED_GPX_HOST = "www.durunubi.kr";
+
+/**
+ * gpx_url이 https + 두루누비 호스트인지 검증 (순수 함수, M-059).
+ *
+ * 두루누비 courseList가 주는 gpxpath를 읽는 두 경로 — 조회(apps/web/src/app/api/
+ * trail-route/route.ts) · 적재(supabase/functions/ingest/index.ts fetchTrailStartCoord) —
+ * 가 같은 값을 같은 이유로 검증해야 한다. 조회 경로엔 이미 이 화이트리스트가 있었으나
+ * 적재 경로는 무검증 fetch(redirect:"follow")를 SERVICE_ROLE 권한으로 매일 돌렸다 —
+ * 상류(data.go.kr)가 오염되면 내부망 스캔에 쓰일 수 있는 blind SSRF primitive였다.
+ * 형식이 깨진 URL(new URL 실패)도 거부한다.
+ */
+export function isAllowedGpxUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return false;
+  }
+  return u.protocol === "https:" && u.hostname === ALLOWED_GPX_HOST;
+}
+
 /** key가 이미 등장한 이후 항목을 제거(첫 등장만 유지). */
 export function dedupByKey<T>(items: T[], keyFn: (item: T) => string): T[] {
   const seen = new Set<string>();

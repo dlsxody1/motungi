@@ -23,6 +23,7 @@ import {
 import {
   dedupByKey,
   inMetro,
+  isAllowedGpxUrl,
   isCronAuthorized,
   isPlainRecord,
   judgeIngest,
@@ -108,11 +109,14 @@ async function fetchDataGoKrXml(url: string): Promise<Record<string, string>[]> 
  * 두루누비 courseList는 좌표를 주지 않고 GPX 파일 경로(gpxpath)만 준다. 좌표가 없으면
  * 거리 스코어가 중립(0.5)로 떨어져 "동네" 큐레이션에서 사실상 빠지므로 적재 때 한 번 채운다.
  * 실패(네트워크·형식)는 null로 삼키고 넘어간다 — 좌표 하나 때문에 적재 전체를 막지 않는다.
+ *
+ * gpxUrl은 courseList API가 준 값을 그대로 fetch하기 전에 프로토콜/호스트를 검증한다
+ * (SSRF 방지, M-059) — 읽기 경로(apps/web/src/app/api/trail-route/route.ts)와 동일 규칙.
  */
 async function fetchTrailStartCoord(
   gpxUrl?: string | null,
 ): Promise<{ lat: number; lng: number } | null> {
-  if (!gpxUrl) return null;
+  if (!isAllowedGpxUrl(gpxUrl)) return null;
   try {
     const res = await fetch(gpxUrl, { redirect: "follow" });
     if (!res.ok) return null;
