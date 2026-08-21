@@ -1472,7 +1472,7 @@ backlog:
   - id: M-059
     title: "ingest 산책로 GPX fetch — 호스트/스킴 검증 없이 SSRF 가능 (읽기 경로는 이미 방어됨)"
     priority: medium
-    status: todo
+    status: doing
     scope: [supabase/functions/ingest/index.ts]
     done_when:
       - "fetchTrailStartCoord(index.ts:112-129)가 gpxUrl을 fetch하기 전에 protocol===\"https:\" && hostname===\"www.durunubi.kr\"를 검증한다 — apps/web/src/app/api/trail-route/route.ts:72-74와 동일 규칙"
@@ -1488,6 +1488,28 @@ backlog:
       안에서 무검증 fetch(redirect:"follow")를 돈다. 상류(data.go.kr 공공데이터)가 오염되면
       내부망 스캔에 쓰일 수 있는 blind SSRF primitive. 이미 같은 필드에 대해 읽기 경로를
       고친 선례가 있으므로 적재 경로에도 동일 패턴을 적용하면 된다(신규 설계 불필요).
+      [2026-08-21 야간 파이프라인 완료] packages/core/src/adapters/ingest-fetch.ts에 순수 함수
+      isAllowedGpxUrl(url): url is string 추가(M-026 isCronAuthorized와 동일 패턴 — leaf
+      모듈이라 Deno·vitest 양쪽에서 안전 import). supabase/functions/ingest/index.ts의
+      fetchTrailStartCoord가 fetch 전에 이를 호출, 검증 실패 시 fetch 없이 null(기존 실패
+      삼킴 유지). https+www.durunubi.kr만 통과, http·다른 호스트·서브도메인 불일치(api.*,
+      *.durunubi.kr.evil.com)·깨진 URL·빈 값은 전부 거부. ingest-fetch.test.ts에 테스트
+      6건 추가(core 298 통과). 독립 qa 에이전트가 diff(파일 3개, scope 일치)·가드 배치
+      (index.ts:119, fetch 호출 전, 유일한 호출부 enrichTrailCoords 확인)·rule parity
+      (route.ts:72-74와 동일 상수)를 재검증해 PASS 판정.
+      done_when 3번째 항목은 부분 충족으로 판정됨(정직하게 기록) — "fetch가 호출되지 않음을
+      검증하는 테스트"를 fetchTrailStartCoord 자체의 spy/통합 테스트가 아니라 그 가드로 쓰이는
+      순수 함수 isAllowedGpxUrl의 단위 테스트로 충족했다. index.ts를 직접 import하는 Deno
+      테스트는 M-036 선례(index.test.ts 파일 헤더 주석)가 이미 문서화한 이유로 이번에도
+      작성하지 않음 — 모듈 최상단의 `Deno.env.get(...)!`(SUPABASE_URL 등)가 즉시 던져서
+      production 코드 변경 없이는 import 자체가 안 된다. 논리적으로는 동등(early return 이후
+      fetch에 도달 불가)하나 글자 그대로는 아니라는 점을 reviewer가 리포트에 남긴다.
+      done_when 4번째 항목("pnpm --filter supabase-functions test")은 그런 워크스페이스가
+      애초에 없음(pnpm-workspace.yaml엔 apps/*·packages/*만 있고 supabase/엔 package.json
+      자체가 없음, qa가 확인) — "또는 해당 vitest 프로젝트"절로 packages/core vitest를
+      대신 통과시켜 충족. qa 게이트(bash scripts/gate.sh) 전체 PASS(typecheck 4/4·test
+      core 298+web 290·lint clean·시크릿 없음). status는 사람의 최종 리뷰 전까지 doing으로
+      둠(done 승격은 사람 담당).
 
   - id: M-060
     title: "apps/web 아이콘 컴포넌트 미사용 export 11개 정리 (icons.tsx 6개 + landing-icons.tsx 5개)"
