@@ -308,6 +308,65 @@ describe("OpportunityScreen", () => {
     expect(screen.getByRole("button", { name: /보러 가기/ })).toBeInTheDocument();
   });
 
+  it("summary가 있으면 요약 문구를 렌더한다(M-062)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", summary: "한강변을 따라 걷는 초보자용 코스" }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.getByText("한강변을 따라 걷는 초보자용 코스")).toBeInTheDocument();
+  });
+
+  it("summary가 없으면 요약 문구를 렌더하지 않는다(M-062)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", summary: undefined }),
+    ];
+    searchParamsState.id = "op-1";
+
+    expect(() => render(<OpportunityScreen />)).not.toThrow();
+    expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
+  });
+
+  it("걷기길(source: trail)이면 '주말 나들이' 배지를 렌더한다(M-062)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "북한산 둘레길", source: "trail" }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.getByText("주말 나들이")).toBeInTheDocument();
+  });
+
+  it("반나절 이상 걸리는 활동(durationMin >= 180)이면 '주말 나들이' 배지를 렌더한다(M-062)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "가평 계곡 나들이", durationMin: 200 }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.getByText("주말 나들이")).toBeInTheDocument();
+  });
+
+  it("일반 활동(source: seoul_culture, durationMin 없음)이면 '주말 나들이' 배지를 렌더하지 않는다(M-062)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "성수 팝업 전시", source: "seoul_culture" }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.queryByText("주말 나들이")).not.toBeInTheDocument();
+  });
+
   it("공유가 실패해도(rejected) 에러를 던지지 않는다", async () => {
     const shareSpy = vi.spyOn(RNShare, "share").mockRejectedValue(new Error("cancelled"));
     useOpportunityState.status = "ok";

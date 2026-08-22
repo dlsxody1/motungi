@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { deadlineLabel, displayNameOf } from "@motungi/core";
+import { deadlineLabel, displayNameOf, isWeekendOuting } from "@motungi/core";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useOpportunity } from "@/hooks/useOpportunity";
 import { useWhyReasons } from "@/hooks/useWhyReasons";
@@ -95,12 +95,20 @@ export default function OpportunityScreen() {
         {/* 대표 이미지 배너 — 없거나 로드 실패하면 카테고리 톤 플레이스홀더로 폴백(M-051) */}
         <Thumbnail imageUrl={o.imageUrl} tone={o.tone} style={styles.banner} />
 
-        <Tag label={o.categoryLabel} />
+        <View style={styles.categoryRow}>
+          <Tag label={o.categoryLabel} />
+          {isWeekendOuting(o) && (
+            <View style={styles.weekendBadge}>
+              <Text style={styles.weekendBadgeText}>주말 나들이</Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.title}>{o.title}</Text>
         <View style={styles.locRow}>
           <Location size={16} color={C.primary} />
           <Text style={styles.locText}>{o.location?.dongName ?? "우리 동네"}</Text>
         </View>
+        {!!o.summary && <Text style={styles.summary}>{o.summary}</Text>}
 
         {/* 비용 카드 */}
         <View style={styles.costCard}>
@@ -214,9 +222,13 @@ const styles = StyleSheet.create({
   nfTitle: { fontSize: 20, fontWeight: "800", color: C.ink, textAlign: "center" },
   nfDesc: { marginTop: 8, fontSize: 14, lineHeight: 21, color: C.muted, textAlign: "center", maxWidth: 320 },
   banner: { marginTop: 4, width: "100%", aspectRatio: 16 / 9, borderRadius: R.lg },
+  categoryRow: { marginTop: 4, flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 },
+  weekendBadge: { backgroundColor: C.tint, borderRadius: R.pill, paddingHorizontal: 8, paddingVertical: 3 },
+  weekendBadgeText: { fontSize: 11, fontWeight: "700", color: C.primaryDeep },
   title: { marginTop: 12, fontSize: 23, lineHeight: 30, fontWeight: "800", color: C.ink },
   locRow: { marginTop: 8, flexDirection: "row", alignItems: "center", gap: 4 },
   locText: { fontSize: 14, color: C.muted },
+  summary: { marginTop: 8, fontSize: 14, lineHeight: 20, color: C.label },
   costCard: { marginTop: 16, backgroundColor: "rgba(251,232,236,0.6)", borderRadius: R.lg, padding: 16 },
   costCap: { fontSize: 12, fontWeight: "600", color: C.primaryDeep },
   costVal: { fontSize: 30, fontWeight: "800", color: C.primaryDeep },
