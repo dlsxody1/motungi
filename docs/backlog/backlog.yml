@@ -1320,8 +1320,14 @@ backlog:
       `blocked-human` 같은 정식 상태로 성문화할 필요가 있다는 신호라고 아키텍트 권한 밖 관찰로
       명시. status는 todo 유지. scope 겹침 없어(파일도 다르고 priority도 다름) M-054가 단독
       클러스터로 진행. 상세는 docs/nightly/nightly-2026-08-17.md.
-
-  - id: M-053
+      [2026-08-22 야간 파이프라인] **10일 연속(08-13~08-22) 동일 결과.** 오케스트레이터가
+      씨앗 단계에서 재검증 후 사전 제외(`grep -i map apps/mobile/package.json` 여전히 공백,
+      apps/mobile 앱 코드 전체에 MapView/react-native-maps 참조 0건, .env.example·
+      security-policy.md 변경 없음) — 08-13이 제시한 3개 구현 경로 모두 여전히 사람 승인
+      대기. 대신 이번 밤은 medium 다음 순위인 M-061을 씨앗으로 클러스터를 짬(§집은 클러스터
+      참조). **사람에게 직접 알림을 보낸다** — 매일 같은 사전제외가 자동 반복되고 있고,
+      08-21 노트가 이미 제안한 3택1(경로 승인 / priority 하향 / blocked-human 상태 도입)이
+      아직 처리되지 않았다.
     title: "모바일 상세 화면에 마감 D-day·출처 미표시"
     priority: medium
     status: doing
@@ -1533,7 +1539,7 @@ backlog:
   - id: M-061
     title: "apps/mobile/tsconfig.json에 noUncheckedIndexedAccess 미설정 — 다른 3개 워크스페이스와 다름"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/mobile/tsconfig.json]
     done_when:
       - "apps/mobile/tsconfig.json이 noUncheckedIndexedAccess: true를 갖도록 한다 — tsconfig.base.json에 이미 있는 값을 mobile도 상속하거나(base를 extends로 갈아끼우고 expo 필요 오버라이드를 layer) 직접 추가한다"
@@ -1547,11 +1553,19 @@ backlog:
       의 QUESTIONS[step] 등은 현재 bounds가 구조적으로 보장됨), 이 축이 지키려는 안전망
       자체가 모바일 로컬 코드에는 아예 없다는 설정 공백 — 이 감사 축의 취지에 정면으로
       해당하는 항목이라 별도 이슈로 등재.
+      [2026-08-22 야간 파이프라인 완료] extends 체인은 건드리지 않고 apps/mobile/tsconfig.json
+      compilerOptions에 noUncheckedIndexedAccess:true를 직접 추가(가장 낮은 리스크 경로).
+      옵션 활성화로 드러난 신규 타입 에러 2건 모두 테스트 파일의 mock.calls[0][0] 인덱싱이었고
+      리포에 이미 있는 관용구(`!`)로 수정: apps/mobile/app/opportunity.test.tsx:279,
+      apps/mobile/lib/auth.test.ts:367. qa가 캐시 우회한 순수 `npx tsc --noEmit`로 독립
+      재검증(exit 0), 소스 코드(비테스트) 인덱싱 핫스팟도 grep으로 훑어 누락 없음 확인
+      (report.tsx:20 list[0]은 이미 null-safe). 커밋 dcadfdc, dev 직접 커밋(트렁크 모델,
+      PR 없음). qa 게이트(bash scripts/gate.sh) PASS. done_when 3개 전부 충족.
 
   - id: M-062
     title: "모바일 상세화면(opportunity.tsx)에 활동 요약(summary)·주말나들이 배지 누락 — 웹엔 있음"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/mobile/app/opportunity.tsx]
     done_when:
       - "o.summary가 있으면 제목/위치 아래에 한 줄 요약을 렌더한다 — 웹 opportunity-detail.tsx:185-187·346-348과 동등"
@@ -1564,11 +1578,18 @@ backlog:
       이미 item.summary를 쓰고 있어 필드 자체는 존재·populate됨 — 상세 화면만 누락).
       M-053(마감·출처) 선례와 같은 파일·같은 유형의 마무리 후속이라 하나의 이슈로 묶음.
       M-050~M-055 등 기존 패리티 이슈와 겹치지 않음(실코드 대조로 확인).
+      [2026-08-22 야간 파이프라인 완료] opportunity.tsx:12에 isWeekendOuting import 추가,
+      :100-104에 카테고리 Tag 옆 "주말 나들이" 배지(pillComfortable 톤 재사용), :111에
+      o.summary 조건부 렌더 추가. 테스트 5건 신규(summary 있음/없음, source:"trail" 배지,
+      durationMin:200 배지, 일반 seoul_culture 배지 없음) — 실제 OpportunityScreen을
+      목업 없이 그대로 렌더해 검증(store/훅만 mock). qa가 file:line 대조로 4개 케이스 전부
+      독립 재확인. 커밋 9f8a0d5, dev 직접 커밋(트렁크 모델, PR 없음). qa 게이트 PASS.
+      done_when 4개 전부 충족.
 
   - id: M-063
     title: "모바일 카탈로그 조회가 웹과 달리 캐시 없이 순차 3왕복(M-041 서버 캐시가 모바일엔 없음)"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/mobile/hooks/useEnsureCatalog.ts, apps/mobile/data/opportunities.ts]
     done_when:
       - "모바일 카탈로그 조회가 반복 방문/저밀도 앵커에서 매번 Supabase에 직접 순차 왕복하지 않도록 한다 — 웹처럼 /api/opportunities를 경유하거나 앱 자체 요청 캐시를 둔다"
@@ -1582,6 +1603,25 @@ backlog:
       apps/mobile/data/opportunities.ts는 지금도 coreFetchOpportunities(supabase,...)를
       기기에서 직접 호출하고, useEnsureCatalog.ts:44-52가 동일한 5→10→20km 순차 루프를
       캐시 없이 돈다 — M-041이 고친 것과 같은 문제가 모바일에 그대로 있다.
+      [2026-08-22 야간 파이프라인 — 부분 완료, 정직하게 기록] planner가 스코프를 좁혀 잡았다:
+      useEnsureCatalog.ts의 "already fetched for this point" 추적이 컴포넌트 인스턴스
+      스코프 `useRef`라 화면이 언마운트·리마운트(explore↔opportunity 탭 전환 등)될 때마다
+      전역 store(catalogStatus)는 이미 그 좌표로 성공 적재돼 있는데도 다시 5→10→20km
+      순차 사다리를 처음부터 돈다는 실제 버그를 확인 → `lastFetchedKey`를 모듈 스코프로
+      승격해 세션 내내 살아있게 고침(useEnsureCatalog.ts:22, `useRef` import 제거). 리마운트
+      시 재요청 안 함을 입증하는 회귀 테스트 추가(구 코드로는 실패, 신 코드로 통과 확인).
+      qa가 file:line 대조로 재검증, PASS.
+      **그러나 이슈 원문 done_when의 절반만 충족했다**: "반복 방문"(리마운트 시 재요청)은
+      고쳤지만 "저밀도 앵커"의 콜드 최초 방문 — 즉 사다리 자체가 5km→10km→20km로 매번
+      Supabase에 순차 왕복하는 문제(웹의 unstable_cache 6시간 캐시에 해당하는 저장소 계층
+      부재) — 는 그대로 남아 있고, scope에 있던 apps/mobile/data/opportunities.ts는
+      전혀 손대지 않았다. 웹처럼 서버측 캐시를 두려면 모바일 전용 프록시 라우트나 공유
+      백엔드 캐시가 필요해 하룻밤 스코프를 넘어선다고 판단해 이번엔 리마운트 버그만 고쳤다.
+      **status는 doing으로 올리되(실 코드 변경·검증 완료), 원문 done_when 1·2번 항목의
+      "저밀도 앵커 콜드 방문" 절반은 미해결로 다음 밤(또는 사람)이 판단**: (a) 이 상태로
+      done 승격하고 남은 절반을 별도 이슈로 신규 등재, (b) doing에 머물며 다음 밤 planner가
+      이 노트를 읽고 좁은 스코프(콜드 사다리 캐시, apps/mobile/data/opportunities.ts)로
+      재작업. 커밋 86f6051, dev 직접 커밋(트렁크 모델, PR 없음). qa 게이트 PASS.
 
   - id: M-064
     title: "웹 보관함이 저장 건수만큼 개별 쿼리(N+1) — 코드 주석에 이미 명시된 부채"
