@@ -6,6 +6,7 @@
     // deprecated. Metro 번들러 환경이므로 "bundler"로 덮어쓴다(웹과 동일).
     "module": "esnext",
     "moduleResolution": "bundler",
+    "noUncheckedIndexedAccess": true,
     "paths": {
       "@/*": ["./*"]
     }

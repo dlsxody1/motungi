@@ -276,7 +276,7 @@ describe("OpportunityScreen", () => {
     fireEvent.click(screen.getByLabelText("공유"));
 
     expect(shareSpy).toHaveBeenCalledTimes(1);
-    const arg = shareSpy.mock.calls[0][0] as { message: string };
+    const arg = shareSpy.mock.calls[0]![0] as { message: string };
     expect(arg.message).toContain("망원 한강 러닝 클래스");
     expect(arg.message).toContain("/opportunity?id=op-1");
   });

@@ -364,7 +364,7 @@ describe("initAuthListener", () => {
     initAuthListener();
     await vi.waitFor(() => expect(storeState.setSavedIds).toHaveBeenCalled());
 
-    const merged = storeState.setSavedIds.mock.calls[0][0] as string[];
+    const merged = storeState.setSavedIds.mock.calls[0]![0] as string[];
     expect(new Set(merged)).toEqual(new Set(["op-1", "op-2", "op-3"]));
     expect(merged).toHaveLength(3);
     expect(storeState.setUser).toHaveBeenCalledWith({ id: "user-1", displayName: "카를로스" });
