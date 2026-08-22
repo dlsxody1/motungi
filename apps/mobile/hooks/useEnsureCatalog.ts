@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { fetchOpportunities } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -10,6 +10,16 @@ const MIN_RESULTS = 20;
 
 /** 앵커가 없을 때(첫 진입·동네 미선택) 상한. */
 const NO_ANCHOR_LIMIT = 300;
+
+/**
+ * "이 pointKey로 이미 fetch를 트리거했는가"를 모듈 스코프에 둔다(useRef 아님).
+ * useRef는 컴포넌트 인스턴스 하나에 묶여, Explore/상세 탭을 오가며 이 훅을 쓰는 화면이
+ * 언마운트·재마운트될 때마다 새 ref(null)로 초기화된다 — 그 순간 전역 store엔 이미
+ * catalogStatus가 "idle"이 아닌 성공 상태로 남아 있어도 가드가 어긋나 반경 사다리
+ * 전체를 매번 재조회했다(M-063). 모듈 스코프 변수는 같은 JS 세션 동안 살아남아
+ * catalog와 동일한 세션 캐시 수명을 갖는다.
+ */
+let lastFetchedKey: string | null = null;
 
 /**
  * 탐색용 카탈로그를 앵커 반경으로 좁혀 로드한다.
@@ -26,12 +36,11 @@ export function useEnsureCatalog() {
 
   // 좌표를 값으로 비교하기 위한 키(객체 identity는 매 렌더 바뀔 수 있다).
   const pointKey = point ? `${point.lat},${point.lng}` : null;
-  // 동네를 바꾸면 catalogStatus가 idle이 아니어도 다시 받아야 한다.
-  const lastPointRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (catalogStatus !== "idle" && lastPointRef.current === pointKey) return;
-    lastPointRef.current = pointKey;
+    // 동네를 바꾸면 catalogStatus가 idle이 아니어도 다시 받아야 한다.
+    if (catalogStatus !== "idle" && lastFetchedKey === pointKey) return;
+    lastFetchedKey = pointKey;
 
     let cancelled = false;
     void (async () => {
