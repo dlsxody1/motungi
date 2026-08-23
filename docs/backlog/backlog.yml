@@ -1328,6 +1328,8 @@ backlog:
       참조). **사람에게 직접 알림을 보낸다** — 매일 같은 사전제외가 자동 반복되고 있고,
       08-21 노트가 이미 제안한 3택1(경로 승인 / priority 하향 / blocked-human 상태 도입)이
       아직 처리되지 않았다.
+
+  - id: M-053
     title: "모바일 상세 화면에 마감 D-day·출처 미표시"
     priority: medium
     status: doing
