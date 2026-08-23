@@ -1328,6 +1328,20 @@ backlog:
       참조). **사람에게 직접 알림을 보낸다** — 매일 같은 사전제외가 자동 반복되고 있고,
       08-21 노트가 이미 제안한 3택1(경로 승인 / priority 하향 / blocked-human 상태 도입)이
       아직 처리되지 않았다.
+      [2026-08-23 야간 파이프라인] **11일 연속(08-13~08-23) 동일 결과.** 오케스트레이터가
+      씨앗 단계에서 재검증 후 사전 제외(`grep -i map apps/mobile/package.json` 여전히 공백,
+      apps/mobile 코드 전체에 MapView/react-native-maps 참조 0건, .env.example·
+      security-policy.md에 지도 관련 항목 없음 — 08-13 3개 경로 전부 여전히 사람 승인
+      대기). 이번 밤 medium 다음 순위 M-068을 씨앗으로 클러스터를 짬(M-068+M-069, 같은
+      디렉토리 apps/web/src/lib/). 부수적으로 이번 밤 이 항목 바로 아래에서 **백로그
+      YAML 손상**을 발견했다 — `- id: M-053` 줄이 누락돼 M-052(본 항목, todo)의 매핑이
+      M-053(마감 D-day, doing)의 title/priority/status/scope/done_when/notes와 중복
+      키로 이어져 있었다. 표준 YAML 파서(last-key-wins)로 읽으면 M-052 자체가 통째로
+      사라지는 구조라(python yaml.safe_load 재현 확인) 향후 자동화 도구가 backlog를
+      파싱하면 이 항목이 존재하지 않는 것처럼 보일 위험이 있었다. 커밋 1101a22로
+      분리 수정(필드 값 변경 없음). **사람에게 재차 알림**: 11일째 동일 사전제외이고
+      08-21/08-22가 제안한 3택1(경로 승인 / priority 하향 / blocked-human 상태 도입)이
+      아직 처리되지 않았다. 상세는 docs/nightly/nightly-2026-08-23.md.
 
   - id: M-053
     title: "모바일 상세 화면에 마감 D-day·출처 미표시"
@@ -1698,7 +1712,7 @@ backlog:
   - id: M-068
     title: "웹 카카오 공유(kakao.ts shareContent) 3단 폴백 캐스케이드 테스트 0건"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/lib/kakao.ts]
     done_when:
       - "shareContent(68-123행)의 Kakao SDK 경로(imageUrl 폴백 유도 포함)·navigator.share 경로(취소/실패 스왈로우)·클립보드 복사 경로(스왈로우)·최종 \"none\" 폴백까지 4가지 반환값이 각각 테스트로 커버된다"
@@ -1707,11 +1721,18 @@ backlog:
       [2026-08-18 audit] 8축 감사 · test-coverage. grep 결과 shareContent/initKakao를
       참조하는 테스트 파일이 전혀 없다. 세 단계 폴백 중 하나가 깨져도(특히 스왈로우된
       catch 블록 안의 실패) 신호 없이 공유 기능이 조용히 저하될 수 있다.
+      [2026-08-23 야간 파이프라인 완료] apps/web/src/lib/kakao.test.ts 신설, 7 tests. 4개
+      반환 분기 전부 커버: kakao(SDK, imageUrl 명시·폴백 두 경우) / web-share(성공 +
+      취소→clipboard 폴백) / clipboard(성공 + 실패→none 폴백) / none. KAKAO_JS_KEY가
+      모듈 로드 시점에 캡처되는 구조라 vi.stubEnv+vi.resetModules+동적 import를 매
+      테스트마다 사용(정적 import로는 kakao 분기가 도달 불가). 소스(kakao.ts) 무변경.
+      qa 게이트(bash scripts/gate.sh) PASS(typecheck 4/4·test core 298+mobile 131+
+      web 307·lint·secrets 전부 ✅) — qa가 done_when 항목별 실제 어서션 재확인.
 
   - id: M-069
     title: "웹 geo.ts(reverseGeocode/searchNeighborhoods)가 항상 mock되고 직접 테스트된 적 없음 — 모바일과 비대칭"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/lib/geo.ts]
     done_when:
       - "reverseGeocode(13-28행)·searchNeighborhoods(45-63행)를 실제로 호출하는 geo.test.ts를 추가한다 — apps/mobile/lib/geo.test.ts와 대칭"
@@ -1722,6 +1743,12 @@ backlog:
       neighborhood-menu.tsx 관련 테스트가 전부 이 모듈을 vi.mock/vi.spyOn으로 대체해
       실제 구현은 어느 테스트에서도 실행되지 않는다. 반면 apps/mobile/lib/geo.ts는
       geo.test.ts로 직접 커버돼 있어 비대칭 — 같은 성격의 로직인데 웹만 공백.
+      [2026-08-23 야간 파이프라인 완료] apps/web/src/lib/geo.test.ts 신설, 10 tests.
+      reverseGeocode·searchNeighborhoods 둘 다 실제 호출(fetch만 vi.stubGlobal로 대체,
+      함수 자체는 mock 안 함). done_when 3개 폴백 전부 커버: !res.ok(두 함수 모두),
+      data.items ?? [], AbortError 억제(reportError 미호출)를 일반 에러(reportError
+      호출)와 대비 검증. 소스(geo.ts) 무변경. qa 게이트(bash scripts/gate.sh)
+      PASS(typecheck 4/4·test core 298+mobile 131+web 307·lint·secrets 전부 ✅).
 
   - id: M-070
     title: "zustand persist 재수화(rehydrate) 시 answers에 런타임 검증 없음 — 쓰기만 검증되고 읽기는 무방비"
