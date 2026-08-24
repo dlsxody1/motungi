@@ -148,6 +148,21 @@ describe("useEnsureCatalog — 앵커 반경 조회(확대 루프)", () => {
     expect(fetchOpportunitiesMock.mock.calls.map((c) => c[0]!.near!.radiusKm)).toEqual([5, 10, 20]);
     expect(setCatalogMock).toHaveBeenCalledTimes(1);
   });
+
+  it("첫 반경(5km) 조회가 error면 즉시 멈춘다 — 넓혀봐야 같은 실패다(M-072)", async () => {
+    state.anchors = { home: { point: HOME_POINT } };
+    fetchOpportunitiesMock.mockResolvedValue({ data: [], status: "error" });
+
+    renderHook(() => useEnsureCatalog());
+
+    await waitFor(() => expect(setCatalogMock).toHaveBeenCalledTimes(1));
+    expect(fetchOpportunitiesMock).toHaveBeenCalledTimes(1);
+    expect(fetchOpportunitiesMock.mock.calls[0]![0]!.near).toEqual({
+      point: HOME_POINT,
+      radiusKm: 5,
+    });
+    expect(setCatalogMock).toHaveBeenCalledWith([], "error");
+  });
 });
 
 describe("useEnsureCatalog — 세션 캐시가 화면 재마운트를 견딘다(M-063)", () => {

@@ -223,6 +223,57 @@ export async function fetchOpportunities(
   return { data: rows.map(rowToMock), status: "ok" };
 }
 
+/** 앵커가 있을 때 시도하는 반경(km) — 가까운 것부터. */
+export const RADII = [5, 10, 20] as const;
+
+/** 이 정도는 나와야 "탐색"이 성립한다고 보는 하한. 못 채우면 다음 반경으로. */
+export const MIN_RESULTS = 20;
+
+/** 앵커가 없을 때(첫 방문·동네 미선택) 상한. */
+export const NO_ANCHOR_LIMIT = 300;
+
+/** 특정 반경에서 카탈로그를 조회하는 콜백. 호출부가 자신의 client/today 등을 클로저로 주입한다. */
+export type RadiusFetch = (args: { point: GeoPoint; radiusKm: number }) => Promise<CatalogResult>;
+
+/** 앵커가 없을 때 1회만 호출하는 콜백. */
+export type NoAnchorFetch = () => Promise<CatalogResult>;
+
+export interface CatalogLadderResult {
+  result: CatalogResult;
+  /** 실제로 쓰인 반경(km). 앵커가 없었으면 null. */
+  radiusKm: number | null;
+}
+
+/**
+ * 반경 사다리 정책 — "동네" 큐레이션의 실행 메커니즘(순수 오케스트레이션, IO 없음).
+ * point가 있으면 RADII를 가까운 것부터 시도해 data.length >= MIN_RESULTS면 즉시 멈추고,
+ * 다 써도 못 채우면 마지막(최대) 반경 결과를 그대로 쓴다. status === "error"면 그 자리에서
+ * 즉시 멈춘다 — 넓혀도 같은 실패이기 때문이다(원인이 반경이 아니라 조회 자체인 경우가 대부분).
+ * point가 없으면 noAnchorFetch()를 1회만 호출한다.
+ * Supabase/react-query/unstable_cache를 모른다 — 실제 조회는 호출부가 주입한 콜백이 한다.
+ *
+ * web/mobile에 각각 중복 구현돼 있던 반경 사다리 정책을 core로 승격했다(M-072).
+ */
+export async function loadCatalogByRadiusLadder(
+  point: GeoPoint | null,
+  fetchAtRadius: RadiusFetch,
+  noAnchorFetch: NoAnchorFetch,
+): Promise<CatalogLadderResult> {
+  if (!point) {
+    const result = await noAnchorFetch();
+    return { result, radiusKm: null };
+  }
+  let last: CatalogResult = { data: [], status: "empty" };
+  let radiusKm: number | null = null;
+  for (const r of RADII) {
+    last = await fetchAtRadius({ point, radiusKm: r });
+    radiusKm = r;
+    if (last.status === "error") break;
+    if (last.data.length >= MIN_RESULTS) break;
+  }
+  return { result: last, radiusKm };
+}
+
 /** 단건 조회 결과. 상세 페이지는 카탈로그 전량이 아니라 이 형태로 1건만 받는다. */
 export interface OpportunityResult {
   /** 조회된 활동. 없으면 null(존재하지 않거나 레거시 값이라 걸러짐). */

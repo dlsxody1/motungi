@@ -16,18 +16,17 @@
  */
 import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
-import { fetchOpportunities, type CatalogResult, type MockOpportunity } from "@motungi/core";
+import {
+  fetchOpportunities,
+  loadCatalogByRadiusLadder,
+  NO_ANCHOR_LIMIT,
+  type CatalogResult,
+  type MockOpportunity,
+  type NoAnchorFetch,
+  type RadiusFetch,
+} from "@motungi/core";
 import { apiError, reportError } from "@/lib/api-error";
 import { supabase } from "@/lib/supabase";
-
-/** 앵커가 있을 때 시도하는 반경(km) — 가까운 것부터. 클라이언트에서 그대로 옮겨왔다. */
-const RADII = [5, 10, 20] as const;
-
-/** 이 정도는 나와야 "탐색"이 성립한다고 보는 하한. 못 채우면 다음 반경으로. */
-const MIN_RESULTS = 20;
-
-/** 앵커가 없을 때(첫 방문·동네 미선택) 상한. */
-const NO_ANCHOR_LIMIT = 300;
 
 /**
  * 좌표 캐시 키 그리드(도). 약 1.1km — 이보다 촘촘하게 캐시를 나눠봐야
@@ -81,22 +80,16 @@ const loadCatalog = unstable_cache(
   ): Promise<{ result: CatalogResult; radiusKm: number | null }> => {
     // 클라이언트는 캐시 경계 안에서 만든다(위 주석 참조). 미설정이면 호출부가 이미 걸렀다.
     const client = supabase!;
-    if (!point) {
-      const result = await fetchOpportunities(client, { today, limit: NO_ANCHOR_LIMIT });
-      if (result.status === "error") throw new CatalogQueryError();
-      return { result, radiusKm: null };
-    }
-    // 사다리를 여기서 돈다 — 브라우저는 결과 1개만 받고, 캐시 적중 시 DB 조회는 0회다.
-    let last: CatalogResult = { data: [], status: "empty" };
-    let radiusKm: number | null = null;
-    for (const r of RADII) {
-      last = await fetchOpportunities(client, { today, near: { point, radiusKm: r } });
-      radiusKm = r;
-      // 조회 자체가 실패하면 더 넓혀도 같은 실패다 — 즉시 중단.
-      if (last.status === "error") throw new CatalogQueryError();
-      if (last.data.length >= MIN_RESULTS) break;
-    }
-    return { result: last, radiusKm };
+    // 사다리 정책 자체는 core로 승격됐다(M-072) — 여기선 client/today를 클로저로 주입하는
+    // 콜백만 정의한다. 캐시 오염 방지용 throw는 사다리가 끝난 뒤 아래에서 한 번만 본다.
+    const fetchAtRadius: RadiusFetch = ({ point: p, radiusKm }) =>
+      fetchOpportunities(client, { today, near: { point: p, radiusKm } });
+    const noAnchorFetch: NoAnchorFetch = () =>
+      fetchOpportunities(client, { today, limit: NO_ANCHOR_LIMIT });
+    const { result, radiusKm } = await loadCatalogByRadiusLadder(point, fetchAtRadius, noAnchorFetch);
+    // 조회 자체가 실패하면(반경을 넓혀도 사다리가 이미 멈춘 상태) 캐시에 남기지 않는다.
+    if (result.status === "error") throw new CatalogQueryError();
+    return { result, radiusKm };
   },
   ["catalog"],
   { revalidate: REVALIDATE_SEC, tags: ["opportunities"] },

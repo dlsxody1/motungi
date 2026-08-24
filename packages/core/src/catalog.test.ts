@@ -25,11 +25,15 @@
 import type { OpportunityRow } from "./view";
 import type { OpportunityCategory } from "./types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { CatalogResult } from "./catalog";
+import type { GeoPoint } from "./types";
 import {
   boundingBox,
   fetchOpportunities,
   fetchOpportunitiesByIds,
   fetchOpportunityById,
+  loadCatalogByRadiusLadder,
+  MIN_RESULTS,
   rowToMock,
 } from "./catalog";
 
@@ -706,6 +710,79 @@ describe("fetchOpportunitiesByIds", () => {
     const result = await fetchOpportunitiesByIds(asClient(client), ["op-999"]);
 
     expect(result).toEqual({ data: [], status: "empty" });
+  });
+});
+
+/** MIN_RESULTS 판정에만 관심 있는 테스트용 CatalogResult — 내용물이 아니라 길이/상태만 중요하다. */
+function makeResult(status: CatalogResult["status"], count: number): CatalogResult {
+  return { data: Array.from({ length: count }, () => ({}) as CatalogResult["data"][number]), status };
+}
+
+describe("loadCatalogByRadiusLadder — 반경 사다리 정책(M-072, core로 승격)", () => {
+  const POINT: GeoPoint = { lat: 37.5556, lng: 126.9019 };
+
+  it("5km에서 MIN_RESULTS 이상이면 5km에서 멈추고 10/20km는 조회하지 않는다", async () => {
+    const fetchAtRadius = vi.fn().mockResolvedValue(makeResult("ok", MIN_RESULTS));
+    const noAnchorFetch = vi.fn();
+
+    const { result, radiusKm } = await loadCatalogByRadiusLadder(POINT, fetchAtRadius, noAnchorFetch);
+
+    expect(fetchAtRadius).toHaveBeenCalledTimes(1);
+    expect(fetchAtRadius).toHaveBeenCalledWith({ point: POINT, radiusKm: 5 });
+    expect(radiusKm).toBe(5);
+    expect(result.data).toHaveLength(MIN_RESULTS);
+    expect(noAnchorFetch).not.toHaveBeenCalled();
+  });
+
+  it("5km 미달·10km에서 MIN_RESULTS 충족이면 10km에서 멈추고 20km는 조회하지 않는다", async () => {
+    const fetchAtRadius = vi
+      .fn()
+      .mockResolvedValueOnce(makeResult("ok", MIN_RESULTS - 1))
+      .mockResolvedValueOnce(makeResult("ok", MIN_RESULTS));
+    const noAnchorFetch = vi.fn();
+
+    const { result, radiusKm } = await loadCatalogByRadiusLadder(POINT, fetchAtRadius, noAnchorFetch);
+
+    expect(fetchAtRadius).toHaveBeenCalledTimes(2);
+    expect(fetchAtRadius).toHaveBeenNthCalledWith(1, { point: POINT, radiusKm: 5 });
+    expect(fetchAtRadius).toHaveBeenNthCalledWith(2, { point: POINT, radiusKm: 10 });
+    expect(radiusKm).toBe(10);
+    expect(result.data).toHaveLength(MIN_RESULTS);
+  });
+
+  it("5/10/20km 전부 MIN_RESULTS 미달이면 20km(마지막) 결과를 그대로 반환한다", async () => {
+    const fetchAtRadius = vi.fn().mockResolvedValue(makeResult("ok", MIN_RESULTS - 1));
+    const noAnchorFetch = vi.fn();
+
+    const { result, radiusKm } = await loadCatalogByRadiusLadder(POINT, fetchAtRadius, noAnchorFetch);
+
+    expect(fetchAtRadius).toHaveBeenCalledTimes(3);
+    expect(fetchAtRadius).toHaveBeenNthCalledWith(3, { point: POINT, radiusKm: 20 });
+    expect(radiusKm).toBe(20);
+    expect(result.data).toHaveLength(MIN_RESULTS - 1);
+  });
+
+  it("앵커가 없으면(point: null) noAnchorFetch만 1회 호출하고 radiusKm은 null이다", async () => {
+    const fetchAtRadius = vi.fn();
+    const noAnchorFetch = vi.fn().mockResolvedValue(makeResult("ok", 300));
+
+    const { result, radiusKm } = await loadCatalogByRadiusLadder(null, fetchAtRadius, noAnchorFetch);
+
+    expect(fetchAtRadius).not.toHaveBeenCalled();
+    expect(noAnchorFetch).toHaveBeenCalledTimes(1);
+    expect(radiusKm).toBeNull();
+    expect(result.status).toBe("ok");
+  });
+
+  it("첫 반경(5km)에서 status가 error면 즉시 멈추고 10/20km는 조회하지 않는다", async () => {
+    const fetchAtRadius = vi.fn().mockResolvedValue(makeResult("error", 0));
+    const noAnchorFetch = vi.fn();
+
+    const { result, radiusKm } = await loadCatalogByRadiusLadder(POINT, fetchAtRadius, noAnchorFetch);
+
+    expect(fetchAtRadius).toHaveBeenCalledTimes(1);
+    expect(radiusKm).toBe(5);
+    expect(result.status).toBe("error");
   });
 });
 
