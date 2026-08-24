@@ -1342,6 +1342,16 @@ backlog:
       분리 수정(필드 값 변경 없음). **사람에게 재차 알림**: 11일째 동일 사전제외이고
       08-21/08-22가 제안한 3택1(경로 승인 / priority 하향 / blocked-human 상태 도입)이
       아직 처리되지 않았다. 상세는 docs/nightly/nightly-2026-08-23.md.
+      [2026-08-24 야간 파이프라인] **12일 연속(08-13~08-24) 동일 결과.** 오케스트레이터가
+      씨앗 단계에서 재검증 후 사전 제외(`grep -i map apps/mobile/package.json` 여전히 공백,
+      apps/mobile 코드 전체에 MapView/react-native-maps 참조 0건, .env.example·
+      security-policy.md에 지도 관련 항목 없음 — 08-13 3개 경로 전부 여전히 사람 승인
+      대기). 이번 밤은 남은 유일한 medium todo인 M-072를 씨앗으로 단독 클러스터 진행
+      (scope 겹침 0 + priority 다른 나머지 5건은 폴백 요건도 미충족이라 1이슈 클러스터).
+      **reviewer가 사람에게 재차 강력히 권고**: 08-21/08-22/08-23이 제안한 3택1(경로 승인 /
+      priority 하향 / blocked-human 상태 도입)이 12일째 처리되지 않았다 — 이 정도 기간이면
+      밤이 스스로 뚫을 수 없는 블로커라는 신호다. 상세는 docs/nightly/nightly-2026-08-24.md
+      §리스크 & 후속.
 
   - id: M-053
     title: "모바일 상세 화면에 마감 D-day·출처 미표시"
@@ -1785,7 +1795,7 @@ backlog:
   - id: M-072
     title: "카탈로그 반경 사다리 정책이 core가 아니라 web/mobile에 각각 중복 구현됨"
     priority: medium
-    status: todo
+    status: doing
     scope: [packages/core/src/catalog.ts, apps/web/src/app/api/opportunities/route.ts, apps/mobile/hooks/useEnsureCatalog.ts]
     done_when:
       - "RADII/MIN_RESULTS/NO_ANCHOR_LIMIT과 '반경을 순차로 넓혀가며 MIN_RESULTS 채우면 멈춘다'는 정책을 packages/core에 순수 함수로 승격한다(단일 반경 fetch를 주입받는 형태 — core가 react-query/캐시 구현 세부를 몰라도 되게)"
