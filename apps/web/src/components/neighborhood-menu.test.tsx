@@ -20,6 +20,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/geo", () => ({ searchNeighborhoods: searchMock }));
 
+import { useAppStore } from "@/store/useAppStore";
 import { NeighborhoodMenu } from "./neighborhood-menu";
 
 // globals:false 설정이라 RTL 자동 cleanup 이 등록되지 않는다.
@@ -29,6 +30,13 @@ beforeEach(() => {
   pushMock.mockReset();
   searchMock.mockReset();
   searchMock.mockResolvedValue([]);
+  useAppStore.setState({
+    anchors: {},
+    answers: null,
+    results: [],
+    savedIds: [],
+    user: null,
+  });
   // jsdom은 <dialog>.showModal을 구현하지 않는 경우가 있어 open 속성 토글로 대체한다.
   if (!HTMLDialogElement.prototype.showModal) {
     HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
@@ -82,5 +90,22 @@ describe("NeighborhoodMenu", () => {
     fireEvent.change(input, { target: { value: "역삼" } });
     await waitFor(() => expect(screen.getByText("역삼1동")).toBeInTheDocument());
     expect(searchMock).toHaveBeenCalledWith("역삼", expect.anything());
+  });
+
+  it("현재 선택된 동네를 스크린리더에 aria-current로 노출한다 (M-071)", () => {
+    useAppStore.setState({
+      anchors: { home: { dongName: "망원동", point: { lat: 37.5556, lng: 126.9019 } } },
+    });
+    open();
+
+    expect(screen.getByRole("button", { name: /망원동/ })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("button", { name: /성수동/ })).not.toHaveAttribute("aria-current");
+  });
+
+  it("집 앵커가 인기 동네 목록에 없으면 어떤 항목도 aria-current를 갖지 않는다", () => {
+    open();
+    for (const name of ["망원동", "성수동", "연남동", "판교동", "합정동"]) {
+      expect(screen.getByRole("button", { name: new RegExp(name) })).not.toHaveAttribute("aria-current");
+    }
   });
 });
