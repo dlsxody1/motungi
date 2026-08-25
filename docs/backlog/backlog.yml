@@ -1352,6 +1352,16 @@ backlog:
       priority 하향 / blocked-human 상태 도입)이 12일째 처리되지 않았다 — 이 정도 기간이면
       밤이 스스로 뚫을 수 없는 블로커라는 신호다. 상세는 docs/nightly/nightly-2026-08-24.md
       §리스크 & 후속.
+      [2026-08-25 야간 파이프라인] **13일 연속(08-13~08-25) 동일 결과.** 오케스트레이터가
+      씨앗 단계에서 재검증 후 사전 제외(`grep -i map apps/mobile/package.json` 여전히 공백,
+      apps/mobile 코드 전체에 MapView/react-native-maps 참조 0건, .env.example·
+      security-policy.md에 지도 관련 항목 없음 — 08-13 3개 경로 전부 여전히 사람 승인
+      대기). 이번 밤은 M-052를 제외한 todo 중 medium이 하나도 없어(나머지 전부 low) 최소
+      id인 M-060을 씨앗으로 클러스터를 짬(M-060+M-071, 둘 다 apps/web/src/components/
+      narrow-directory 겹침 — M-068+M-069 선례와 동일 패턴). **오케스트레이터가 사람에게
+      직접 알림을 발송한다**: 3택1(경로 승인 / priority 하향 / blocked-human 상태 도입)이
+      13일째 미처리다 — backlog 안 반복 기록만으로는 사람에게 닿지 않는다는 판단. 상세는
+      docs/nightly/nightly-2026-08-25.md §리스크 & 후속.
 
   - id: M-053
     title: "모바일 상세 화면에 마감 D-day·출처 미표시"
@@ -1546,7 +1556,7 @@ backlog:
   - id: M-060
     title: "apps/web 아이콘 컴포넌트 미사용 export 11개 정리 (icons.tsx 6개 + landing-icons.tsx 5개)"
     priority: low
-    status: todo
+    status: doing
     scope:
       - apps/web/src/components/icons.tsx
       - apps/web/src/components/landing-icons.tsx
@@ -1561,6 +1571,11 @@ backlog:
       매치(호출부 0건) 확인. 같은 결함 패턴(아이콘 모듈의 고아 export)이라 두 파일을 한
       이슈로 묶음 — 우선순위 낮음(죽은 코드일 뿐 오작동 없음), 실제 삭제 시 이 밤이 다시
       전체 grep으로 재확인 후 진행할 것(다음 밤 사이 새 참조가 생겼을 수 있음).
+      [2026-08-25 야간 파이프라인 완료] 재검증 grep(11개 심볼 word-boundary, apps/packages/
+      supabase/scripts/docs/.claude 전체) 결과 여전히 정의 위치 1건씩만 매치 — 새 참조 없음
+      확인 후 icons.tsx 6개·landing-icons.tsx 5개 export 함수 전체 삭제. 소스 100줄 순삭제,
+      테스트 변경 없음(원래 무테스트 dead export). 커밋 d48ed17, dev 직접 커밋(트렁크 모델,
+      PR 없음). qa 게이트(bash scripts/gate.sh) PASS.
 
   - id: M-061
     title: "apps/mobile/tsconfig.json에 noUncheckedIndexedAccess 미설정 — 다른 3개 워크스페이스와 다름"
@@ -1780,7 +1795,7 @@ backlog:
   - id: M-071
     title: "웹 동네선택 다이얼로그의 현재 선택 상태가 스크린리더에 노출 안 됨"
     priority: low
-    status: todo
+    status: doing
     scope: [apps/web/src/components/neighborhood-menu.tsx]
     done_when:
       - "POPULAR_NEIGHBORHOODS 목록(95-118행)에서 currentDong과 일치하는 항목의 <button>에 aria-current 또는 aria-selected를 추가한다"
@@ -1791,6 +1806,12 @@ backlog:
       (aria-current="page")에 적용한 것과 같은 결함 패턴인데 이 다이얼로그는 그 스윕
       스코프 밖이었다. 현재는 bg-tint 배경색과 장식용 CheckIcon만으로 선택 상태를
       표시해 스크린리더 사용자는 어떤 동네가 선택돼 있는지 알 수 없다.
+      [2026-08-25 야간 파이프라인 완료] currentDong과 일치하는 목록 항목의 <button>에
+      aria-current="true" 추가(bottom-nav의 aria-current="page" 선례와 같은 속성, 값만
+      다름 — 페이지 링크가 아니라 목록 내 현재 선택이라 "true"). neighborhood-menu.test.tsx에
+      테스트 2건 추가: 집 앵커가 목록 중 하나와 일치할 때 해당 버튼만 aria-current, 앵커가
+      없거나(기본 상태) 목록 밖일 때 전 항목 aria-current 없음. 커밋 9cef49f, dev 직접 커밋
+      (트렁크 모델, PR 없음). qa 게이트(bash scripts/gate.sh) PASS.
 
   - id: M-072
     title: "카탈로그 반경 사다리 정책이 core가 아니라 web/mobile에 각각 중복 구현됨"
