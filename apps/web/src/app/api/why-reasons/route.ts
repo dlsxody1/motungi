@@ -13,7 +13,11 @@
  *  → { fallback: true, reason: string } | { fallback: false, reasons: string[], usage: { tokens: number } }
  */
 import { NextResponse } from "next/server";
-import { buildWhyReasonsPrompt, type WhyReasonsPromptInput } from "@motungi/core";
+import {
+  buildWhyReasonsPrompt,
+  isOpportunityCategory,
+  type WhyReasonsPromptInput,
+} from "@motungi/core";
 import { apiError, reportError } from "@/lib/api-error";
 
 const GEMINI_URL =
@@ -106,8 +110,9 @@ async function handle(request: Request) {
 function parseInput(body: unknown): WhyReasonsPromptInput | null {
   if (typeof body !== "object" || body === null) return null;
   const b = body as Record<string, unknown>;
+  const category = b.category;
   if (
-    typeof b.category !== "string" ||
+    !isOpportunityCategory(category) ||
     typeof b.title !== "string" ||
     typeof b.costHeading !== "string" ||
     typeof b.costLabel !== "string" ||
@@ -122,7 +127,7 @@ function parseInput(body: unknown): WhyReasonsPromptInput | null {
     if (typeof bd[key] !== "number") return null;
   }
   return {
-    category: b.category as WhyReasonsPromptInput["category"],
+    category,
     title: b.title,
     costHeading: b.costHeading,
     costLabel: b.costLabel,

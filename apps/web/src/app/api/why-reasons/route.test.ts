@@ -69,6 +69,33 @@ describe("POST /api/why-reasons — 입력 검증", () => {
     expect(res.status).toBe(400);
   });
 
+  it("category가 OpportunityCategory 멤버가 아니면 400(M-066), fetch도 호출되지 않는다", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await POST(req({ ...VALID_BODY, category: "subsidy" }));
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe("invalid_body");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("category가 culture 외의 유효한 OpportunityCategory 멤버면 통과한다(M-066)", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(geminiResponse("퇴근 후 부업으로 딱이에요.")),
+    );
+
+    const res = await POST(req({ ...VALID_BODY, category: "side_job" }));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.fallback).toBe(false);
+  });
+
   it("timeLabel은 null이 유효하다(있으면 필수 아님)", async () => {
     process.env.GEMINI_API_KEY = "";
     const res = await POST(req({ ...VALID_BODY, timeLabel: null }));
