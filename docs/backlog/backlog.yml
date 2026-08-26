@@ -1701,7 +1701,7 @@ backlog:
   - id: M-066
     title: "/api/why-reasons가 category 문자열을 멤버십 검증 없이 도메인 유니온으로 캐스트"
     priority: low
-    status: todo
+    status: doing
     scope: [apps/web/src/app/api/why-reasons/route.ts]
     done_when:
       - "parseInput()이 b.category를 OpportunityCategory 6종 중 하나인지 확인한 뒤에만 통과시킨다(@motungi/core의 isOpportunityCategory 재사용)"
@@ -1715,6 +1715,14 @@ backlog:
       검증이 없다. 공개 API 라우트라 앱의 useWhyReasons.ts 호출자 외에 임의 HTTP 클라이언트
       도 도달 가능. 크래시는 안 나고 프롬프트에 "undefined" 문자열이 섞여 LLM 호출로
       나가는 조용한 데이터 오염이라 low로 둠.
+      [2026-08-26 야간 파이프라인 완료] parseInput()의 category 검증을
+      @motungi/core의 isOpportunityCategory 타입가드로 교체(기존 typeof
+      string 체크 + as 캐스팅 제거). 무효 category → 400, 유효 category
+      → 통과 각각 테스트 추가(2건). 소스 8줄 추가/3줄 삭제, 테스트 27줄
+      추가. 커밋 5290c07, dev 직접 커밋(트렁크 모델, PR 없음). qa 게이트
+      (bash scripts/gate.sh) PASS(typecheck 4/4·test web 311+core 303+
+      mobile 132·lint·secrets 전부 ✅ — secrets 경고 1건은 base 커밋에
+      이미 있던 리터럴의 기존 오탐으로 확인).
 
   - id: M-067
     title: "packages/tokens의 MIN_HIT_TARGET이 코드에서 미사용 — 문서·백로그는 '적용됨'으로 서술"
