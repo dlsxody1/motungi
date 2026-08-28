@@ -57,7 +57,10 @@ export default function GlobalError({
             padding: "0 24px",
             border: "none",
             borderRadius: 12,
-            background: "#d42f4a",
+            /* 토큰과 같은 값을 손으로 박는다 — global-error는 앱 스타일시트 바깥에서
+               렌더돼 CSS 변수를 못 쓴다. 색약 대응으로 primary와 함께 내렸다(구 #d42f4a는
+               흰 글씨 대비가 deutan 4.19:1로 AA 미달). packages/tokens가 바뀌면 여기도 같이. */
+            background: "#9e2b41",
             color: "#fff",
             fontSize: 14,
             fontWeight: 700,

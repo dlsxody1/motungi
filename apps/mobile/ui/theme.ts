@@ -8,14 +8,22 @@ export const C = {
   primary: color.brand.primary,
   primaryDeep: color.brand.primaryDeep,
   tint: color.brand.tint,
+  /** 딥로즈 — 노을의 붉은 끝. 가격·마감 등 진짜 강조에만(CTA 아님) */
+  rose: color.brand.rose,
+  /** ⚠️ sun·coral은 흰 글씨를 못 얹는다(1.99:1 / 3.04:1). 면·보더·아이콘 전용 */
   sun: color.brand.sun,
+  coral: color.brand.coral,
+  /** 남보라 — 노을의 가장 깊은 끝. 흰 글씨 최저 12.32:1 */
+  duskDeep: color.brand.duskDeep,
+  /** @deprecated 옛 차가운 퍼플. duskDeep을 가리킨다 — 옮기는 대로 지울 것 */
   purple: color.brand.purple,
   mint: color.brand.mint,
   mintTint: color.brand.mintTint,
 
   /**
-   * ⚠️ bg === surface === #ffffff (2026-08-06 베이지 폐기).
-   * 배경색으로 면을 나눌 수 없다 — 카드는 borderColor: C.lineAlt + cardShadow로 띄운다.
+   * ⚠️ bg(#fafaf9) ↔ surface(#ffffff)는 1.04:1로 차이가 미미하다(2026-08-06 베이지 폐기 후
+   * 순백 일색이던 것을 반 단계 눌러 되살린 값). 배경만으로 면을 나누려 하지 마라 —
+   * 카드는 여전히 borderColor: C.lineAlt + cardShadow로 띄우고 배경은 거들 뿐이다.
    * surfaceAlt는 "잠깐 눌린 면"(pressed/비활성)이고, 정지 상태의 회색 면은 gray100/200이다.
    */
   bg: color.neutral.bg,

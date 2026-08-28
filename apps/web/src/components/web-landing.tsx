@@ -62,7 +62,20 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
   // 링은 장식(aria-hidden)이고 여기가 실제로 클릭 가능한 목록이다.
   const realPicks = heroPicks.filter((o) => o.imageUrl);
   return (
-    <>
+    /* 랜딩만 색약 대응 이전의 밝은 로즈를 쓴다(globals.css의 --color-primary-landing 주석 참조).
+       여기서 --color-primary를 지역 override하면 하위의 bg-primary·text-primary·
+       히어로 그라데이션까지 전부 자동으로 따라오므로 아래 섹션들은 한 줄도 고치지 않는다.
+       display:contents라 래퍼가 레이아웃에 관여하지 않는다 — 물감 섹션들의 경계·스크롤
+       구동 모션이 그대로 유지된다. */
+    <div
+      style={
+        {
+          display: "contents",
+          "--color-primary": "var(--color-primary-landing)",
+          "--color-primary-deep": "var(--color-primary-deep-landing)",
+        } as React.CSSProperties
+      }
+    >
       {/* ══ 1. 히어로 ══
           물감 언어를 여기서 연다: 그라데이션 위에 안료가 번진 얼룩을 얹는다.
           3D 포스터링은 검증된 자산이라 유지 — 새로 만들지 않는다. */}
@@ -415,6 +428,6 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
           </div>
         </WebContainer>
       </section>
-    </>
+    </div>
   );
 }

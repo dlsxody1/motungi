@@ -187,11 +187,10 @@ export default function DiagnosisPage() {
         {/* 진행바 */}
         <div className="h-[6px] bg-track">
           <div
-            className="h-full transition-all duration-300"
-            style={{
-              width: `${((step + 1) / total) * 100}%`,
-              background: "linear-gradient(90deg, var(--color-sun), var(--color-primary))",
-            }}
+            className="h-full bg-primary transition-all duration-300"
+            /* 진행바는 솔리드 — sun(#e8834a)은 흰 글씨를 못 얹는 장식색이고,
+               그라데이션은 랜딩 전용이다. 진행률은 길이가 말하지 색이 말하지 않는다. */
+            style={{ width: `${((step + 1) / total) * 100}%` }}
           />
         </div>
 

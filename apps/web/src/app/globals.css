@@ -6,20 +6,39 @@
  * @theme 안의 토큰은 자동으로 Tailwind 유틸리티(bg-*, text-*, rounded-* 등)가 된다.
  */
 @theme {
-  /* ── 색상 ── */
-  --color-primary: #d42f4a;
-  --color-primary-deep: #b0344e;
-  --color-tint: #fbe8ec;
-  --color-sun: #f2a06a;
-  --color-purple: #6e4e9c;
+  /* ── 색상 · 노을(sunset) 스펙트럼 ──
+     2026-08-06 색약(CVD) 대응으로 브랜드를 로즈 → **따뜻한 노을 보라**로 전환했다.
+     구 로즈 #d42f4a는 deutan 4.19 · tritan 2.89로 AA 미달, 이를 고친 #9e2b41도
+     최저 tritan 4.81로 기준선(4.5)에 가까웠고 "빨간 글씨" 인상 자체가 부담이었다.
+     현 primary #6b3d6e는 최저 7.59:1(정상 8.34·protan 9.14·deutan 7.97·tritan 7.59).
+
+     팔레트는 해가 진 직후 노을 스펙트럼 하나에서만 뽑는다:
+       남보라 #3d2b56 → 노을보라 #6b3d6e → 딥로즈 #9e2b41 → 코랄 #c74b3e → 황금오렌지 #e8834a
+     ⚠️ 파랑 섞인 차가운 보라 금지(밤/AI퍼플로 읽힌다). 정본은 packages/tokens. */
+  --color-primary: #6b3d6e;
+  --color-primary-deep: #5d3460;
+  --color-tint: #f3ebf4;
+  /* 딥로즈 — 노을의 붉은 끝. 가격·마감처럼 진짜 강조에만(CTA 아님). 흰글씨 최저 4.81:1 */
+  --color-rose: #9e2b41;
+  /* ⚠️ 아래 둘은 흰 글씨를 얹을 수 없다(sun 1.99:1 · coral 3.04:1). 면·보더·아이콘 전용. */
+  --color-sun: #e8834a;
+  --color-coral: #c74b3e;
+  /* 남보라 — 노을의 가장 깊은 끝. 흰글씨 최저 12.32:1 */
+  --color-dusk-deep: #3d2b56;
+  /* @deprecated 옛 차가운 보조 퍼플(#6e4e9c). 파랑이 섞여 밤/AI퍼플로 읽혔다.
+     남은 그라데이션 참조가 깨지지 않도록 남보라를 가리키게 두고, 옮기는 대로 지운다. */
+  --color-purple: #3d2b56;
   --color-mint: #1e6e64;
   --color-mint-tint: #e0f0ec;
 
   /* ── 중립 스케일 (2026-08-06 베이지 폐기 · 순중립 회색) ──
-     ⚠️ bg === surface === #ffffff. 배경색으로 면을 나눌 수 없다.
-     카드·박스는 반드시 border-line-alt + shadow-card를 함께 쓴다.
+     배경을 반 단계 눌렀다(#ffffff → #fafaf9). 순백 배경 위 순백 카드는 대비 1.00:1이라
+     전혀 분리되지 않았다. 폐기한 웜 아이보리(#f4ece0 계열)로 되돌아간 게 아니라
+     중립 회색으로 아주 살짝이다 — 웜 언더톤과 로즈의 충돌은 재발하지 않는다.
+     ⚠️ bg↔surface 차이는 1.04:1로 미미하다. 배경만으로 면을 나누려 하지 마라.
+     카드·박스는 여전히 border-line-alt + shadow-card를 함께 쓰고 배경은 거들 뿐이다.
      회색 면(gray-100/200)은 스켈레톤·호버·트랙 같은 "일시적 상태" 전용. */
-  --color-bg: #ffffff;
+  --color-bg: #fafaf9;
   --color-surface: #ffffff;
   /* 호버·비활성처럼 잠깐 나타나는 면 (흰 대비 1.07:1) */
   --color-surface-alt: #f7f7f8;
@@ -48,6 +67,15 @@
   --color-info-bg: #f1f1f3;
   --color-purple-tint: #eeeaf6; /* 클래스·배움 퍼플 틴트 (thumbnail 그라디언트에서 사용 중) */
   --color-ink-dark: #2e2a24; /* 다크 푸터/잉크 */
+
+  /* ── 랜딩(마케팅) 전용 로즈 ──
+     색약 대응 이전의 밝은 로즈. 랜딩은 큰 히어로 그라데이션과 대형 타이포가 주인공이라
+     제품 UI의 "작은 버튼 위 흰 글씨 4.5:1" 제약이 그대로 적용되지 않고,
+     sun→primary→purple 노을 그라데이션의 채도가 마케팅 톤의 핵심이다.
+     쓰는 곳은 web-landing.tsx 루트 한 곳뿐 — 거기서 --color-primary를 지역 override한다.
+     ⚠️ 제품 UI에는 절대 쓰지 마라. 흰 글씨를 얹으면 deutan/tritan에서 AA가 깨진다. */
+  --color-primary-landing: #d42f4a;
+  --color-primary-deep-landing: #b0344e;
 
   /* ── 반경 ── */
   --radius-xs: 4px;

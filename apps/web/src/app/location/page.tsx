@@ -267,7 +267,6 @@ export default function LocationPage() {
                 <input
                   value={query}
                   onChange={(e) => search.setQuery(e.target.value)}
-                  onCompositionStart={search.onCompositionStart}
                   onCompositionEnd={search.onCompositionEnd}
                   aria-label="동네 또는 구 검색"
                   className="flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-muted"
@@ -343,7 +342,6 @@ export default function LocationPage() {
               <input
                 value={query}
                 onChange={(e) => search.setQuery(e.target.value)}
-                onCompositionStart={search.onCompositionStart}
                 onCompositionEnd={search.onCompositionEnd}
                 aria-label="동네 또는 구 검색"
                 className="flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-muted"

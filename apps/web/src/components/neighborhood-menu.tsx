@@ -168,7 +168,6 @@ export function NeighborhoodMenu({
                 type="search"
                 value={query}
                 onChange={(e) => search.setQuery(e.target.value)}
-                onCompositionStart={search.onCompositionStart}
                 onCompositionEnd={search.onCompositionEnd}
                 placeholder="동·구 이름으로 검색"
                 aria-label="동네 검색"

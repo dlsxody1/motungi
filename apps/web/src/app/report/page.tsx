@@ -176,7 +176,9 @@ export default function ReportPage() {
                   <p className="text-[14px] font-semibold text-label">함께 보면 좋아요</p>
                   <Link
                     href={exploreHref(onePick.category)}
-                    className="text-[13px] font-semibold text-primary hover:text-primary-deep"
+                    /* 밑줄은 장식이 아니라 접근성 요건 — 색약에서 링크색과 본문색이
+                       명도로 붕괴해 가까워지므로 색 외 단서가 반드시 필요하다(화살표+밑줄). */
+                    className="text-[13px] font-semibold text-primary underline underline-offset-2 hover:text-primary-deep"
                   >
                     더 찾아보기 →
                   </Link>
@@ -278,19 +280,15 @@ export default function ReportPage() {
                   </div>
                   {/* 우 참가비 박스 */}
                   <div className="w-full shrink-0 md:w-[220px]">
-                    <div
-                      className="rounded-2xl p-5 text-white"
-                      style={{
-                        background:
-                          "linear-gradient(150deg, var(--color-primary), var(--color-primary-deep))",
-                      }}
-                    >
-                      {/* 흰 텍스트에 투명도를 주지 않는다 — primary 위 white/80은 3.59:1로 AA 미달.
-                          100%면 4.88:1로 통과한다. 위계는 투명도가 아니라 크기·두께로. */}
-                      <p className="text-[12px] font-semibold text-white">{onePick.costHeading}</p>
-                      <p className="text-[30px] font-extrabold leading-tight">{onePick.costLabel}</p>
+                    {/* 참가비는 채색면이 아니다(2026-08-06). rose 솔리드는 보라 CTA 바로 옆에서
+                        두 번째 강한 색면이 되어 시선을 뺏었다 — 게다가 값이 대개 "무료"라
+                        강조할 정보도 아니다. 채색은 CTA 하나로 몰고, 참가비는 중립면 위
+                        큰 ink 숫자로 세운다. 위계는 색이 아니라 크기·두께로. */}
+                    <div className="rounded-2xl bg-gray-100 p-5">
+                      <p className="text-[12px] font-semibold text-muted">{onePick.costHeading}</p>
+                      <p className="text-[30px] font-extrabold leading-tight text-ink">{onePick.costLabel}</p>
                       {onePick.costNote && (
-                        <p className="mt-1 text-[12px] text-white">{onePick.costNote}</p>
+                        <p className="mt-1 text-[12px] text-muted">{onePick.costNote}</p>
                       )}
                     </div>
                     <div className="mt-3 flex gap-2.5">
@@ -318,7 +316,7 @@ export default function ReportPage() {
                 <p className="text-[16px] font-bold text-ink">함께 보면 좋아요</p>
                 <Link
                   href={exploreHref(onePick.category)}
-                  className="text-[14px] font-semibold text-primary hover:text-primary-deep"
+                  className="text-[14px] font-semibold text-primary underline underline-offset-2 hover:text-primary-deep"
                 >
                   더 찾아보기 →
                 </Link>
@@ -332,13 +330,10 @@ export default function ReportPage() {
 
             {/* 우측 스티키 패널 */}
             <aside className="flex flex-col gap-4 lg:sticky lg:top-[88px]">
-              <div
-                className="rounded-[20px] p-6 text-white"
-                style={{
-                  background:
-                    "linear-gradient(150deg, var(--color-purple), var(--color-primary) 118%)",
-                }}
-              >
+              {/* 2026-08-06: 그라데이션을 뺐다. 옛 차가운 보라(#6e4e9c)→로즈 그라데이션은
+                  노을이 아니라 밤/AI퍼플로 읽혔고, 좌측 CTA와 색 관계가 없어 조각이 붕 떴다.
+                  그라데이션은 랜딩 히어로 한 곳에만 남긴다 — 제품 UI는 솔리드. */}
+              <div className="rounded-[20px] bg-primary p-6 text-white">
                 {/* ⚠️ 이 카드는 투명도를 2중으로 쌓지 않는다(2026-08-06 AA 수정).
                     예전엔 bg-white/15 타일 위에 text-white/80~85를 얹어 실측 2.5~3.9:1로
                     전부 AA 미달이었다. 원인은 텍스트가 아니라 **타일**이다 — 흰색을 얹어
@@ -361,7 +356,10 @@ export default function ReportPage() {
               <div className="rounded-[20px] bg-surface p-5 shadow-web">
                 <div className="flex items-center justify-between">
                   <p className="text-[15px] font-bold text-ink">{displayName}님 진단 요약</p>
-                  <Link href="/diagnosis" className="text-[13px] font-semibold text-primary">
+                  <Link
+                    href="/diagnosis"
+                    className="text-[13px] font-semibold text-primary underline underline-offset-2"
+                  >
                     {summaryChips.length > 0 ? "수정" : "진단하기"}
                   </Link>
                 </div>

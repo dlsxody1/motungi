@@ -389,19 +389,15 @@ export function OpportunityDetail({
             {/* 우측 스티키 액션 */}
             <aside className="flex flex-col gap-4 lg:sticky lg:top-[88px]">
               <div className="overflow-hidden rounded-[20px] border border-line bg-surface shadow-web-pick">
-                <div
-                  className="p-5.5 text-white"
-                  style={{
-                    background:
-                      "linear-gradient(150deg, var(--color-primary), var(--color-primary-deep))",
-                  }}
-                >
-                  <p className="text-[12px] font-semibold text-white">{o.costHeading}</p>
-                  <p className="text-[34px] font-extrabold leading-tight">
-                    {o.costLabel} <span className="text-[15px] font-bold text-white/90">/ {o.costUnit}</span>
+                {/* 참가비는 채색면이 아니다(2026-08-06) — report/page.tsx와 같은 이유.
+                    채색은 아래 CTA 하나만. 위계는 색이 아니라 크기·두께로. */}
+                <div className="border-b border-line bg-gray-100 p-5.5">
+                  <p className="text-[12px] font-semibold text-muted">{o.costHeading}</p>
+                  <p className="text-[34px] font-extrabold leading-tight text-ink">
+                    {o.costLabel} <span className="text-[15px] font-bold text-muted">/ {o.costUnit}</span>
                   </p>
                   {o.costNote && (
-                    <p className="mt-1 text-[12px] font-medium text-white/90">{o.costNote}</p>
+                    <p className="mt-1 text-[12px] font-medium text-muted">{o.costNote}</p>
                   )}
                 </div>
                 <div className="p-5">

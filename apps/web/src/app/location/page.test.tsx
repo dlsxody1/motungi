@@ -3,7 +3,7 @@
  * 요청 1(현재 위치): geo 성공 시 /diagnosis로 바로 넘어가지 않고 확인만 갱신한다.
  * "시작하기"를 눌러야 앵커 저장 + 이동한다.
  */
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as navigation from "next/navigation";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -150,6 +150,24 @@ describe("LocationPage — 검색 드롭다운(요청 2)", () => {
     // MIN_QUERY_LEN(2) 미만이면 디바운스 지나도 호출 없음.
     await new Promise((r) => setTimeout(r, 450));
     expect(search).not.toHaveBeenCalled();
+  });
+
+  it("마지막 글자가 IME 조합 중이어도 검색한다", async () => {
+    // 회귀: 한글 IME는 스페이스·엔터를 치기 전까지 마지막 글자를 조합 상태로 들고 있다.
+    // 조합 중이라고 검색을 보류하면 "화곡동"을 다 쳐도 결과가 영영 안 뜬다.
+    mockRouter();
+    const search = vi.spyOn(geo, "searchNeighborhoods").mockResolvedValue([]);
+
+    render(<LocationPage />);
+    const input = screen.getAllByLabelText("동네 또는 구 검색")[0]! as HTMLInputElement;
+
+    // compositionend 없이 조합만 시작한 채로 값이 들어온 상태 = 실제 한글 입력 도중.
+    fireEvent.compositionStart(input);
+    fireEvent.change(input, { target: { value: "화곡동" } });
+
+    await waitFor(() => expect(search).toHaveBeenCalledWith("화곡동", expect.anything()), {
+      timeout: 1500,
+    });
   });
 });
 
