@@ -57,6 +57,32 @@ const VALID_TIME_SLOTS: ReadonlySet<TimeSlot> = new Set([
 const VALID_ENERGIES: ReadonlySet<Energy> = new Set(["drained", "moderate", "active"]);
 
 /**
+ * 임의의 값(예: persist storage에서 읽어온 rehydrate 시점 JSON)이 유효한
+ * DiagnosisAnswers인지 런타임으로 검증한다. draftToAnswers와 달리 인덱스 기반 draft가
+ * 아니라 완성된 {interests, timeSlot, energy} 형태를 그대로 받는다.
+ * M-049 이전 구버전 스키마(interests가 배열이 아닌 단일 string)를 포함해 구조가 다르거나
+ * 멤버십을 벗어난 값은 예외 없이 false를 반환한다(크래시 대신 무효 판정).
+ */
+export function isValidDiagnosisAnswers(value: unknown): value is DiagnosisAnswers {
+  if (value == null || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+
+  const { interests } = candidate;
+  if (!Array.isArray(interests) || interests.length === 0) return false;
+  if (!interests.every((v): v is Interest => typeof v === "string" && VALID_INTERESTS.has(v as Interest))) {
+    return false;
+  }
+
+  const { timeSlot, energy } = candidate;
+  return (
+    typeof timeSlot === "string" &&
+    VALID_TIME_SLOTS.has(timeSlot as TimeSlot) &&
+    typeof energy === "string" &&
+    VALID_ENERGIES.has(energy as Energy)
+  );
+}
+
+/**
  * 진단 화면(web/mobile)의 draft 상태를 검증된 DiagnosisAnswers로 변환한다.
  * draft는 DIAGNOSIS_STEPS 순서(0=interests·1=timeSlot·2=energy)의 문항 인덱스를 키로 갖는다.
  * Q1(interests, M-049부터 다중선택)은 draft[0]에 문자열 배열을 받는다 — 유효한 카테고리만
