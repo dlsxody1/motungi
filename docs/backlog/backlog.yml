@@ -1846,3 +1846,81 @@ backlog:
       바뀔 때(사다리 튜닝 이력이 이미 한 번 있었음, route.ts 주석 참조) 두 파일을 항상
       같이 고쳐야 한다 — 하나를 빠뜨려도 컴파일 타임 신호가 없다. M-008(catalog 승격)·
       M-029(어댑터 이관)와는 다른 잔여 범위(둘 다 이미 완료 확인됨).
+  - id: M-073
+    title: "AEO 1단계 — /explore/[gu] 구별 SSR 페이지 24개 (답변 엔진이 인용할 본문)"
+    priority: high
+    status: todo
+    scope: [apps/web/src/app/explore, apps/web/src/lib/seo.ts, packages/core/src/catalog.ts]
+    done_when:
+      - "/explore/종로구 같은 구 단위 경로가 서버 컴포넌트로 렌더되고, JS 끄고 봐도 활동 목록 본문이 HTML에 있다"
+      - "페이지 상단에 실데이터 집계로 만든 산문 요약이 있다(총 개수·무료 개수·퇴근직후 가능 개수·최다 카테고리)"
+      - "숫자는 전부 쿼리 결과에서 나온다 — 하드코딩·LLM 생성 문장 금지(환각이 곧 인용 신뢰 상실)"
+      - "활동 5건 미만인 구는 페이지를 만들지 않고 /explore로 리다이렉트한다(현재 강서구 2건만 해당)"
+      - "generateStaticParams로 대상 구가 빌드타임 생성되고, revalidate는 21600(sitemap.ts와 동일)"
+      - "sitemap.ts에 구 페이지 URL이 추가된다(임계 미달 구는 제외 — robots/sitemap 신호 모순 금지)"
+      - "이 페이지에 'use client'가 없다 — 필터·정렬이 필요하면 기존 /explore로 보낸다"
+      - "구 단위 집계 쿼리에 테스트가 있다: 임계 미달 구·활동 0건·좌표 없는 활동 제외"
+    notes: >
+      근거와 데이터 실측은 `docs/AEO.md`에 있다. 읽고 시작할 것.
+      **왜 동(洞)이 아니라 구(區)인가** — 이게 이 이슈의 핵심 제약이다.
+      `neighborhoods` 426행 중 418행이 `coord_level='sigungu'`, 즉 구 중심좌표를 공유한다.
+      그래서 반경 2km 집계를 돌리면 종로구 15개 동이 전부 78개로 똑같이 나온다.
+      동별 페이지를 만들면 235개 중 대부분이 중복 콘텐츠가 되고, 이는 AEO에서 얻는 것보다
+      사이트 품질 평가에서 잃는 게 크다. 동 단위는 M-076(좌표 백필) 이후로 연기한다.
+      `opportunities.dong_name`도 동 이름이 아니라 구 이름이다("종로구" 61건, "서울 종로구" 36건 —
+      정규화 안 된 채로 따로 집계된다. M-076에서 같이 정리). 본문에 동네 이름을 쓰려 하지 마라, 없다.
+      구별 반경 3km 커버리지(2026-08-19 실측): 종로 129 · 중구 125 · 성북 63 · 서초 25 · 성동 23 ·
+      동대문 22 · 용산 19 · 강동 17 · 송파 16 · 은평/구로 14 · 서대문 13 · 강남 12 · 양천 11 ·
+      노원/관악 10 · 마포/광진/영등포 9 · 동작 8 · 금천/강북 7 · 중랑 6 · 도봉 5 · 강서 2.
+      기존 `/explore`는 클라이언트 렌더 + 가상화라 크롤러에게 사실상 빈 페이지다
+      (`sitemap.ts` 주석이 이미 이 사실을 인정한다). 이 이슈가 그 공백을 메운다.
+
+  - id: M-074
+    title: "AEO 2단계 — FAQPage JSON-LD (랜딩 + 구 페이지)"
+    priority: medium
+    status: todo
+    scope: [apps/web/src/lib/seo.ts, apps/web/src/app/page.tsx, apps/web/src/app/explore]
+    done_when:
+      - "랜딩에 제품 FAQ 4~6개가 FAQPage JSON-LD로 나가고, 같은 내용이 화면에도 실제로 렌더된다"
+      - "구 페이지에 그 구 실데이터로 만든 Q&A가 붙는다(예: '무료로 할 수 있는 건?' → 실제 무료 활동 3개)"
+      - "JSON-LD 답변 텍스트와 화면 텍스트가 일치한다 — 숨김 요소에만 넣지 않는다(구조화데이터 정책 위반)"
+      - "seo.ts에 faqJsonLd 헬퍼가 있고 단위 테스트가 있다(빈 목록·특수문자 이스케이프)"
+    notes: >
+      M-073 이후. 답변 엔진은 Q&A 구조를 특히 잘 집는다.
+      기존 `eventJsonLd`(seo.ts:119-180)와 같은 파일·같은 컨벤션으로 만들 것.
+      화면-JSON 불일치가 가장 흔한 실수다. `<details>`로 렌더하면 접근성·정책 둘 다 만족한다.
+
+  - id: M-075
+    title: "AEO 3단계 — 랜딩 답변 블록 + 구 페이지 내부 링크 + /explore ItemList"
+    priority: medium
+    status: todo
+    scope: [apps/web/src/components/web-landing.tsx, apps/web/src/app/explore/page.tsx]
+    done_when:
+      - "랜딩 하단에 '퇴근하고 뭐하지'에 대한 산문 답변 3~4문단이 서버렌더로 있다"
+      - "그 아래 24개 구 페이지로 가는 내부 링크 목록이 있다(구 페이지의 발견 경로)"
+      - "/explore에 ItemList JSON-LD가 서버에서 나간다"
+      - "모바일 히어로(page.tsx의 md:hidden 트리)를 망가뜨리지 않는다 — 데스크톱 랜딩에만 추가"
+    notes: >
+      M-073 이후(구 페이지가 있어야 링크할 대상이 생긴다).
+      랜딩은 현재 "퇴근하고 뭐하지?"를 질문으로만 갖고 있고 답에 해당하는 산문이 없다.
+      `/explore` ItemList는 임시방편이다 — 목록이 클라이언트 렌더라 본문은 못 긁힌다.
+      근본 해결은 M-073의 구 페이지들이고, 이건 그 사이를 메우는 것.
+      랜딩 디자인 변경이므로 `design-taste-frontend` 스킬을 쓴다(제품 UI가 아니라 마케팅 페이지).
+
+  - id: M-076
+    title: "동 단위 좌표 백필 — neighborhoods.coord_level='dong' + dong_name 정규화"
+    priority: medium
+    status: todo
+    scope: [supabase/migrations, supabase/functions/ingest/adapters.ts, packages/core/src/catalog.ts]
+    done_when:
+      - "neighborhoods 426행 중 대다수가 coord_level='dong'이고, 같은 구 안에서 좌표가 서로 다르다"
+      - "opportunities.dong_name이 정규화된다 — '종로구'와 '서울 종로구'가 같은 값으로 합쳐진다"
+      - "적재 시점에 정규화가 적용된다(백필만 하면 다음 적재에 다시 오염된다)"
+      - "마이그레이션은 추가만 — 기존 파일 수정·파괴적 SQL 금지"
+    notes: >
+      **AEO 동 단위 페이지(진짜 하이퍼로컬)의 선행 조건**이자, 거리 스코어링 정확도 문제이기도 하다.
+      현재 418/426이 구 중심좌표를 공유해서 "집에서 가까운 활동"이 사실상 "우리 구 활동"이다.
+      제품 차별점이 '동네'인데 동네 해상도가 구 단위인 셈 — AEO보다 이쪽이 더 큰 문제일 수 있다.
+      `normalizeGu`가 코드엔 있는데 데이터엔 적용되지 않았다. 어디서 끊겼는지 먼저 추적할 것.
+      실적재 어댑터는 `supabase/functions/ingest/adapters.ts`다(core 어댑터 아님 — 자주 헷갈린다).
+      이게 끝나면 M-073을 /explore/[gu]/[dong]으로 확장하는 후속 이슈를 연다.
