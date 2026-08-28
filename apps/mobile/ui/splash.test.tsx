@@ -1,4 +1,5 @@
 import { render, waitFor } from "@testing-library/react";
+import { AccessibilityInfo } from "react-native";
 import { describe, expect, it, vi } from "vitest";
 import { Splash } from "@/ui/splash";
 
@@ -23,5 +24,18 @@ describe("Splash", () => {
 
     expect(getByText("모퉁이")).toBeInTheDocument();
     expect(getByText("퇴근하고 뭐하지?")).toBeInTheDocument();
+  });
+
+  /**
+   * jsdom은 reduce-motion을 켠 것으로 보고하므로 위 케이스는 "모션 건너뛰기" 경로만 탄다.
+   * 정작 위험한 건 2초짜리 시퀀스 쪽이다 — 시퀀스가 도중에 멎으면 onDone이 영영 안 불린다.
+   */
+  it("모션을 켠 경우에도 시퀀스 끝에 onDone을 부른다", async () => {
+    vi.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false);
+    const onDone = vi.fn();
+
+    render(<Splash onDone={onDone} />);
+
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1), { timeout: 8000 });
   });
 });

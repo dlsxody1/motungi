@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Logo, SafeBottom, SafeTop } from "@/components/ui";
 import { HeroPosterStage } from "@/components/hero-poster-stage";
 import { DesktopShell } from "@/components/web-shell";
+import { SunsetSplash } from "@/components/sunset-splash";
 import { WebLanding } from "@/components/web-landing";
 import { fetchOpportunities } from "@/data/opportunities";
 
@@ -16,6 +17,10 @@ export default async function Home() {
 
   return (
     <>
+      {/* 노을 토글 스플래시 — 세션 첫 진입 1회. 클라이언트에서만 마운트되므로
+          아래 히어로가 SSR·LCP 요소로 남는다. */}
+      <SunsetSplash />
+
       {/* 모바일 히어로 — 그라데이션이 화면 폭을 꽉 채운다(좌우 흰 여백 없음) */}
       <div className="md:hidden">
         <main
