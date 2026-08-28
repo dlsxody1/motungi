@@ -1790,7 +1790,7 @@ backlog:
   - id: M-070
     title: "zustand persist 재수화(rehydrate) 시 answers에 런타임 검증 없음 — 쓰기만 검증되고 읽기는 무방비"
     priority: low
-    status: todo
+    status: doing
     scope: [packages/core/src/store.ts]
     done_when:
       - "persist storage에서 읽어온 answers가 rehydrate 시 draftToAnswers류의 검증(VALID_INTERESTS/VALID_TIME_SLOTS/VALID_ENERGIES 멤버십)을 다시 통과하도록 한다 — 통과 못 하면 null로 되돌린다"
@@ -1803,6 +1803,17 @@ backlog:
       안 한다. 이 앱이 interests를 이미 한 번(string→string[], M-049) 바꾼 이력이 있어
       가정성이 아니라 실제로 벌어졌던 종류의 스키마 변경 리스크. 심각도는 낮음(재현에
       과거 버전 클라이언트 데이터가 필요) — low로 둠.
+      [2026-08-28 야간 파이프라인 완료] diagnosis.ts에 isValidDiagnosisAnswers(value: unknown)
+      신설 — VALID_INTERESTS/VALID_TIME_SLOTS/VALID_ENERGIES 멤버십을 구조부터 검증(비배열
+      interests·빈 배열·누락 필드·비문자열도 크래시 없이 false). store.ts의 persist 옵션에
+      merge 훅 추가(버전 없이 매 rehydrate마다 실행) — answers가 유효성 검증을 통과 못 하면
+      null로 되돌린다. createAppStore의 명시적 반환 타입 StoreApi<...> 주석을 제거해 TS가
+      persist 믹스인 타입(.persist.rehydrate 등)을 실제 런타임 형태대로 추론하게 함(테스트에서
+      직접 필요). diagnosis.test.ts 7건 + store.test.ts 4건(유효값 유지·멤버십 이탈 무효화·
+      M-049 이전 단일 string 스키마 크래시 없이 무효화·answers=null 유지) 신규. 커밋 b768168,
+      dev 직접 커밋(트렁크 모델, PR 없음). qa 게이트(bash scripts/gate.sh) PASS(typecheck
+      4/4·test core 314/314+web 311/311+mobile 132/132·lint·secrets 전부 ✅). 상세는
+      docs/nightly/nightly-2026-08-28.md.
 
   - id: M-071
     title: "웹 동네선택 다이얼로그의 현재 선택 상태가 스크린리더에 노출 안 됨"
