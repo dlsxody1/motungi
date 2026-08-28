@@ -13,6 +13,17 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { Share as RNShare } from "react-native";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockOpportunity } from "@/data/opportunities";
+import { C } from "@/ui/theme";
+
+/**
+ * 토큰 hex를 getComputedStyle이 돌려주는 `rgb(r, g, b)` 형태로 바꾼다.
+ * 색은 팔레트가 바뀔 때마다 움직이므로 테스트에 hex를 박아두면 안 된다 —
+ * 실제로 브랜드가 로즈→노을보라로 옮겨갔을 때 이 단언들이 통째로 깨졌다.
+ */
+const rgb = (hex: string) => {
+  const n = Number.parseInt(hex.slice(1), 16);
+  return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
+};
 
 const { pushMock, replaceMock, backMock, toggleSavedMock, state, searchParamsState } = vi.hoisted(
   () => ({
@@ -223,7 +234,7 @@ describe("OpportunityScreen", () => {
     // "마감" 라벨(dt) + 지난 배지 텍스트 — 둘 다 "마감" 문구로 렌더된다.
     const matches = screen.getAllByText("마감");
     expect(matches.length).toBeGreaterThanOrEqual(2);
-    const pill = matches.find((el) => getComputedStyle(el.parentElement!).backgroundColor === "rgb(241, 241, 243)");
+    const pill = matches.find((el) => getComputedStyle(el.parentElement!).backgroundColor === rgb(C.gray100));
     expect(pill).toBeTruthy();
   });
 
@@ -237,7 +248,7 @@ describe("OpportunityScreen", () => {
     render(<OpportunityScreen />);
 
     const pill = screen.getByText("D-2");
-    expect(getComputedStyle(pill.parentElement!).backgroundColor).toBe("rgb(212, 47, 74)");
+    expect(getComputedStyle(pill.parentElement!).backgroundColor).toBe(rgb(C.primary));
   });
 
   it("마감이 여유 있게 남아있으면 D-day 배지를 은은한(tint) 톤으로 표시한다(M-053)", () => {
@@ -250,7 +261,7 @@ describe("OpportunityScreen", () => {
     render(<OpportunityScreen />);
 
     const pill = screen.getByText("D-10");
-    expect(getComputedStyle(pill.parentElement!).backgroundColor).toBe("rgb(251, 232, 236)");
+    expect(getComputedStyle(pill.parentElement!).backgroundColor).toBe(rgb(C.tint));
   });
 
   it("sourceLabel이 있으면 출처 행을 렌더한다(M-053)", () => {
