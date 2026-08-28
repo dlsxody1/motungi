@@ -39,12 +39,22 @@ export interface NeighborhoodSearchResult {
 /**
  * 행정동 이름 부분일치 검색. 웹과 동일 엔드포인트를 오리진 경유로 호출.
  * 오리진 미설정·실패·빈 검색어면 빈 배열.
+ *
+ * signal로 이전 요청을 취소할 수 있다(타입어헤드 경합 방지 — app/location.tsx가
+ * 새 키 입력마다 이전 AbortController를 abort한다). 취소든 실패든 이 함수 안에서는
+ * 구분 없이 빈 배열로 수렴한다 — 웹(lib/geo.ts)과 달리 리포팅 인프라가 없어
+ * AbortError를 따로 걸러 보고할 대상 자체가 없기 때문이다.
  */
-export async function searchNeighborhoods(q: string): Promise<NeighborhoodSearchResult[]> {
+export async function searchNeighborhoods(
+  q: string,
+  signal?: AbortSignal,
+): Promise<NeighborhoodSearchResult[]> {
   const query = q.trim();
   if (!query || !WEB_ORIGIN) return [];
   try {
-    const res = await fetch(`${WEB_ORIGIN}/api/neighborhoods?q=${encodeURIComponent(query)}`);
+    const res = await fetch(`${WEB_ORIGIN}/api/neighborhoods?q=${encodeURIComponent(query)}`, {
+      signal,
+    });
     if (!res.ok) return [];
     const data = (await res.json()) as { items?: NeighborhoodSearchResult[] };
     return data.items ?? [];

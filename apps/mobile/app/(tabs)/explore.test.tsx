@@ -8,9 +8,10 @@
  * 목업 컨벤션은 report.test.tsx와 동일 — store는 가변 state + selector 흉내,
  * useEnsureCatalog는 자체 테스트가 있으므로 vi.fn()으로 완전히 우회한다.
  */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockOpportunity } from "@/data/opportunities";
+import type { UserAnchors } from "@motungi/core";
 
 const { pushMock, state } = vi.hoisted(() => ({
   pushMock: vi.fn(),
@@ -18,7 +19,7 @@ const { pushMock, state } = vi.hoisted(() => ({
     catalog: [] as MockOpportunity[],
     catalogStatus: "idle" as string,
     answers: null as unknown,
-    anchors: {} as { home?: { dongName?: string } },
+    anchors: {} as UserAnchors,
   },
 }));
 
@@ -76,6 +77,28 @@ describe("ExploreScreen", () => {
     expect(screen.getByText("성수 팝업 전시")).toBeInTheDocument();
   });
 
+  it("catalogStatus가 idle이면 스켈레톤을 렌더하고 빈 문구는 렌더하지 않는다(M-054)", () => {
+    state.catalogStatus = "idle";
+    state.catalog = [];
+
+    const { container } = render(<ExploreScreen />);
+
+    expect(
+      container.querySelectorAll('[data-testid="explore-row-skeleton"]'),
+    ).toHaveLength(6);
+    expect(screen.queryByText("아직 등록된 활동이 없어요. 곧 채워질 거예요.")).not.toBeInTheDocument();
+  });
+
+  it("catalogStatus가 idle을 벗어나 진짜 비어있으면 빈 문구를 렌더하고 스켈레톤은 렌더하지 않는다(M-054)", () => {
+    state.catalogStatus = "ok";
+    state.catalog = [];
+
+    const { container } = render(<ExploreScreen />);
+
+    expect(screen.getByText("아직 등록된 활동이 없어요. 곧 채워질 거예요.")).toBeInTheDocument();
+    expect(container.querySelectorAll('[data-testid="explore-row-skeleton"]')).toHaveLength(0);
+  });
+
   it("카탈로그가 비어있고 catalogStatus가 error면 로드 실패 문구를 렌더한다", () => {
     state.catalogStatus = "error";
 
@@ -92,5 +115,103 @@ describe("ExploreScreen", () => {
     render(<ExploreScreen />);
 
     expect(screen.getByText("아직 등록된 활동이 없어요. 곧 채워질 거예요.")).toBeInTheDocument();
+  });
+
+  it("지역 칩을 고르면 해당 구의 활동만 남는다(M-032)", () => {
+    state.catalogStatus = "ok";
+    state.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", location: { dongName: "서울 마포구" } }),
+      makeOpp({ id: "op-2", title: "성수 팝업 전시", location: { dongName: "서울 성동구" } }),
+    ];
+
+    render(<ExploreScreen />);
+
+    expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
+    expect(screen.getByText("성수 팝업 전시")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("마포구 (1)"));
+
+    expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
+    expect(screen.queryByText("성수 팝업 전시")).not.toBeInTheDocument();
+  });
+
+  it("낮음만 보기를 켜면 난이도 0.33 초과 활동이 숨는다(M-032)", () => {
+    state.catalogStatus = "ok";
+    state.catalog = [
+      makeOpp({ id: "op-1", title: "가벼운 산책", difficulty: 0.2 }),
+      makeOpp({ id: "op-2", title: "고강도 클라이밍", difficulty: 0.8 }),
+    ];
+
+    render(<ExploreScreen />);
+    fireEvent.click(screen.getByText("낮음만 보기"));
+
+    expect(screen.getByText("가벼운 산책")).toBeInTheDocument();
+    expect(screen.queryByText("고강도 클라이밍")).not.toBeInTheDocument();
+  });
+
+  it("앵커가 없으면 거리순 칩이 비활성(disabled)이다(M-032)", () => {
+    state.catalogStatus = "ok";
+    state.anchors = {};
+    state.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+
+    render(<ExploreScreen />);
+
+    const distanceChip = screen.getByText("거리순").closest("button");
+    expect(distanceChip).toBeDisabled();
+  });
+
+  it("imageUrl이 있는 활동은 썸네일 이미지를 렌더한다(M-051)", () => {
+    state.catalogStatus = "ok";
+    state.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", imageUrl: "https://example.test/a.jpg" }),
+    ];
+
+    const { container } = render(<ExploreScreen />);
+
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+    expect(img).toHaveAttribute("src", "https://example.test/a.jpg");
+  });
+
+  it("imageUrl이 없는 활동은 이미지 태그 없이 플레이스홀더만 렌더한다(M-051)", () => {
+    state.catalogStatus = "ok";
+    state.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+
+    const { container } = render(<ExploreScreen />);
+
+    expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
+    expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("앵커가 있으면 거리순 정렬이 가까운 활동을 먼저 보여준다(M-032)", () => {
+    state.catalogStatus = "ok";
+    state.anchors = { home: { dongName: "망원동", point: { lat: 37.5556, lng: 126.9019 } } };
+    state.catalog = [
+      makeOpp({
+        id: "far",
+        title: "먼 활동",
+        location: { dongName: "판교동", point: { lat: 37.3948, lng: 127.1112 } },
+      }),
+      makeOpp({
+        id: "near",
+        title: "가까운 활동",
+        location: { dongName: "합정동", point: { lat: 37.5495, lng: 126.9138 } },
+      }),
+    ];
+
+    render(<ExploreScreen />);
+    fireEvent.click(screen.getByText("거리순"));
+
+    const titles = screen.getAllByText(/활동$/).map((el) => el.textContent);
+    expect(titles.indexOf("가까운 활동")).toBeLessThan(titles.indexOf("먼 활동"));
+  });
+
+  it("활동 행이 접근 가능한 button role로 노출된다(M-058)", () => {
+    state.catalogStatus = "ok";
+    state.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+
+    render(<ExploreScreen />);
+
+    expect(screen.getByText("망원 한강 러닝 클래스").closest('[role="button"]')).not.toBeNull();
   });
 });

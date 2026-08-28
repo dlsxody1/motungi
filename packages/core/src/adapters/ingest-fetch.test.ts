@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   dedupByKey,
   inMetro,
+  isAllowedGpxUrl,
   isCronAuthorized,
+  isPlainRecord,
   judgeIngest,
   parseJsonItems,
   parseXmlItems,
+  safeMapItems,
   type IngestSourceResult,
 } from "./ingest-fetch";
 
@@ -51,6 +54,73 @@ describe("parseJsonItems", () => {
     const json = { body: { items: [{ a: "1" }] } };
     expect(parseJsonItems(json)).toEqual([{ a: "1" }]);
   });
+
+  // M-028: 배열 원소 중 평범한 객체가 아닌 값은 매핑 단계까지 새어나가면 mapper가
+  // .trim() 등을 던지고, 그 예외가 소스 전체 배치를 버리게 만든다 — 여기서 미리 걷어낸다.
+  it("배열 원소 중 객체가 아닌 값(문자열/숫자/null/배열)은 걸러낸다", () => {
+    const json = {
+      response: {
+        body: { items: { item: [{ a: "1" }, "이상한 문자열", 42, null, ["중첩", "배열"], { a: "2" }] } },
+      },
+    };
+    expect(parseJsonItems(json)).toEqual([{ a: "1" }, { a: "2" }]);
+  });
+
+  it("단일 object quirk 값이 객체가 아니면(예: 문자열) 빈 배열", () => {
+    const json = { response: { body: { items: { item: "이상한 문자열" } } } };
+    expect(parseJsonItems(json)).toEqual([]);
+  });
+});
+
+describe("isPlainRecord", () => {
+  it("평범한 객체는 true", () => {
+    expect(isPlainRecord({ a: "1" })).toBe(true);
+    expect(isPlainRecord({})).toBe(true);
+  });
+  it("null·배열·원시값은 false", () => {
+    expect(isPlainRecord(null)).toBe(false);
+    expect(isPlainRecord(undefined)).toBe(false);
+    expect(isPlainRecord([])).toBe(false);
+    expect(isPlainRecord(["a"])).toBe(false);
+    expect(isPlainRecord("문자열")).toBe(false);
+    expect(isPlainRecord(42)).toBe(false);
+  });
+});
+
+describe("safeMapItems — 항목 단위 격리(M-028)", () => {
+  it("정상 항목은 그대로 매핑 결과에 남는다", () => {
+    const { results, skipped } = safeMapItems([1, 2, 3], (n) => n * 10);
+    expect(results).toEqual([10, 20, 30]);
+    expect(skipped).toBe(0);
+  });
+
+  it("특정 항목에서 mapper가 던지면 그 항목만 건너뛰고 나머지는 살린다", () => {
+    const mapper = (raw: { v: unknown }) => {
+      // 실제 버그를 재현: 문자열 전제 코드가 숫자를 받으면 던진다.
+      if (typeof raw.v !== "string") throw new TypeError("v는 문자열이어야 함");
+      return raw.v.trim();
+    };
+    const items = [{ v: "  a  " }, { v: 42 }, { v: "  b  " }];
+    const { results, skipped } = safeMapItems(items, mapper);
+    expect(results).toEqual(["a", "b"]);
+    expect(skipped).toBe(1);
+  });
+
+  it("모든 항목이 던져도 예외가 밖으로 새어나가지 않는다", () => {
+    const mapper = () => {
+      throw new Error("항상 실패");
+    };
+    expect(() => safeMapItems([1, 2, 3], mapper)).not.toThrow();
+    const { results, skipped } = safeMapItems([1, 2, 3], mapper);
+    expect(results).toEqual([]);
+    expect(skipped).toBe(3);
+  });
+
+  it("빈 배열은 빈 결과", () => {
+    const { results, skipped } = safeMapItems<number, number>([], (n) => n);
+    expect(results).toEqual([]);
+    expect(skipped).toBe(0);
+  });
 });
 
 describe("inMetro", () => {
@@ -85,6 +155,32 @@ describe("isCronAuthorized — M-026 cron 시크릿 검증", () => {
     expect(isCronAuthorized(undefined, "anything")).toBe(false);
     expect(isCronAuthorized(null, "anything")).toBe(false);
     expect(isCronAuthorized("", "")).toBe(false);
+  });
+});
+
+describe("isAllowedGpxUrl — M-059 SSRF 방지 (두루누비 GPX fetch 화이트리스트)", () => {
+  it("https + 두루누비 호스트면 true", () => {
+    expect(isAllowedGpxUrl("https://www.durunubi.kr/kor/gpx/course.gpx")).toBe(true);
+  });
+  it("http(비-https)면 false", () => {
+    expect(isAllowedGpxUrl("http://www.durunubi.kr/kor/gpx/course.gpx")).toBe(false);
+  });
+  it("다른 호스트면 false (내부망/임의 서버 SSRF 시도)", () => {
+    expect(isAllowedGpxUrl("https://evil.example.com/course.gpx")).toBe(false);
+    expect(isAllowedGpxUrl("https://internal.durunubi.kr.evil.com/course.gpx")).toBe(false);
+  });
+  it("서브도메인이 정확히 일치하지 않으면 false", () => {
+    expect(isAllowedGpxUrl("https://durunubi.kr/course.gpx")).toBe(false);
+    expect(isAllowedGpxUrl("https://api.durunubi.kr/course.gpx")).toBe(false);
+  });
+  it("형식이 깨진 URL이면 false (new URL 실패)", () => {
+    expect(isAllowedGpxUrl("not a url")).toBe(false);
+    expect(isAllowedGpxUrl("durunubi.kr/course.gpx")).toBe(false);
+  });
+  it("null/undefined/빈 문자열이면 false", () => {
+    expect(isAllowedGpxUrl(null)).toBe(false);
+    expect(isAllowedGpxUrl(undefined)).toBe(false);
+    expect(isAllowedGpxUrl("")).toBe(false);
   });
 });
 

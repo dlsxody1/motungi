@@ -25,7 +25,17 @@
 import type { OpportunityRow } from "./view";
 import type { OpportunityCategory } from "./types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { boundingBox, fetchOpportunities, fetchOpportunityById, rowToMock } from "./catalog";
+import type { CatalogResult } from "./catalog";
+import type { GeoPoint } from "./types";
+import {
+  boundingBox,
+  fetchOpportunities,
+  fetchOpportunitiesByIds,
+  fetchOpportunityById,
+  loadCatalogByRadiusLadder,
+  MIN_RESULTS,
+  rowToMock,
+} from "./catalog";
 
 type FakeClient = {
   from: ReturnType<typeof vi.fn>;
@@ -608,6 +618,171 @@ describe("fetchOpportunityById", () => {
     const client = makeSingleClient({ data: drifted, error: null });
     const r = await fetchOpportunityById(asClient(client as unknown as FakeClient), "op-1");
     expect(r).toEqual({ data: null, status: "empty" });
+  });
+});
+
+/**
+ * 벌크 id 조회 체인 fake — client.from(...).select(...).in(...) 순으로 끝난다
+ * (order/limit 없음 — 전량 필터 없이 요청한 id만 그대로 받는다).
+ * 다른 필터 메서드(or/not/gte/lte/order/limit)도 함께 노출해, "이 메서드들은
+ * 호출되지 않는다"(=근접/카테고리/마감 필터를 걸지 않는다)를 검증할 수 있게 한다.
+ */
+function makeByIdsClient(result: { data: unknown; error: unknown }): FakeClient {
+  const inFn = vi.fn().mockResolvedValue(result);
+  const chain = {
+    or: vi.fn(),
+    in: inFn,
+    not: vi.fn(),
+    gte: vi.fn(),
+    lte: vi.fn(),
+    order: vi.fn(),
+    limit: vi.fn(),
+  };
+  const select = vi.fn(() => chain);
+  const from = vi.fn(() => ({ select }));
+  return {
+    from,
+    select,
+    or: chain.or,
+    in: chain.in,
+    not: chain.not,
+    gte: chain.gte,
+    lte: chain.lte,
+    order: chain.order,
+    limit: chain.limit,
+  };
+}
+
+describe("fetchOpportunitiesByIds", () => {
+  it("client가 null이면(ids가 있어도) 쿼리 없이 unconfigured", async () => {
+    const r = await fetchOpportunitiesByIds(null, ["op-1"]);
+    expect(r).toEqual({ data: [], status: "unconfigured" });
+  });
+
+  it("ids가 빈 배열이면 클라이언트를 호출하지 않고 즉시 empty를 반환한다", async () => {
+    const client = makeByIdsClient({ data: [ROW], error: null });
+
+    const result = await fetchOpportunitiesByIds(asClient(client), []);
+
+    expect(result).toEqual({ data: [], status: "empty" });
+    expect(client.from).not.toHaveBeenCalled();
+  });
+
+  it("DETAIL_COLUMNS(description 포함)로 select하고 .in(\"id\", ids)만 걸며, near/카테고리/마감 필터는 걸지 않는다", async () => {
+    const client = makeByIdsClient({ data: [ROW], error: null });
+
+    await fetchOpportunitiesByIds(asClient(client), ["op-1", "op-2"]);
+
+    expect(client.from).toHaveBeenCalledWith("opportunities");
+    const selectedCols = client.select.mock.calls[0]?.[0] as string;
+    expect(selectedCols).toContain("description");
+    expect(client.in).toHaveBeenCalledWith("id", ["op-1", "op-2"]);
+    // near/카테고리/마감/정렬/상한 — 목록 조회와 달리 이 함수는 전혀 걸지 않는다.
+    expect(client.gte).not.toHaveBeenCalled();
+    expect(client.lte).not.toHaveBeenCalled();
+    expect(client.or).not.toHaveBeenCalled();
+    expect(client.not).not.toHaveBeenCalled();
+    expect(client.order).not.toHaveBeenCalled();
+    expect(client.limit).not.toHaveBeenCalled();
+  });
+
+  it("정상 응답이면 ok 상태로 매핑된 데이터를 반환한다", async () => {
+    const client = makeByIdsClient({ data: [ROW], error: null });
+
+    const result = await fetchOpportunitiesByIds(asClient(client), ["op-1"]);
+
+    expect(result.status).toBe("ok");
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]).toMatchObject({ id: "op-1", title: "망원동 재즈 공연" });
+  });
+
+  it("클라이언트 에러면 error 상태를 반환한다", async () => {
+    const client = makeByIdsClient({ data: null, error: { message: "boom" } });
+
+    const result = await fetchOpportunitiesByIds(asClient(client), ["op-1"]);
+
+    expect(result).toEqual({ data: [], status: "error" });
+  });
+
+  it("id가 있어도 응답 데이터가 빈 배열이면 empty 상태를 반환한다", async () => {
+    const client = makeByIdsClient({ data: [], error: null });
+
+    const result = await fetchOpportunitiesByIds(asClient(client), ["op-999"]);
+
+    expect(result).toEqual({ data: [], status: "empty" });
+  });
+});
+
+/** MIN_RESULTS 판정에만 관심 있는 테스트용 CatalogResult — 내용물이 아니라 길이/상태만 중요하다. */
+function makeResult(status: CatalogResult["status"], count: number): CatalogResult {
+  return { data: Array.from({ length: count }, () => ({}) as CatalogResult["data"][number]), status };
+}
+
+describe("loadCatalogByRadiusLadder — 반경 사다리 정책(M-072, core로 승격)", () => {
+  const POINT: GeoPoint = { lat: 37.5556, lng: 126.9019 };
+
+  it("5km에서 MIN_RESULTS 이상이면 5km에서 멈추고 10/20km는 조회하지 않는다", async () => {
+    const fetchAtRadius = vi.fn().mockResolvedValue(makeResult("ok", MIN_RESULTS));
+    const noAnchorFetch = vi.fn();
+
+    const { result, radiusKm } = await loadCatalogByRadiusLadder(POINT, fetchAtRadius, noAnchorFetch);
+
+    expect(fetchAtRadius).toHaveBeenCalledTimes(1);
+    expect(fetchAtRadius).toHaveBeenCalledWith({ point: POINT, radiusKm: 5 });
+    expect(radiusKm).toBe(5);
+    expect(result.data).toHaveLength(MIN_RESULTS);
+    expect(noAnchorFetch).not.toHaveBeenCalled();
+  });
+
+  it("5km 미달·10km에서 MIN_RESULTS 충족이면 10km에서 멈추고 20km는 조회하지 않는다", async () => {
+    const fetchAtRadius = vi
+      .fn()
+      .mockResolvedValueOnce(makeResult("ok", MIN_RESULTS - 1))
+      .mockResolvedValueOnce(makeResult("ok", MIN_RESULTS));
+    const noAnchorFetch = vi.fn();
+
+    const { result, radiusKm } = await loadCatalogByRadiusLadder(POINT, fetchAtRadius, noAnchorFetch);
+
+    expect(fetchAtRadius).toHaveBeenCalledTimes(2);
+    expect(fetchAtRadius).toHaveBeenNthCalledWith(1, { point: POINT, radiusKm: 5 });
+    expect(fetchAtRadius).toHaveBeenNthCalledWith(2, { point: POINT, radiusKm: 10 });
+    expect(radiusKm).toBe(10);
+    expect(result.data).toHaveLength(MIN_RESULTS);
+  });
+
+  it("5/10/20km 전부 MIN_RESULTS 미달이면 20km(마지막) 결과를 그대로 반환한다", async () => {
+    const fetchAtRadius = vi.fn().mockResolvedValue(makeResult("ok", MIN_RESULTS - 1));
+    const noAnchorFetch = vi.fn();
+
+    const { result, radiusKm } = await loadCatalogByRadiusLadder(POINT, fetchAtRadius, noAnchorFetch);
+
+    expect(fetchAtRadius).toHaveBeenCalledTimes(3);
+    expect(fetchAtRadius).toHaveBeenNthCalledWith(3, { point: POINT, radiusKm: 20 });
+    expect(radiusKm).toBe(20);
+    expect(result.data).toHaveLength(MIN_RESULTS - 1);
+  });
+
+  it("앵커가 없으면(point: null) noAnchorFetch만 1회 호출하고 radiusKm은 null이다", async () => {
+    const fetchAtRadius = vi.fn();
+    const noAnchorFetch = vi.fn().mockResolvedValue(makeResult("ok", 300));
+
+    const { result, radiusKm } = await loadCatalogByRadiusLadder(null, fetchAtRadius, noAnchorFetch);
+
+    expect(fetchAtRadius).not.toHaveBeenCalled();
+    expect(noAnchorFetch).toHaveBeenCalledTimes(1);
+    expect(radiusKm).toBeNull();
+    expect(result.status).toBe("ok");
+  });
+
+  it("첫 반경(5km)에서 status가 error면 즉시 멈추고 10/20km는 조회하지 않는다", async () => {
+    const fetchAtRadius = vi.fn().mockResolvedValue(makeResult("error", 0));
+    const noAnchorFetch = vi.fn();
+
+    const { result, radiusKm } = await loadCatalogByRadiusLadder(POINT, fetchAtRadius, noAnchorFetch);
+
+    expect(fetchAtRadius).toHaveBeenCalledTimes(1);
+    expect(radiusKm).toBe(5);
+    expect(result.status).toBe("error");
   });
 });
 

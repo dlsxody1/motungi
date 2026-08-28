@@ -11,36 +11,13 @@
  *    임금은 HOPE_WAGE에 "시급 / 10320원 " 형태로 합쳐져 있다.
  *  - 마감일은 RCEPT_CLOS_NM이고 값이 "마감일 (2026-09-26)" 이라 날짜만 뽑아야 한다.
  *  - 상세 URL 필드가 없다 — CTA는 적재 계층에서 구인번호로 합성한다.
+ *
+ * M-029(2026-08-08): 이 파일에 있던 `normalizeSeoulJob`/`normalizeSeoulJobs`(및 그 전용
+ * 헬퍼 `classifyEmployment`/`parseWageKrw`/`RawSeoulJob`/`buildSummary`)는 죽은 코드였다
+ * (`supabase/functions/ingest/adapters.ts`의 `mapSeoulJob`이 실제 SoT이고 이 미러는
+ * 어디서도 호출되지 않았다) — 제거했다. 아래 세 함수(`isAfterWorkShift`/`parseShiftHours`/
+ * `parseWorkRegion`)는 `adapters.ts`가 실제로 import해 쓰므로 그대로 남긴다.
  */
-import type { Opportunity, OpportunityCategory } from "../types";
-
-/** 서울시 채용 API 원본 레코드(실응답 확정 스키마). 괄호 안이 실제 응답 필드명. */
-export interface RawSeoulJob {
-  /** 구인 고유번호 (중복 방지용 external_id) — JO_REQST_NO */
-  jobId: string;
-  /** 회사명 — CMPNY_NM */
-  companyName: string;
-  /** 채용 제목/모집 직종 — JO_SJ (없으면 JOBCODE_NM) */
-  title: string;
-  /** 근무지 주소 — WORK_PARAR_BASS_ADRES_CN ("경기 구리시" 수준의 시군구 표기) */
-  address?: string;
-  /** 자치구/동. 실응답엔 별도 필드가 없어 address와 같은 값이 들어온다. */
-  region?: string;
-  /** 임금 형태 — 실응답엔 별도 필드 없음. HOPE_WAGE 문자열에 합쳐져 있다. */
-  wageType?: string;
-  /** 임금 — HOPE_WAGE ("시급 / 10320원 " 형태) */
-  wage?: string | number;
-  /** 고용형태 문자열 — EMPLYM_STLE_CMMN_MM ("상용직(시간제)"). 코드값 필드가 아니다. */
-  employmentType?: string;
-  /** 근무시간 — WORK_TIME_NM ("(근무시간) (오후) 4시 00분 ~ (오후) 7시 00분") */
-  workTime?: string;
-  /** 상세/지원 URL — 실응답엔 없음. 적재 계층에서 구인번호로 합성. */
-  detailUrl?: string;
-  /** 접수 마감일 — RCEPT_CLOS_NM ("마감일 (2026-09-26)") */
-  deadline?: string;
-  /** 갱신/등록일 — JO_REG_DT */
-  registeredAt?: string;
-}
 
 /**
  * 근무 시작·종료 시각(24h). WORK_TIME_NM 표기가 여러 갈래라 두 형식을 모두 읽는다:
@@ -133,66 +110,3 @@ export function parseWorkRegion(address?: string): string | undefined {
   return hit ? `${sido[1]} ${hit}` : sido[1];
 }
 
-/** 고용형태 문자열 → 모퉁이 카테고리. 단기/파트/시간제만 카드로 채택. */
-const PART_TIME_KEYWORDS = ["파트", "시간제", "단기", "아르바이트", "알바", "일용"];
-
-export function classifyEmployment(employmentType?: string): OpportunityCategory | null {
-  if (!employmentType) return "side_job"; // 미상은 부업으로 폭넓게 잡되 후단 필터 가능
-  const t = employmentType;
-  if (t.includes("일용") || t.includes("단기")) return "side_job";
-  if (PART_TIME_KEYWORDS.some((k) => t.includes(k))) return "side_job";
-  // 정규직 등 풀타임은 모퉁이 컨셉(퇴근 후 짬)과 불일치 → 제외.
-  return null;
-}
-
-/** "1,200,000원" | "120만" | 1200000 → 원 단위 number. 파싱 실패 시 undefined. */
-export function parseWageKrw(wage?: string | number): number | undefined {
-  if (wage == null) return undefined;
-  if (typeof wage === "number") return Number.isFinite(wage) ? wage : undefined;
-  const s = wage.replace(/\s/g, "");
-  const manMatch = s.match(/([\d,.]+)\s*만/);
-  if (manMatch) {
-    const n = Number(manMatch[1]!.replace(/,/g, ""));
-    return Number.isFinite(n) ? Math.round(n * 10_000) : undefined;
-  }
-  const digits = s.replace(/[^\d]/g, "");
-  if (!digits) return undefined;
-  const n = Number(digits);
-  return Number.isFinite(n) ? n : undefined;
-}
-
-/**
- * 원본 레코드 → Opportunity. 카드로 부적합(풀타임 등)이면 null.
- * 좌표(location.point)는 여기서 채우지 않는다 — 적재 계층이 주소를 Kakao로 지오코딩해 병합.
- */
-export function normalizeSeoulJob(raw: RawSeoulJob): Opportunity | null {
-  const category = classifyEmployment(raw.employmentType);
-  if (category == null) return null;
-
-  return {
-    id: `seoul-job:${raw.jobId}`,
-    source: "seoul_jobs",
-    category,
-    title: raw.title,
-    summary: buildSummary(raw),
-    // side_job은 costKrw가 지출이 아니라 벌이(income) 성격 — UI에서 카테고리로 분기 표기.
-    costKrw: parseWageKrw(raw.wage),
-    // region 우선, 없으면 address로 폴백(둘 다 없으면 location 생략).
-    // 좌표(point)는 적재 계층이 주소를 Kakao로 지오코딩해 채운다.
-    location: raw.region || raw.address ? { dongName: raw.region ?? raw.address } : undefined,
-    ctaUrl: raw.detailUrl,
-    deadline: raw.deadline,
-    sourceLabel: "서울시 일자리플러스센터",
-    fetchedAt: raw.registeredAt,
-  };
-}
-
-function buildSummary(raw: RawSeoulJob): string {
-  const parts = [raw.companyName, raw.region, raw.employmentType].filter(Boolean);
-  return parts.join(" · ") || raw.title;
-}
-
-/** 목록 응답 → 카드 배열(부적합 제외). */
-export function normalizeSeoulJobs(records: RawSeoulJob[]): Opportunity[] {
-  return records.map(normalizeSeoulJob).filter((o): o is Opportunity => o != null);
-}

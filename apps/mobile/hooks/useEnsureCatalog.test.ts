@@ -148,4 +148,46 @@ describe("useEnsureCatalog — 앵커 반경 조회(확대 루프)", () => {
     expect(fetchOpportunitiesMock.mock.calls.map((c) => c[0]!.near!.radiusKm)).toEqual([5, 10, 20]);
     expect(setCatalogMock).toHaveBeenCalledTimes(1);
   });
+
+  it("첫 반경(5km) 조회가 error면 즉시 멈춘다 — 넓혀봐야 같은 실패다(M-072)", async () => {
+    state.anchors = { home: { point: HOME_POINT } };
+    fetchOpportunitiesMock.mockResolvedValue({ data: [], status: "error" });
+
+    renderHook(() => useEnsureCatalog());
+
+    await waitFor(() => expect(setCatalogMock).toHaveBeenCalledTimes(1));
+    expect(fetchOpportunitiesMock).toHaveBeenCalledTimes(1);
+    expect(fetchOpportunitiesMock.mock.calls[0]![0]!.near).toEqual({
+      point: HOME_POINT,
+      radiusKm: 5,
+    });
+    expect(setCatalogMock).toHaveBeenCalledWith([], "error");
+  });
+});
+
+describe("useEnsureCatalog — 세션 캐시가 화면 재마운트를 견딘다(M-063)", () => {
+  it("같은 지점으로 이미 fetch에 성공한 뒤 화면이 재마운트되면 재조회하지 않는다", async () => {
+    // 1) 최초 마운트 — idle이므로 5km 조회 1회, 44건(≥MIN_RESULTS)이라 더 넓히지 않는다.
+    state.anchors = { home: { point: HOME_POINT } };
+    fetchOpportunitiesMock.mockResolvedValue(okResult(44));
+
+    const { unmount } = renderHook(() => useEnsureCatalog());
+
+    await waitFor(() => expect(fetchOpportunitiesMock).toHaveBeenCalledTimes(1));
+
+    // 2) 화면을 벗어난다(언마운트) — 기존 버그: 컴포넌트 인스턴스 소유의 useRef가 사라진다.
+    unmount();
+
+    // 3) store엔 이미 이 지점의 성공한 카탈로그가 남아 있다(같은 pointKey, catalogStatus="ok").
+    state.catalogStatus = "ok";
+
+    // 4) 같은 화면으로 돌아온다(재마운트) — 훅의 내부 상태(과거엔 useRef)는 완전히 새로 생성된다.
+    fetchOpportunitiesMock.mockClear();
+    renderHook(() => useEnsureCatalog());
+
+    // 5) 모듈 스코프 캐시가 세션 동안 살아남아 같은 pointKey를 기억하므로 재조회하지 않는다.
+    //    (구 코드처럼 컴포넌트 인스턴스별 useRef였다면 새 인스턴스의 ref는 null로 시작해
+    //    pointKey와 불일치 → 반경 사다리 전체를 다시 돌았을 것이다.)
+    expect(fetchOpportunitiesMock).not.toHaveBeenCalled();
+  });
 });

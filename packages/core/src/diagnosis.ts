@@ -58,34 +58,38 @@ const VALID_ENERGIES: ReadonlySet<Energy> = new Set(["drained", "moderate", "act
 
 /**
  * 진단 화면(web/mobile)의 draft 상태를 검증된 DiagnosisAnswers로 변환한다.
- * draft는 DIAGNOSIS_STEPS 순서(0=interests·1=timeSlot·2=energy)의 문항 인덱스를 키로,
- * 선택된 옵션 value(string)를 값으로 갖는다(미선택 시 undefined 가능).
- * Q1(interests)은 UI가 단일 선택이라 draft[0]는 문자열 하나지만, DiagnosisAnswers.interests는
- * 배열이므로 값 검증 후에만 [interest]로 감싼다 — 미완료/미검증 값이 배열에 undefined로 섞이지 않는다.
+ * draft는 DIAGNOSIS_STEPS 순서(0=interests·1=timeSlot·2=energy)의 문항 인덱스를 키로 갖는다.
+ * Q1(interests, M-049부터 다중선택)은 draft[0]에 문자열 배열을 받는다 — 유효한 카테고리만
+ * 걸러 남기고(순서 보존, 중복 제거), 0개면 미선택으로 취급해 null을 반환한다. 기존 단일
+ * 문자열 draft[0](하위호환)도 받아 [interest] 하나로 감싼다. Q2·Q3는 여전히 단일 문자열이다.
  * 완료되지 않았거나 유효하지 않은 값이 있으면 null을 반환한다.
  */
 export function draftToAnswers(
-  draft: Record<number, string | undefined>,
+  draft: Record<number, string | string[] | undefined>,
 ): DiagnosisAnswers | null {
   const interestRaw = draft[0];
   const timeSlotRaw = draft[1];
   const energyRaw = draft[2];
 
-  const interest =
-    interestRaw != null && VALID_INTERESTS.has(interestRaw as Interest)
-      ? (interestRaw as Interest)
-      : undefined;
+  const interestCandidates: string[] = Array.isArray(interestRaw)
+    ? interestRaw
+    : interestRaw != null
+      ? [interestRaw]
+      : [];
+  const interests = Array.from(
+    new Set(interestCandidates.filter((v): v is Interest => VALID_INTERESTS.has(v as Interest))),
+  );
   const timeSlot =
-    timeSlotRaw != null && VALID_TIME_SLOTS.has(timeSlotRaw as TimeSlot)
+    typeof timeSlotRaw === "string" && VALID_TIME_SLOTS.has(timeSlotRaw as TimeSlot)
       ? (timeSlotRaw as TimeSlot)
       : undefined;
   const energy =
-    energyRaw != null && VALID_ENERGIES.has(energyRaw as Energy)
+    typeof energyRaw === "string" && VALID_ENERGIES.has(energyRaw as Energy)
       ? (energyRaw as Energy)
       : undefined;
 
   const candidate: Partial<DiagnosisAnswers> = {
-    interests: interest != null ? [interest] : undefined,
+    interests: interests.length > 0 ? interests : undefined,
     timeSlot,
     energy,
   };

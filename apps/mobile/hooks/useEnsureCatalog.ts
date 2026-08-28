@@ -1,15 +1,22 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import {
+  loadCatalogByRadiusLadder,
+  NO_ANCHOR_LIMIT,
+  type NoAnchorFetch,
+  type RadiusFetch,
+} from "@motungi/core";
 import { fetchOpportunities } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 
-/** 앵커가 있을 때 시도하는 반경(km) — 가까운 것부터. 밀도 편차가 커서 모자라면 넓힌다. */
-const RADII = [5, 10, 20] as const;
-
-/** 이 정도는 나와야 "탐색"이 성립한다고 보는 하한. */
-const MIN_RESULTS = 20;
-
-/** 앵커가 없을 때(첫 진입·동네 미선택) 상한. */
-const NO_ANCHOR_LIMIT = 300;
+/**
+ * "이 pointKey로 이미 fetch를 트리거했는가"를 모듈 스코프에 둔다(useRef 아님).
+ * useRef는 컴포넌트 인스턴스 하나에 묶여, Explore/상세 탭을 오가며 이 훅을 쓰는 화면이
+ * 언마운트·재마운트될 때마다 새 ref(null)로 초기화된다 — 그 순간 전역 store엔 이미
+ * catalogStatus가 "idle"이 아닌 성공 상태로 남아 있어도 가드가 어긋나 반경 사다리
+ * 전체를 매번 재조회했다(M-063). 모듈 스코프 변수는 같은 JS 세션 동안 살아남아
+ * catalog와 동일한 세션 캐시 수명을 갖는다.
+ */
+let lastFetchedKey: string | null = null;
 
 /**
  * 탐색용 카탈로그를 앵커 반경으로 좁혀 로드한다.
@@ -26,30 +33,29 @@ export function useEnsureCatalog() {
 
   // 좌표를 값으로 비교하기 위한 키(객체 identity는 매 렌더 바뀔 수 있다).
   const pointKey = point ? `${point.lat},${point.lng}` : null;
-  // 동네를 바꾸면 catalogStatus가 idle이 아니어도 다시 받아야 한다.
-  const lastPointRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (catalogStatus !== "idle" && lastPointRef.current === pointKey) return;
-    lastPointRef.current = pointKey;
+    // 동네를 바꾸면 catalogStatus가 idle이 아니어도 다시 받아야 한다.
+    if (catalogStatus !== "idle" && lastFetchedKey === pointKey) return;
+    lastFetchedKey = pointKey;
 
     let cancelled = false;
+    // 사다리 정책 자체는 core로 승격됐다(M-072) — 여기선 fetchOpportunities를 감싸면서
+    // "이미 언마운트됐으면 다음 반경을 실제로 부르지 않는다"만 챙긴다. loadCatalogByRadiusLadder는
+    // React/취소 개념을 모르는 순수 오케스트레이션이라, 취소는 콜백 안에서만 처리한다.
+    // 진행 중이던 fetch 1건은 기존과 동일하게 끝까지 완료된다 — 아래 최종 cancelled 게이트가
+    // setCatalog 반영 여부를 막는다.
+    const fetchAtRadius: RadiusFetch = ({ point: p, radiusKm }) => {
+      if (cancelled) return Promise.resolve({ data: [], status: "empty" });
+      return fetchOpportunities({ near: { point: p, radiusKm } });
+    };
+    const noAnchorFetch: NoAnchorFetch = () => {
+      if (cancelled) return Promise.resolve({ data: [], status: "empty" });
+      return fetchOpportunities({ limit: NO_ANCHOR_LIMIT });
+    };
     void (async () => {
-      // 앵커 없음 → 반경 없이 기존대로. 빈 화면을 만들지 않는 게 우선이다.
-      if (!point) {
-        const { data, status } = await fetchOpportunities({ limit: NO_ANCHOR_LIMIT });
-        if (!cancelled) setCatalog(data, status);
-        return;
-      }
-      for (const radiusKm of RADII) {
-        const { data, status } = await fetchOpportunities({ near: { point, radiusKm } });
-        if (cancelled) return;
-        const isLast = radiusKm === RADII[RADII.length - 1];
-        if (data.length >= MIN_RESULTS || isLast) {
-          setCatalog(data, status);
-          return;
-        }
-      }
+      const { result } = await loadCatalogByRadiusLadder(point ?? null, fetchAtRadius, noAnchorFetch);
+      if (!cancelled) setCatalog(result.data, result.status);
     })();
     return () => {
       cancelled = true;

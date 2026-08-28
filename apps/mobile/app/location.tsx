@@ -14,6 +14,9 @@ import { Button, Chip, FlowHeader, Screen, Txt } from "@/ui/components";
 import { CheckCircle, ChevronRight, Location, Search } from "@/ui/icons";
 import { C, R, cardShadow } from "@/ui/theme";
 
+/** 검색어 최소 길이 — 한 글자로는 조회하지 않는다(요청 폭주 방지 + 의미 없는 "결과 없음" 방지). */
+const MIN_QUERY_LEN = 2;
+
 function itemToPick(it: NeighborhoodSearchResult): NeighborhoodPick {
   return {
     admCode: it.admCode,
@@ -34,30 +37,34 @@ export default function LocationScreen() {
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
 
-  // 검색어 디바운스(250ms). 검색어가 비면 드롭다운을 닫는다.
+  // 검색어 디바운스(250ms). MIN_QUERY_LEN 미만이면 조회하지 않는다(요청 폭주 방지).
   useEffect(() => {
     const q = query.trim();
-    if (!q) {
+    if (q.length < MIN_QUERY_LEN) {
       setResults([]);
       setSearching(false);
       return;
     }
     setSearching(true);
-    let cancelled = false;
+    // 매 키 입력마다 새 컨트롤러를 만들고, 정리 함수에서 이전 요청을 실제로 abort한다.
+    // 이전엔 `cancelled` 불리언으로 응답 반영만 막았을 뿐 네트워크 요청 자체는 계속
+    // 나갔다 — 빠르게 타이핑하면 인플라이트 요청이 쌓이는 요청 폭주였다.
+    const ctrl = new AbortController();
     const t = setTimeout(async () => {
-      const items = await searchNeighborhoods(q);
-      if (!cancelled) {
+      const items = await searchNeighborhoods(q, ctrl.signal);
+      // abort된 뒤에도 fetch가 resolve될 수 있으니(취소 타이밍에 따라) signal로 다시 확인한다.
+      if (!ctrl.signal.aborted) {
         setResults(items);
         setSearching(false);
       }
     }, 250);
     return () => {
-      cancelled = true;
+      ctrl.abort();
       clearTimeout(t);
     };
   }, [query]);
 
-  const showDropdown = query.trim().length > 0;
+  const showDropdown = query.trim().length >= MIN_QUERY_LEN;
 
   const choose = (pick: NeighborhoodPick) => {
     setSelected(pick);

@@ -23,10 +23,22 @@ export function parseXmlItems(xml: string): Record<string, string>[] {
 }
 
 /**
+ * 원소가 안전하게 `Record<string, string>`로 다룰 수 있는 "평범한 객체"인가(M-028).
+ * null·배열·원시값은 제외 — 이런 값이 매핑 단계까지 새어나가면 mapper가 `.trim()` 등을
+ * 문자열 전제 코드에서 던지고, 그 예외가 runSource의 catch까지 올라가 소스 전체 배치를
+ * 통째로 버린다. 배열/응답 파싱 단계에서 미리 걷어낸다.
+ */
+export function isPlainRecord(x: unknown): x is Record<string, string> {
+  return typeof x === "object" && x !== null && !Array.isArray(x);
+}
+
+/**
  * data.go.kr JSON 응답에서 item 배열 추출.
  * - 정상: response.body.items.item이 배열.
  * - quirk: 결과가 1건뿐이면 item이 배열이 아니라 단일 object로 오는 API가 있음 → 배열로 정규화.
  * - items가 없거나 빈 경우 → 빈 배열.
+ * - 배열 원소 중 평범한 객체가 아닌 값(문자열/숫자/null/배열)은 걸러낸다(M-028) — 매퍼가
+ *   `.trim()` 등을 던지게 두지 않고 여기서 미리 배제한다.
  */
 export function parseJsonItems(json: unknown): Record<string, string>[] {
   const j = json as
@@ -34,8 +46,32 @@ export function parseJsonItems(json: unknown): Record<string, string>[] {
     | null
     | undefined;
   const items = j?.response?.body?.items?.item ?? j?.body?.items ?? [];
-  if (Array.isArray(items)) return items as Record<string, string>[];
-  return items ? [items as Record<string, string>] : [];
+  if (Array.isArray(items)) return items.filter(isPlainRecord);
+  return isPlainRecord(items) ? [items] : [];
+}
+
+/**
+ * mapper를 항목별로 실행해 예외를 이 함수 밖으로 새어나가지 않게 한다(M-028).
+ *
+ * 왜 필요한가: 외부 API 응답은 런타임 shape 검증 없이 신뢰되고 있었다. 한 항목이 예상 밖
+ * shape면(예: 문자열 필드에 숫자가 와서 mapper가 `.trim()`을 호출) mapper가 던지고,
+ * index.ts의 runSource catch가 **그 소스 전체 배치**를 버렸다 — 나머지 정상 항목까지
+ * 같이 사라졌다. 여기서 항목 단위로 격리해 나쁜 항목만 건너뛴다.
+ */
+export function safeMapItems<T, R>(
+  items: T[],
+  mapper: (item: T) => R,
+): { results: R[]; skipped: number } {
+  const results: R[] = [];
+  let skipped = 0;
+  for (const item of items) {
+    try {
+      results.push(mapper(item));
+    } catch {
+      skipped++;
+    }
+  }
+  return { results, skipped };
 }
 
 /** 수도권 필터(전국 소스용). dong/지역 문자열이 서울/경기/인천으로 시작하면 true. 미기재(null/undefined)는 통과. */
@@ -97,6 +133,30 @@ export function isCronAuthorized(
 ): boolean {
   if (!serverSecret) return false;
   return headerValue === serverSecret;
+}
+
+/** 두루누비 GPX fetch에 허용할 호스트(M-059). */
+const ALLOWED_GPX_HOST = "www.durunubi.kr";
+
+/**
+ * gpx_url이 https + 두루누비 호스트인지 검증 (순수 함수, M-059).
+ *
+ * 두루누비 courseList가 주는 gpxpath를 읽는 두 경로 — 조회(apps/web/src/app/api/
+ * trail-route/route.ts) · 적재(supabase/functions/ingest/index.ts fetchTrailStartCoord) —
+ * 가 같은 값을 같은 이유로 검증해야 한다. 조회 경로엔 이미 이 화이트리스트가 있었으나
+ * 적재 경로는 무검증 fetch(redirect:"follow")를 SERVICE_ROLE 권한으로 매일 돌렸다 —
+ * 상류(data.go.kr)가 오염되면 내부망 스캔에 쓰일 수 있는 blind SSRF primitive였다.
+ * 형식이 깨진 URL(new URL 실패)도 거부한다.
+ */
+export function isAllowedGpxUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return false;
+  }
+  return u.protocol === "https:" && u.hostname === ALLOWED_GPX_HOST;
 }
 
 /** key가 이미 등장한 이후 항목을 제거(첫 등장만 유지). */

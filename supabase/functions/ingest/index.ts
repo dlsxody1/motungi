@@ -23,10 +23,13 @@ import {
 import {
   dedupByKey,
   inMetro,
+  isAllowedGpxUrl,
   isCronAuthorized,
+  isPlainRecord,
   judgeIngest,
   parseJsonItems,
   parseXmlItems,
+  safeMapItems,
 } from "../../../packages/core/src/adapters/ingest-fetch.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -80,7 +83,8 @@ async function fetchSeoul(
     if (emptyOnNoRow && start > 1) return [];
     throw new Error(`${service}: row 없음 (${body?.RESULT?.MESSAGE ?? "?"})`);
   }
-  return body.row;
+  // row 원소 중 평범한 객체가 아닌 값은 걸러낸다(M-028) — parseJsonItems 가드와 동일한 이유.
+  return Array.isArray(body.row) ? body.row.filter(isPlainRecord) : [];
 }
 
 /** data.go.kr JSON 응답 fetch — 파싱(단일object quirk 정규화 포함)은 core parseJsonItems가 담당. */
@@ -105,11 +109,14 @@ async function fetchDataGoKrXml(url: string): Promise<Record<string, string>[]> 
  * 두루누비 courseList는 좌표를 주지 않고 GPX 파일 경로(gpxpath)만 준다. 좌표가 없으면
  * 거리 스코어가 중립(0.5)로 떨어져 "동네" 큐레이션에서 사실상 빠지므로 적재 때 한 번 채운다.
  * 실패(네트워크·형식)는 null로 삼키고 넘어간다 — 좌표 하나 때문에 적재 전체를 막지 않는다.
+ *
+ * gpxUrl은 courseList API가 준 값을 그대로 fetch하기 전에 프로토콜/호스트를 검증한다
+ * (SSRF 방지, M-059) — 읽기 경로(apps/web/src/app/api/trail-route/route.ts)와 동일 규칙.
  */
 async function fetchTrailStartCoord(
   gpxUrl?: string | null,
 ): Promise<{ lat: number; lng: number } | null> {
-  if (!gpxUrl) return null;
+  if (!isAllowedGpxUrl(gpxUrl)) return null;
   try {
     const res = await fetch(gpxUrl, { redirect: "follow" });
     if (!res.ok) return null;
@@ -183,7 +190,11 @@ Deno.serve(async (req) => {
   const results = await Promise.all([
     runSource("seoul_culture", async () => {
       const raw = await fetchSeoul(seoulKey, "culturalEventInfo");
-      return raw.map(mapSeoulCulture).filter((r): r is OppRow => r != null);
+      // 항목 단위 격리(M-028): 한 항목이 예상 밖 shape라 mapSeoulCulture가 던져도
+      // 그 항목만 건너뛰고 나머지는 그대로 적재한다(예전엔 소스 배치 전체가 버려졌다).
+      const { results: mapped, skipped } = safeMapItems(raw, mapSeoulCulture);
+      if (skipped) console.warn(`seoul_culture: 매핑 실패 ${skipped}건 스킵`);
+      return mapped.filter((r): r is OppRow => r != null);
     }),
     runSource("culture_info", async () => {
       if (!dataGoKrKey) throw new Error("DATA_GO_KR_SERVICE_KEY 없음");
@@ -194,8 +205,10 @@ Deno.serve(async (req) => {
         const url = `https://apis.data.go.kr/B553457/cultureinfo/period2?serviceKey=${enc}&numOfRows=10&PageNo=${page}&from=20260708&to=20261231`;
         const raw = await fetchDataGoKrXml(url);
         if (raw.length === 0) break; // 마지막 페이지
-        for (const r of raw) {
-          const mapped = mapCultureInfo(r);
+        // 항목 단위 격리(M-028): 페이지 안 한 항목이 던져도 그 항목만 스킵.
+        const { results: mappedPage, skipped } = safeMapItems(raw, mapCultureInfo);
+        if (skipped) console.warn(`culture_info: 매핑 실패 ${skipped}건 스킵(page ${page})`);
+        for (const mapped of mappedPage) {
           if (mapped && inMetro(mapped.dong_name)) candidates.push(mapped);
         }
         rows = dedupByKey(candidates, (r) => r.external_id);
@@ -206,9 +219,10 @@ Deno.serve(async (req) => {
       if (!dataGoKrKey) throw new Error("DATA_GO_KR_SERVICE_KEY 없음");
       const url = `https://apis.data.go.kr/B551011/Durunubi/courseList?serviceKey=${enc}&numOfRows=${LIMIT}&pageNo=1&MobileOS=ETC&MobileApp=motungi&_type=json`;
       const raw = await fetchDataGoKrJson(url);
-      const rows = raw
-        .map(mapTrail)
-        .filter((r): r is OppRow => r != null && inMetro(r.dong_name));
+      // 항목 단위 격리(M-028): 한 항목이 던져도 그 항목만 스킵.
+      const { results: mappedTrail, skipped } = safeMapItems(raw, mapTrail);
+      if (skipped) console.warn(`trail: 매핑 실패 ${skipped}건 스킵`);
+      const rows = mappedTrail.filter((r): r is OppRow => r != null && inMetro(r.dong_name));
       // 좌표는 GPX 안에만 있다 — 수도권으로 좁힌 뒤에 채운다(전국 152건 fetch 방지).
       return await enrichTrailCoords(rows);
     }),
@@ -228,8 +242,10 @@ Deno.serve(async (req) => {
           true,
         );
         if (raw.length === 0) break; // 마지막 페이지
-        for (const r of raw) {
-          const mapped = mapSeoulJob(r);
+        // 항목 단위 격리(M-028): 페이지 안 한 항목이 던져도 그 항목만 스킵.
+        const { results: mappedJobs, skipped } = safeMapItems(raw, mapSeoulJob);
+        if (skipped) console.warn(`seoul_jobs: 매핑 실패 ${skipped}건 스킵(page ${page})`);
+        for (const mapped of mappedJobs) {
           if (mapped && inMetro(mapped.dong_name)) rows.push(mapped);
         }
       }

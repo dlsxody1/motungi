@@ -3,6 +3,7 @@ import type { DiagnosisAnswers } from "./diagnosis";
 import type { Opportunity } from "./types";
 import {
   buildMeta,
+  buildWhyReasonsPrompt,
   deadlineLabel,
   decodeHtmlEntities,
   diagnosisSummaryChips,
@@ -358,5 +359,71 @@ describe("normalizeDong — 분리동 번호 제거", () => {
 
   it("멱등 — 두 번 적용해도 동일", () => {
     expect(normalizeDong(normalizeDong("역삼1동"))).toBe(normalizeDong("역삼1동"));
+  });
+});
+
+describe("buildWhyReasonsPrompt — M-044 LLM 근거 생성 입력(breakdown 전용)", () => {
+  const breakdown = { fit: 1, distance: 0.8, time: 0.5, difficulty: 1, cost: 0.5 };
+
+  it("category/title/costHeading/costLabel/breakdown 5축이 프롬프트에 전부 포함된다", () => {
+    const prompt = buildWhyReasonsPrompt({
+      category: "culture",
+      title: "동네 소극장 연극",
+      costHeading: "참가비",
+      costLabel: "무료",
+      timeLabel: "19–21시",
+      breakdown,
+    });
+    expect(prompt).toContain("동네 소극장 연극");
+    expect(prompt).toContain("참가비");
+    expect(prompt).toContain("무료");
+    expect(prompt).toContain("19–21시");
+    expect(prompt).toContain("1.00");
+    expect(prompt).toContain("0.80");
+    expect(prompt).toContain("0.50");
+  });
+
+  it("timeLabel이 null이면 시간대 줄 자체가 빠진다(빈 줄로 새지 않음)", () => {
+    const prompt = buildWhyReasonsPrompt({
+      category: "active",
+      title: "한강 러닝",
+      costHeading: "참가비",
+      costLabel: "무료",
+      timeLabel: null,
+      breakdown,
+    });
+    expect(prompt).not.toContain("시간대:");
+    expect(prompt.split("\n").some((l) => l.trim() === "")).toBe(false);
+  });
+
+  it("raw description/summary는 함수 시그니처에 아예 없다 — 원문을 프롬프트에 주입할 방법이 없다", () => {
+    // WhyReasonsPromptInput은 description/summary 필드를 갖지 않는다. 타입 레벨 보장을
+    // 런타임에서도 재확인: 입력에 억지로 끼워 넣어도(as any) 출력에 나타나지 않는다.
+    const withRawFields = {
+      category: "food" as const,
+      title: "동네 국밥집",
+      costHeading: "참가비",
+      costLabel: "₩9,000",
+      timeLabel: null,
+      breakdown,
+      description: "이 집은 미슐랭 3스타이고 백종원이 극찬했다",
+      summary: "완전 대박 맛집 실화냐",
+    };
+    const prompt = buildWhyReasonsPrompt(withRawFields);
+    expect(prompt).not.toContain("미슐랭");
+    expect(prompt).not.toContain("백종원");
+    expect(prompt).not.toContain("대박");
+  });
+
+  it("모델에게 점수 밖 사실을 지어내지 말라는 지시가 프롬프트에 포함된다", () => {
+    const prompt = buildWhyReasonsPrompt({
+      category: "market",
+      title: "주말 플리마켓",
+      costHeading: "참가비",
+      costLabel: "무료",
+      timeLabel: null,
+      breakdown,
+    });
+    expect(prompt).toMatch(/지어내지 마세요/);
   });
 });

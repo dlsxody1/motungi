@@ -44,15 +44,21 @@ const QUESTIONS: Question[] = [
   },
 ];
 
+/** Q1(관심사)만 다중선택 — Q2·Q3는 단일선택 그대로(M-049). */
+const MULTI_SELECT_STEP = 0;
+
 export default function DiagnosisScreen() {
   const router = useRouter();
   const saveAnswers = useAppStore((s) => s.setAnswers);
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
 
   const q = QUESTIONS[step]!;
   const total = QUESTIONS.length;
-  const selected = answers[step];
+  const isMultiStep = step === MULTI_SELECT_STEP;
+  const stepAnswer = answers[step];
+  const selectedValues = isMultiStep && Array.isArray(stepAnswer) ? stepAnswer : [];
+  const hasSelection = isMultiStep ? selectedValues.length > 0 : !!stepAnswer;
 
   const goNext = () => {
     if (step < total - 1) {
@@ -60,8 +66,7 @@ export default function DiagnosisScreen() {
       return;
     }
     // 마지막 질문 완료 → 진단 답변을 core 형태로 검증·매핑해 저장 후 스코어링(로딩)으로.
-    const final = { ...answers, [step]: answers[step]! };
-    const validated = draftToAnswers(final);
+    const validated = draftToAnswers(answers);
     if (!validated) return; // 방어적 분기 — 자동 진행 UX 상 실제로는 도달하지 않음.
     saveAnswers(validated);
     router.push("/loading");
@@ -72,6 +77,14 @@ export default function DiagnosisScreen() {
   };
   const pick = (value: string, soon?: boolean) => {
     if (soon) return;
+    if (isMultiStep) {
+      setAnswers((a) => {
+        const cur = Array.isArray(a[MULTI_SELECT_STEP]) ? (a[MULTI_SELECT_STEP] as string[]) : [];
+        const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
+        return { ...a, [MULTI_SELECT_STEP]: next };
+      });
+      return;
+    }
     setAnswers((a) => ({ ...a, [step]: value }));
   };
 
@@ -94,12 +107,14 @@ export default function DiagnosisScreen() {
 
         <View style={{ marginTop: 20, gap: 12 }}>
           {q.options.map((o) => {
-            const on = selected === o.value;
+            const on = isMultiStep ? selectedValues.includes(o.value) : stepAnswer === o.value;
             return (
               <Pressable
                 key={o.value}
                 onPress={() => pick(o.value, o.soon)}
                 disabled={o.soon}
+                accessibilityRole="button"
+                aria-selected={on}
                 style={[
                   styles.opt,
                   o.soon
@@ -129,8 +144,9 @@ export default function DiagnosisScreen() {
         <View style={{ marginTop: "auto", paddingBottom: 16 }}>
           <Pressable
             onPress={goNext}
-            disabled={!selected}
-            style={[styles.resultBtn, { opacity: selected ? 1 : 0.4 }]}
+            disabled={!hasSelection}
+            accessibilityRole="button"
+            style={[styles.resultBtn, { opacity: hasSelection ? 1 : 0.4 }]}
           >
             <Text style={styles.resultLabel}>{step === total - 1 ? "결과 보기" : "다음"}</Text>
           </Pressable>
