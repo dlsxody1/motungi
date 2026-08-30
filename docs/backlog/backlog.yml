@@ -1861,7 +1861,7 @@ backlog:
   - id: M-073
     title: "모바일 accessibilityRole 스윕 2차 — saved.tsx/my.tsx/hero-carousel.tsx가 M-058 범위 밖이었음"
     priority: high
-    status: todo
+    status: doing
     scope: ["apps/mobile/app/(tabs)/saved.tsx", "apps/mobile/app/(tabs)/my.tsx", apps/mobile/ui/hero-carousel.tsx]
     done_when:
       - "saved.tsx의 SavedItem 카드 Pressable(상세 이동)과 재진단·다시 시도·둘러보기 Pressable에 accessibilityRole=\"button\"이 추가된다(저장 취소 버튼은 이미 role·label이 있어 대상 아님)"
@@ -2183,7 +2183,7 @@ backlog:
   - id: M-089
     title: "모바일 보관함 카드에 썸네일 이미지가 없음"
     priority: low
-    status: todo
+    status: doing
     scope: ["apps/mobile/app/(tabs)/saved.tsx"]
     done_when:
       - "SavedItem이 imageUrl 유무에 따라 Thumbnail(카테고리 톤 플레이스홀더 폴백 포함)을 렌더한다"
@@ -2199,7 +2199,7 @@ backlog:
   - id: M-090
     title: "모바일 Card 프리미티브 — 정의 후 어디서도 쓰인 적 없는 죽은 컴포넌트"
     priority: low
-    status: todo
+    status: doing
     scope: [apps/mobile/ui/components.tsx]
     done_when:
       - "Card export가 제거되거나(정의만 남기지 않고), 실사용처가 필요하면 배선한다"
