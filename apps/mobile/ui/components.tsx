@@ -145,11 +145,6 @@ export function Tag({ label, tone = "brand" }: { label: string; tone?: "brand" |
   );
 }
 
-/** 카드 표면 */
-export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
-  return <View style={[styles.card, style]}>{children}</View>;
-}
-
 /** 로고 */
 export function Logo({ onDark = false, size = 28 }: { onDark?: boolean; size?: number }) {
   return (
