@@ -139,6 +139,41 @@ describe("SavedScreen", () => {
     expect(screen.queryByText(/개$/)).not.toBeInTheDocument();
   });
 
+  it("주요 컨트롤 4곳이 button role로 노출된다(M-073)", () => {
+    state.anchors = { home: { dongName: "망원동" } };
+    state.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+    state.savedIds = ["op-1"];
+
+    render(<SavedScreen />);
+
+    // 카드 자체(Pressable) — 저장 취소 버튼과 별개로 카드 전체도 button role이어야 한다.
+    const card = screen.getByText("망원 한강 러닝 클래스").closest('[role="button"]');
+    expect(card).not.toBeNull();
+    // 재진단
+    expect(screen.getByText("재진단").closest('[role="button"]')).not.toBeNull();
+  });
+
+  it("빈 상태의 둘러보기 버튼이 button role로 노출된다(M-073)", () => {
+    state.savedIds = [];
+
+    render(<SavedScreen />);
+
+    expect(screen.getByText("둘러보기").closest('[role="button"]')).not.toBeNull();
+  });
+
+  it("에러 상태의 다시 시도 버튼이 button role로 노출된다(M-073)", async () => {
+    state.catalog = [];
+    state.savedIds = ["창밖-id"];
+    fetchOpportunityByIdMock.mockResolvedValueOnce({ data: null, status: "error" });
+
+    render(<SavedScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText("활동을 불러오지 못했어요")).toBeInTheDocument();
+    });
+    expect(screen.getByText("다시 시도").closest('[role="button"]')).not.toBeNull();
+  });
+
   it("단건 조회가 실패하면 에러 상태 + 다시 시도 버튼을 렌더하고, 버튼을 누르면 재조회한다(M-046)", async () => {
     state.catalog = [];
     state.savedIds = ["창밖-id"];
