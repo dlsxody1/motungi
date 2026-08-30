@@ -83,6 +83,66 @@ describe("SavedScreen", () => {
     expect(screen.getByText("망원동 기준")).toBeInTheDocument();
   });
 
+  it("행 썸네일이 item.imageUrl로 고정 64x64 크기로 렌더된다(M-089)", () => {
+    state.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", imageUrl: "https://example.test/a.jpg" }),
+    ];
+    state.savedIds = ["op-1"];
+
+    const { container } = render(<SavedScreen />);
+
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+    expect(img).toHaveAttribute("src", "https://example.test/a.jpg");
+    // 썸네일 컨테이너(Thumbnail의 최상위 View)가 64x64 고정 크기다 — 이미지 로드
+    // 전/후 레이아웃이 흔들리지 않는다. react-native-web의 Image는 내부에 래퍼 div를
+    // 하나 더 두므로(ImageLoader), 컨테이너는 img의 조부모다.
+    const thumb = img!.parentElement!.parentElement!;
+    expect(getComputedStyle(thumb).width).toBe("64px");
+    expect(getComputedStyle(thumb).height).toBe("64px");
+  });
+
+  it("imageUrl이 없으면 플레이스홀더만 렌더한다(이미지 태그 없음, M-089)", () => {
+    state.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+    state.savedIds = ["op-1"];
+
+    const { container } = render(<SavedScreen />);
+
+    expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
+    expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("썸네일 이미지 로드가 실패하면 크래시 없이 플레이스홀더로 폴백한다(M-089)", async () => {
+    // react-native-web Image는 window.Image().onerror로 로드 실패를 판정한다
+    // (thumbnail.test.tsx의 AlwaysErrorsImage 더블과 동일 이유).
+    class AlwaysErrorsImage {
+      onerror: (() => void) | null = null;
+      onload: (() => void) | null = null;
+      set src(_value: string) {
+        queueMicrotask(() => this.onerror?.());
+      }
+    }
+    const originalImage = window.Image;
+    // @ts-expect-error 테스트 더블 — 항상 실패하는 window.Image
+    window.Image = AlwaysErrorsImage;
+
+    try {
+      state.catalog = [
+        makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", imageUrl: "https://example.test/broken.jpg" }),
+      ];
+      state.savedIds = ["op-1"];
+
+      const { container } = render(<SavedScreen />);
+
+      expect(container.querySelector("img")).not.toBeNull();
+      await waitFor(() => {
+        expect(container.querySelector("img")).toBeNull();
+      });
+    } finally {
+      window.Image = originalImage;
+    }
+  });
+
   it("저장 토글에 접근 가능한 이름과 44px 이상 터치영역이 있다(M-031)", () => {
     state.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
     state.savedIds = ["op-1"];

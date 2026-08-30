@@ -7,6 +7,7 @@ import { useSavedOpportunities } from "@/hooks/useSavedOpportunities";
 import { useAppStore } from "@/store/useAppStore";
 import { Txt } from "@/ui/components";
 import { Bookmark, Location, User } from "@/ui/icons";
+import { Thumbnail } from "@/ui/thumbnail";
 import { C, R } from "@/ui/theme";
 
 /** 보관함 목록 뷰 모델 — catalog 원소에 뷰 필드(categoryLabel/costLabel/tone)가 붙은 형태. */
@@ -31,6 +32,11 @@ const SavedItem = memo(function SavedItem({
       accessibilityRole="button"
       style={[styles.item, !first && styles.itemBorder]}
     >
+      <Thumbnail
+        imageUrl={item.imageUrl}
+        tone={item.tone === "mint" ? "mint" : "brand"}
+        style={styles.thumb}
+      />
       <View style={{ flex: 1 }}>
         <Text style={[styles.cat, { color: accent }]}>{item.categoryLabel}</Text>
         <Text style={styles.title}>{item.title}</Text>
@@ -179,6 +185,7 @@ const styles = StyleSheet.create({
   savedHead: { marginTop: 24, marginBottom: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   count: { fontSize: 13, color: C.muted },
   item: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 16 },
+  thumb: { width: 64, height: 64 },
   itemBorder: { borderTopWidth: 1, borderTopColor: C.lineAlt },
   cat: { fontSize: 12, fontWeight: "700" },
   title: { marginTop: 4, fontSize: 16, fontWeight: "700", color: C.ink },
