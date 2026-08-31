@@ -253,6 +253,21 @@ describe("POST /api/why-reasons — 성공 경로", () => {
   });
 });
 
+describe("POST /api/why-reasons — Gemini 키 전송 방식(M-078)", () => {
+  it("API 키를 ?key= 쿼리스트링이 아니라 x-goog-api-key 헤더로 보낸다", async () => {
+    process.env.GEMINI_API_KEY = "secret-key-value";
+    const fetchSpy = vi.fn().mockResolvedValue(geminiResponse("근거 문장."));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await POST(req(VALID_BODY));
+
+    const [url, opts] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).not.toContain("secret-key-value");
+    expect(url).not.toContain("key=");
+    expect((opts.headers as Record<string, string>)["x-goog-api-key"]).toBe("secret-key-value");
+  });
+});
+
 describe("POST /api/why-reasons — 레이트리밋(M-076)", () => {
   function reqFrom(ip: string): Request {
     return new Request("http://x/api/why-reasons", {

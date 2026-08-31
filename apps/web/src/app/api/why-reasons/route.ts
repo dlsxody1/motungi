@@ -84,9 +84,11 @@ async function handle(request: Request) {
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   let res: Response;
   try {
-    res = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
+    // 키를 쿼리(?key=)가 아니라 헤더로 보낸다(M-078) — Sentry의 fetch breadcrumb는 URL을
+    // 그대로 남기므로, 쿼리에 실린 키는 에러 리포팅 경로로 새어나갈 수 있다.
+    res = await fetch(GEMINI_URL, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
       signal: controller.signal,
     });
