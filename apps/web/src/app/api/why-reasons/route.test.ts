@@ -4,6 +4,8 @@
  * 핵심 회귀: 이 라우트는 "실패해도 페이지가 죽지 않는다"가 계약이다 — 키 미설정·429(무료
  * 티어 rate limit)·5xx·타임아웃·malformed 응답 전부 에러가 아니라 `{fallback:true}` 200
  * 이어야 한다. 아래 케이스들이 그 계약을 지킨다.
+ *
+ * 이 파일은 또한 자체 레이트리밋(M-076, 진짜 429)과 Gemini 키 전송 방식(M-078, 헤더)도 검증한다.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -12,6 +14,7 @@ vi.mock("@/lib/api-error", async () => {
   return { ...actual, reportError: vi.fn() };
 });
 
+import { __resetRateLimitForTests } from "@/lib/rate-limit";
 import { POST } from "./route";
 
 const VALID_BODY = {
@@ -43,6 +46,8 @@ function geminiResponse(text: string, tokens = 42): Response {
 beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "log").mockImplementation(() => {});
+  // 레이트리밋 버킷은 모듈 전역 상태 — 리셋 안 하면 이전 테스트 호출수가 새어 들어온다.
+  __resetRateLimitForTests();
 });
 
 afterEach(() => {
@@ -100,6 +105,31 @@ describe("POST /api/why-reasons — 입력 검증", () => {
     process.env.GEMINI_API_KEY = "";
     const res = await POST(req({ ...VALID_BODY, timeLabel: null }));
     expect(res.status).toBe(200);
+  });
+
+  it("title이 200자를 넘으면 400(M-076, 프롬프트 남용 방어)", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await POST(req({ ...VALID_BODY, title: "가".repeat(201) }));
+    expect(res.status).toBe(400);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("title이 정확히 200자면 통과한다(경계값)", async () => {
+    process.env.GEMINI_API_KEY = "";
+    const res = await POST(req({ ...VALID_BODY, title: "가".repeat(200) }));
+    expect(res.status).toBe(200);
+  });
+
+  it("costLabel·timeLabel도 200자를 넘으면 400", async () => {
+    const overLong = "0".repeat(201);
+    const resCost = await POST(req({ ...VALID_BODY, costLabel: overLong }));
+    expect(resCost.status).toBe(400);
+
+    const resTime = await POST(req({ ...VALID_BODY, timeLabel: overLong }));
+    expect(resTime.status).toBe(400);
   });
 });
 
@@ -220,5 +250,39 @@ describe("POST /api/why-reasons — 성공 경로", () => {
     expect(res.status).toBe(200);
     expect((await res.json()).fallback).toBe(true);
     vi.useRealTimers();
+  });
+});
+
+describe("POST /api/why-reasons — 레이트리밋(M-076)", () => {
+  function reqFrom(ip: string): Request {
+    return new Request("http://x/api/why-reasons", {
+      method: "POST",
+      body: JSON.stringify(VALID_BODY),
+      headers: { "x-forwarded-for": ip },
+    });
+  }
+
+  it("같은 IP가 분당 허용치를 넘기면 429 rate_limited를 반환한다(키 미설정이라도 fetch 이전에 걸린다)", async () => {
+    delete process.env.GEMINI_API_KEY;
+
+    let last: Response | undefined;
+    // RATE_LIMIT(15)을 넘길 때까지 같은 IP로 반복.
+    for (let i = 0; i < 16; i++) {
+      last = await POST(reqFrom("198.51.100.1"));
+    }
+
+    expect(last!.status).toBe(429);
+    expect((await last!.json()).error).toBe("rate_limited");
+    expect(last!.headers.get("Retry-After")).toBeTruthy();
+  });
+
+  it("서로 다른 IP는 서로의 레이트리밋에 영향을 주지 않는다", async () => {
+    delete process.env.GEMINI_API_KEY;
+
+    for (let i = 0; i < 16; i++) {
+      await POST(reqFrom("198.51.100.1"));
+    }
+    const res = await POST(reqFrom("198.51.100.2"));
+    expect(res.status).toBe(200);
   });
 });

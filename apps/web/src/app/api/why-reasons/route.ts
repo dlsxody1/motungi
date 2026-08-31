@@ -19,6 +19,7 @@ import {
   type WhyReasonsPromptInput,
 } from "@motungi/core";
 import { apiError, reportError } from "@/lib/api-error";
+import { checkRateLimit, clientKey } from "@/lib/rate-limit";
 
 const GEMINI_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
@@ -27,6 +28,13 @@ const GEMINI_URL =
 const TIMEOUT_MS = 4000;
 
 const BREAKDOWN_KEYS = ["fit", "distance", "time", "difficulty", "cost"] as const;
+
+/** IP당 분당 허용 요청 수 — LLM 호출은 /api/geo보다 비싸므로 더 빡빡하게(M-076). */
+const RATE_LIMIT = 15;
+const RATE_WINDOW_MS = 60_000;
+
+/** 자유 입력 필드(title/costHeading/costLabel/timeLabel) 최대 길이 — 프롬프트 남용 방어(M-076). */
+const MAX_FIELD_LEN = 200;
 
 export async function POST(request: Request) {
   try {
@@ -40,6 +48,17 @@ export async function POST(request: Request) {
 }
 
 async function handle(request: Request) {
+  const { allowed, retryAfterSec } = checkRateLimit(
+    `why-reasons:${clientKey(request)}`,
+    RATE_LIMIT,
+    RATE_WINDOW_MS,
+  );
+  if (!allowed) {
+    const res = apiError("rate_limited", "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", 429);
+    res.headers.set("Retry-After", String(retryAfterSec));
+    return res;
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -106,6 +125,11 @@ async function handle(request: Request) {
   return NextResponse.json({ fallback: false, reasons, usage: { tokens } });
 }
 
+/** 문자열이고 MAX_FIELD_LEN 이하인지 — 프롬프트에 실리는 자유 입력 필드 공통 검증(M-076). */
+function isBoundedString(v: unknown): v is string {
+  return typeof v === "string" && v.length <= MAX_FIELD_LEN;
+}
+
 /** body를 WhyReasonsPromptInput으로 좁힌다. breakdown 5축이 전부 number여야 통과. */
 function parseInput(body: unknown): WhyReasonsPromptInput | null {
   if (typeof body !== "object" || body === null) return null;
@@ -113,10 +137,10 @@ function parseInput(body: unknown): WhyReasonsPromptInput | null {
   const category = b.category;
   if (
     !isOpportunityCategory(category) ||
-    typeof b.title !== "string" ||
-    typeof b.costHeading !== "string" ||
-    typeof b.costLabel !== "string" ||
-    (b.timeLabel !== null && typeof b.timeLabel !== "string")
+    !isBoundedString(b.title) ||
+    !isBoundedString(b.costHeading) ||
+    !isBoundedString(b.costLabel) ||
+    (b.timeLabel !== null && !isBoundedString(b.timeLabel))
   ) {
     return null;
   }
