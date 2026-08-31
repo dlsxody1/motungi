@@ -1926,7 +1926,7 @@ backlog:
   - id: M-076
     title: "/api/geo·/api/why-reasons 공개 프록시에 레이트리밋·좌표 스냅 부재"
     priority: high
-    status: todo
+    status: doing
     scope: [apps/web/src/app/api/geo/route.ts, apps/web/src/app/api/why-reasons/route.ts]
     done_when:
       - "/api/geo가 lat/lng을 /api/opportunities의 GRID(0.01)/snap() 패턴과 동등하게 좌표를 스냅한 뒤 업스트림 URL·캐시 키를 만든다"
@@ -1944,6 +1944,20 @@ backlog:
       처리가 빠져 있다. NAVER 키는 이미 프로덕션에 발급·사용 중이라(HANDOFF.md §2)
       영향은 가상이 아니라 현재형이다. /api/why-reasons도 향후 GEMINI_API_KEY 등록
       시 동일하게 무방비로 쿼터 소진 표적이 된다.
+      [2026-08-31 야간 파이프라인 완료] /api/geo에 GRID(0.01) 스냅 + unstable_cache(6시간
+      창) 도입해 인접 좌표 재조회를 dedupe(응답 point는 원좌표 유지), /api/geo·
+      /api/why-reasons에 IP 기반 인메모리 레이트리밋(각 30/15 req/min, 초과 시 429+
+      Retry-After) 추가, /api/why-reasons의 title/costHeading/costLabel/timeLabel에
+      200자 상한 추가(초과 시 400). 신규 apps/web/src/lib/rate-limit.ts(고정 윈도우,
+      서버리스 인스턴스별 best-effort — 완전한 전역 제한 아님, 향후 Redis/Upstash 전환
+      여지 남김). done_when 5개 전부 충족(그리드 스냅 캐시 키 동일성은 opportunities/
+      route.test.ts 선례대로 next/cache mock 하에서 "인접 좌표→동일 업스트림 URL"로
+      검증 — 실제 캐시 적중률은 프로덕션에서 별도 계측 필요, opportunities 라우트와
+      동일한 테스트 한계). 커밋 3cdd35f, dev 직접 커밋(트렁크 모델, PR 없음). qa 게이트
+      PASS(typecheck 4/4·test core/web/mobile 전체 통과·lint 통과). 시크릿 스캔이
+      diff 추가줄의 `process.env.GEMINI_API_KEY = "test-key"` 류 테스트 픽스처를
+      오탐 처리함 — M-066 선례와 동일한 패턴(변수명에 API_KEY 포함), 상세는
+      docs/nightly/nightly-2026-08-31.md 참조.
 
   - id: M-077
     title: "외부 피드의 cta_url을 프로토콜 검증 없이 링크/딥링크로 그대로 열어줌"
@@ -1968,7 +1982,7 @@ backlog:
   - id: M-078
     title: "Gemini API 키가 URL 쿼리스트링으로 전송돼 Sentry breadcrumb에 노출될 수 있음"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/app/api/why-reasons/route.ts, apps/web/sentry.server.config.ts]
     done_when:
       - "why-reasons/route.ts의 Gemini 호출이 API 키를 ?key= 쿼리 대신 x-goog-api-key 헤더로 전송한다"
@@ -1984,6 +1998,17 @@ backlog:
       등록되는 순간(M-044 후속으로 이미 예정) 이 라우트의 어떤 에러든 Sentry SaaS로
       키가 새어나갈 수 있다. 현재는 키 미등록이라 no_key 폴백만 타지만 등록 전에
       고쳐두는 게 안전하다.
+      [2026-08-31 야간 파이프라인 완료] why-reasons/route.ts의 Gemini fetch를 ?key=
+      쿼리에서 x-goog-api-key 헤더로 교체(URL에 키가 더 이상 안 남음). sentry.server.
+      config.ts에 beforeBreadcrumb·beforeSend 추가 — Gemini/NAVER(maps.apigw.ntruss.com)/
+      data.go.kr(apis.data.go.kr) 호스트로 가는 요청의 쿼리스트링을 제거(헤더 전환 후에도
+      회귀·다른 호출부 대비 방어선으로 유지). done_when 3번째 항목("시뮬레이션된 실패에
+      대한 검증")은 신규 apps/web/sentry.server.config.test.ts(6 tests)로 자동화 —
+      Sentry.init을 모킹해 beforeBreadcrumb/beforeSend를 직접 호출하는 방식이라 수동
+      확인이 아니라 테스트로 고정했다. 커밋 306e18c, dev 직접 커밋(트렁크 모델, PR 없음).
+      qa 게이트 PASS. M-076과 같은 밤 같은 파일(why-reasons/route.ts)을 건드렸지만
+      회귀 없게 커밋은 분리(M-076 커밋에 먼저 반영된 rate-limit/길이제한 위에 이 커밋의
+      헤더 전환 hunk만 추가).
 
   - id: M-079
     title: "스토어 rehydrate 시 savedIds/anchors는 answers와 달리 검증 없이 신뢰됨"
