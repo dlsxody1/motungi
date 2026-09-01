@@ -58,7 +58,7 @@ export function OpportunityDetail({
 }) {
   const router = useRouter();
   // 상세는 카탈로그 전량을 받지 않는다 — id로 1건만(이미 스토어에 있으면 재사용).
-  const { opportunity: fetched, status } = useOpportunity(id);
+  const { opportunity: fetched, status } = useOpportunity(id, initial);
   // 서버가 준 1건이 우선 — 하이드레이션 시점에 훅은 아직 idle이라 비어 있다.
   const o = initial ?? fetched;
   // 걷기길이면 코스 경로를 받아 지도에 선으로 그린다(그 외 소스는 요청하지 않음).

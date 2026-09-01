@@ -20,13 +20,19 @@ export interface OpportunityView {
  * 앵커 반경 목록이라, 반경 밖 활동(공유링크·보관함)은 항상 조회로 떨어졌고 같은 id를
  * 보관함과 상세가 각각 따로 받았다. 이제 둘 다 queryKeys.opportunity(id)를 공유하므로
  * 한 번 받은 건 두 화면이 같이 쓴다 — 재사용 판단이 캐시의 일이지 우리 일이 아니다.
+ *
+ * @param initial 서버(`/opportunity/[id]` 서버 컴포넌트)가 이미 조회해둔 1건. 있으면
+ * react-query `initialData`로 캐시를 선시딩해 같은 id를 클라이언트가 다시 조회하지
+ * 않는다(useSavedOpportunities.ts의 setQueryData 선시딩과 동일한 목적, 여기선 훅
+ * 진입 시점에 이미 값이 있으므로 initialData로 충분하다).
  */
-export function useOpportunity(id: string | null): OpportunityView {
+export function useOpportunity(id: string | null, initial?: MockOpportunity): OpportunityView {
   const { data, isPending, isError } = useQuery({
     // enabled가 false면 실행되지 않으므로 이 키는 쓰이지 않는다.
     queryKey: queryKeys.opportunity(id ?? ""),
     queryFn: () => fetchOpportunityById(id ?? ""),
     enabled: id != null,
+    initialData: initial ? { data: initial, status: "ok" as const } : undefined,
   });
 
   // id가 아예 없으면 조회할 대상이 없다 → "없음"으로.

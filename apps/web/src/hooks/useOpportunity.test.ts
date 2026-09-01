@@ -9,7 +9,9 @@
  * useSavedOpportunities.test.ts("상세에서 이미 받은 건…")에 있다.
  */
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createElement, type ReactNode } from "react";
 import type { MockOpportunity, OpportunityResult } from "@/data/opportunities";
 import { useOpportunity } from "./useOpportunity";
 
@@ -80,6 +82,38 @@ describe("useOpportunity", () => {
     expect(mockedFetch).not.toHaveBeenCalled();
     expect(result.current.status).toBe("empty");
     expect(result.current.opportunity).toBeNull();
+  });
+
+  it("initial이 있으면 같은 id를 재조회하지 않는다(SSR 선시딩, M-074)", async () => {
+    // 전역 테스트 wrapper(vitest.setup.ts)는 staleTime:0을 강제한다 — 다른 테스트가
+    // "조회 없이 통과"하는 걸 막기 위한 의도된 설정이지만, 여기서 그대로 두면 initialData가
+    // 즉시 stale로 잡혀 마운트 즉시 백그라운드 refetch가 붙어 이 테스트 자체가 성립하지
+    // 않는다. 그래서 이 테스트만 실서비스 QueryProvider(lib/query.tsx)와 같은 staleTime을
+    // 가진 클라이언트를 직접 넘겨, "initialData가 신선한 동안 재조회 안 함"을 검증한다.
+    const client = new QueryClient({
+      defaultOptions: { queries: { staleTime: 5 * 60 * 1000, retry: false, gcTime: 0 } },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client }, children);
+
+    const { result } = renderHook(() => useOpportunity("op-9", pick("op-9")), { wrapper });
+
+    expect(result.current.status).toBe("ok");
+    expect(result.current.opportunity?.id).toBe("op-9");
+    await Promise.resolve();
+    expect(mockedFetch).not.toHaveBeenCalled();
+  });
+
+  it("initial이 없는 순수 클라이언트 내비게이션은 기존처럼 조회된다", async () => {
+    mockedFetch.mockResolvedValueOnce({ data: pick("op-2"), status: "ok" });
+
+    const { result } = renderHook(() => useOpportunity("op-2"));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("ok");
+    });
+    expect(mockedFetch).toHaveBeenCalledTimes(1);
+    expect(mockedFetch).toHaveBeenCalledWith("op-2");
   });
 
   it("응답 도착 전 언마운트돼도 터지지 않는다(늦게 온 응답이 죽은 컴포넌트를 갱신하지 않는다)", async () => {
