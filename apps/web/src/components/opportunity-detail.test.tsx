@@ -105,6 +105,17 @@ describe("hasLink=false", () => {
     expect(screen.getAllByText("보러 가기").length).toBeGreaterThan(0);
     expect(screen.queryByText("링크 준비 중")).not.toBeInTheDocument();
   });
+
+  /**
+   * 방어 심층화(M-077) — 적재(adapters.ts)가 이미 http(s)만 저장하지만, 여기서도
+   * 프로토콜을 다시 확인한다. 적재 경로가 바뀌어 비 http(s) 값이 새어 들어와도
+   * "보러 가기"가 그대로 열리지 않게 막는 게 이 테스트의 목적.
+   */
+  it("ctaUrl이 javascript: 스킴이면 '#'과 같은 취급으로 '링크 준비 중'을 렌더한다", () => {
+    render(<OpportunityDetail id="op-1" initial={pick({ ctaUrl: "javascript:alert(1)" })} />);
+    expect(screen.getAllByText("링크 준비 중")).toHaveLength(2);
+    expect(screen.queryByText("보러 가기")).not.toBeInTheDocument();
+  });
 });
 
 describe("주말 나들이 배지", () => {

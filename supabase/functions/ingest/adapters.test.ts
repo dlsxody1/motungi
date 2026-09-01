@@ -56,6 +56,33 @@ Deno.test("종료시각은 지어내지 않는다(null)", () => {
   assertEquals(row?.time_end_hour, null);
 });
 
+/**
+ * M-077: ORG_LINK를 프로토콜 검증 없이 cta_url에 그대로 대입하면, 웹(opportunity-detail.tsx의
+ * hasLink+<a href>)·모바일(opportunity.tsx의 hasLink+Linking.openURL) 양쪽이 그 값을 검증
+ * 없이 그대로 연다. RN Linking.openURL은 커스텀 스킴/intent:도 시도하는 알려진 남용 벡터.
+ */
+Deno.test("M-077: ORG_LINK가 http(s)면 cta_url에 실린다", () => {
+  const row = mapSeoulCulture({ TITLE: "재즈의 밤", ORG_LINK: "https://example.org/jazz" });
+  assertEquals(row?.cta_url, "https://example.org/jazz");
+});
+
+Deno.test("M-077: ORG_LINK가 javascript:/data:/intent: 스킴이면 cta_url을 null로 저장한다", () => {
+  assertEquals(
+    mapSeoulCulture({ TITLE: "재즈의 밤", ORG_LINK: "javascript:alert(1)" })?.cta_url,
+    null,
+  );
+  assertEquals(
+    mapSeoulCulture({ TITLE: "재즈의 밤", ORG_LINK: "data:text/html,<script>alert(1)</script>" })
+      ?.cta_url,
+    null,
+  );
+  assertEquals(
+    mapSeoulCulture({ TITLE: "재즈의 밤", ORG_LINK: "intent://scan/#Intent;scheme=zxing;end" })
+      ?.cta_url,
+    null,
+  );
+});
+
 Deno.test("culture_info — 대상 필드가 없어 제목 폴백으로 거른다", () => {
   assertEquals(mapCultureInfo({ seq: "1", title: "어린이 인형극" }), null);
 });
@@ -215,6 +242,14 @@ Deno.test("M-036: mapSportsFacility — FCLTY_SN 없으면 시설명+주소 해�
 
 Deno.test("M-036: mapSportsFacility — 시설명 없으면 제외", () => {
   assertEquals(mapSportsFacility({ FCLTY_NM: "" }), null);
+});
+
+Deno.test("M-077: HMPG_URL이 javascript: 스킴이면 cta_url을 null로 저장한다", () => {
+  const row = mapSportsFacility({
+    FCLTY_NM: "테스트시설",
+    HMPG_URL: "javascript:alert(document.cookie)",
+  });
+  assertEquals(row?.cta_url, null);
 });
 
 // ── M-036: mapSeoulJob — 퇴근후 게이트(isAfterWorkShift)까지 통과하는 실제 매퍼 경로. ──

@@ -8,7 +8,7 @@
  *    필드 매핑 규칙(mapSeoulCulture 등)은 이 파일이 SoT — core adapters(seoul-culture.ts 등)와
  *    필드명이 다르므로 함께 수정할 것.
  */
-import { hashKey, joinDescription, parseFeeKrw, parseHour, parsePoint, parseTrailGuide, toIsoDate } from "../../../packages/core/src/adapters/util.ts";
+import { hashKey, joinDescription, parseFeeKrw, parseHour, parseHttpUrl, parsePoint, parseTrailGuide, toIsoDate } from "../../../packages/core/src/adapters/util.ts";
 // 퇴근후 판정은 core가 SoT(테스트 소유: core/adapters/seoul-jobs.test.ts).
 import { isAfterWorkShift, parseShiftHours, parseWorkRegion } from "../../../packages/core/src/adapters/seoul-jobs.ts";
 // 아동 전용 판정도 core가 SoT(테스트 소유: core/adapters/audience.test.ts).
@@ -90,7 +90,7 @@ export function mapSeoulCulture(raw: Record<string, string>): OppRow | null {
     dong_name: raw.GUNAME || null,
     lat: point?.lat ?? null,
     lng: point?.lng ?? null,
-    cta_url: raw.ORG_LINK || null,
+    cta_url: parseHttpUrl(raw.ORG_LINK) ?? null,
     image_url: raw.MAIN_IMG?.trim() || null,
     deadline: toIsoDate(raw.END_DATE) ?? null,
     source_label: "서울시 문화행사",
@@ -212,7 +212,7 @@ export function mapSportsFacility(raw: Record<string, string>): OppRow | null {
     dong_name: raw.SIGNGU_NM?.trim() || null,
     lat: point?.lat ?? null,
     lng: point?.lng ?? null,
-    cta_url: raw.HMPG_URL?.trim() || null,
+    cta_url: parseHttpUrl(raw.HMPG_URL) ?? null,
     image_url: null,
     deadline: null,
     source_label: "공공체육시설",

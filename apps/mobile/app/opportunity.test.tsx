@@ -308,6 +308,24 @@ describe("OpportunityScreen", () => {
     expect(screen.getByRole("button", { name: /보러 가기/ })).toBeInTheDocument();
   });
 
+  /**
+   * 방어 심층화(M-077) — 적재(adapters.ts)가 이미 http(s)만 저장하지만, RN Linking.openURL은
+   * 커스텀 스킴/intent:도 시도하는 알려진 남용 벡터라 화면에서도 프로토콜을 다시 확인한다.
+   * ctaUrl이 javascript: 스킴이면 "#"과 같은 취급으로 "링크 준비 중"이어야 한다.
+   */
+  it("ctaUrl이 javascript: 스킴이면 '링크 준비 중'으로 처리한다(M-077)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", ctaUrl: "javascript:alert(1)" }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.getByText("링크 준비 중")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /보러 가기/ })).not.toBeInTheDocument();
+  });
+
   it("summary가 있으면 요약 문구를 렌더한다(M-062)", () => {
     useOpportunityState.status = "ok";
     useOpportunityState.catalog = [

@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { deadlineLabel, displayNameOf, isWeekendOuting } from "@motungi/core";
+import { deadlineLabel, displayNameOf, isWeekendOuting, parseHttpUrl } from "@motungi/core";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useOpportunity } from "@/hooks/useOpportunity";
 import { useWhyReasons } from "@/hooks/useWhyReasons";
@@ -69,7 +69,10 @@ export default function OpportunityScreen() {
   const saved = savedIds.includes(o.id);
 
   const displayName = displayNameOf(user);
-  const hasLink = !!o.ctaUrl && o.ctaUrl !== "#";
+  // 방어 심층화(M-077) — 적재가 이미 http(s)만 저장하지만(adapters.ts parseHttpUrl),
+  // Linking.openURL은 커스텀 스킴/intent:도 시도하는 알려진 남용 벡터라 여기서도 다시
+  // 확인한다. "#" 아니면 그대로 여는 버튼이 적재 경로 변경에 무방비가 되지 않게.
+  const hasLink = !!o.ctaUrl && o.ctaUrl !== "#" && !!parseHttpUrl(o.ctaUrl);
 
   // 마감(D-day)·출처 — 웹(opportunity-detail.tsx)과 동일하게 순수 deadlineLabel로 계산(M-053).
   const today = new Date().toISOString().slice(0, 10);

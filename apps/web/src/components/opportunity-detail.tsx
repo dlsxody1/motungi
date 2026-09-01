@@ -26,6 +26,7 @@ import {
   deadlineLabel,
   displayNameOf,
   isWeekendOuting,
+  parseHttpUrl,
   timeRangeLabel,
 } from "@motungi/core";
 import { CourseGuide } from "@/components/course-guide";
@@ -118,7 +119,10 @@ export function OpportunityDetail({
   }
 
   const displayName = displayNameOf(user);
-  const hasLink = !!o.ctaUrl && o.ctaUrl !== "#";
+  // 방어 심층화(M-077) — 적재가 이미 http(s)만 저장하지만(adapters.ts parseHttpUrl),
+  // 여기서도 다시 확인한다. 적재 경로가 바뀌어도 "#" 아니면 그대로 여는 버튼이 무방비가
+  // 되지 않게(trail-route/route.ts의 gpx_url 이중검증과 같은 판단, M-059).
+  const hasLink = !!o.ctaUrl && o.ctaUrl !== "#" && !!parseHttpUrl(o.ctaUrl);
 
   // 사이드바/헤더 보강 표시값 (row에 있는 데이터를 실제로 노출).
   const today = new Date().toISOString().slice(0, 10);

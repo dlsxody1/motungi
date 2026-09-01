@@ -139,6 +139,25 @@ export function joinDescription(parts: (string | undefined)[]): string | undefin
 }
 
 /**
+ * 외부 제휴 링크(cta_url) 검증. mapSeoulCulture(ORG_LINK)·mapSportsFacility(HMPG_URL)처럼
+ * 공공 API 응답 문자열을 그대로 cta_url에 넣던 경로가 있었다 — javascript:/data:/intent:
+ * 같은 스킴이 섞여 와도 그대로 저장돼, 웹은 `<a href>`로, 모바일은 RN Linking.openURL로
+ * 검증 없이 열었다(모바일은 커스텀 스킴·intent:도 시도하는 알려진 남용 벡터).
+ * http(s) 스킴만 통과시키고, 그 외(깨진 URL 포함)는 undefined(= DB에 null로 저장).
+ */
+export function parseHttpUrl(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  const s = raw.trim();
+  if (!s) return undefined;
+  try {
+    const protocol = new URL(s).protocol;
+    return protocol === "http:" || protocol === "https:" ? s : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * 결정적 문자열 해시(djb2). 여러 어댑터의 external_id 생성에 공용으로 쓴다.
  * Edge(Deno)/브라우저/Node 어디서나 동일 결과.
  */
