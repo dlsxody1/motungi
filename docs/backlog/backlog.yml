@@ -1885,7 +1885,7 @@ backlog:
   - id: M-074
     title: "활동 상세 페이지 SSR로 이미 받은 데이터를 클라이언트가 즉시 재조회"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/hooks/useOpportunity.ts, apps/web/src/components/opportunity-detail.tsx]
     done_when:
       - "/opportunity/[id] 진입 시 서버가 이미 조회한 initial과 같은 id에 대해 클라이언트 fetchOpportunityById가 재호출되지 않는다(queryClient.setQueryData로 캐시 시딩 또는 useQuery의 initialData 활용)"
@@ -1962,7 +1962,7 @@ backlog:
   - id: M-077
     title: "외부 피드의 cta_url을 프로토콜 검증 없이 링크/딥링크로 그대로 열어줌"
     priority: medium
-    status: todo
+    status: doing
     scope: [supabase/functions/ingest/adapters.ts, apps/web/src/components/opportunity-detail.tsx, apps/mobile/app/opportunity.tsx]
     done_when:
       - "mapSeoulCulture(및 cta_url을 설정하는 다른 어댑터)가 raw.ORG_LINK 등을 http(s) URL로 파싱 검증한 뒤에만 cta_url에 대입하고, 형식이 아니면 null로 저장한다"
@@ -2071,7 +2071,7 @@ backlog:
   - id: M-082
     title: "웹 활동 상세 화면 핵심 표시 로직(DdayPill/hasLink/isWeekendOuting)·CourseGuide 테스트 0건"
     priority: high
-    status: todo
+    status: doing
     scope: [apps/web/src/components/opportunity-detail.tsx, apps/web/src/components/course-guide.tsx]
     done_when:
       - "OpportunityDetail을 지난 마감/D-3 이내/여유 마감 3가지 fixture로 렌더해 DdayPill의 서로 다른 톤·텍스트를 검증하는 테스트가 추가된다"
