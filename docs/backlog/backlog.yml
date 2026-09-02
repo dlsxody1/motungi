@@ -2032,7 +2032,7 @@ backlog:
   - id: M-080
     title: "탐색 카테고리 필터 목록(FILTERS)이 core 승격 없이 web·mobile에 각각 하드코딩됨"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/lib/explore-filters.ts, "apps/mobile/app/(tabs)/explore.tsx"]
     done_when:
       - "OpportunityCategory → 필터 라벨 매핑이 packages/core(또는 web·mobile이 함께 import하는 위치) 단일 소스로 존재한다"
@@ -2132,7 +2132,7 @@ backlog:
   - id: M-085
     title: "모바일 탐색 '동네 변경'이 진단 리셋으로 강제 이동돼 탐색 맥락을 잃음"
     priority: high
-    status: todo
+    status: doing
     scope: ["apps/mobile/app/(tabs)/explore.tsx", apps/mobile/app/location.tsx]
     done_when:
       - "모바일 탐색 화면에서 '동네 변경'을 눌렀을 때 인기 동네 선택이 탐색 화면을 벗어나지 않고 즉시 앵커만 갱신한다(웹 NeighborhoodMenu와 동등한 인라인 전환)"
@@ -2153,7 +2153,7 @@ backlog:
   - id: M-086
     title: "모바일 위치 화면에 위치 권한 영구 거부 시 복구 안내가 없음"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/mobile/app/location.tsx]
     done_when:
       - "useCurrentLocation(또는 그 상위)이 권한 상태를 조회해(getForegroundPermissionsAsync) 이미 영구 거부된 경우와 최초 요청을 구분한다"
