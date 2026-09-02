@@ -7,7 +7,8 @@ import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
 import { Chip, Txt } from "@/ui/components";
 import { ExploreRowSkeleton } from "@/ui/explore-skeleton";
-import { ChevronDown, Search } from "@/ui/icons";
+import { Search } from "@/ui/icons";
+import { NeighborhoodMenu } from "@/ui/neighborhood-menu";
 import { Thumbnail } from "@/ui/thumbnail";
 import { C, R, cardShadow } from "@/ui/theme";
 
@@ -146,16 +147,7 @@ export default function ExploreScreen() {
     <>
       <View style={styles.header}>
         <Txt preset="h1" style={{ fontSize: 24 }}>탐색</Txt>
-        <Pressable
-          style={styles.dong}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="동네 변경"
-          onPress={() => router.push("/location")}
-        >
-          <Text style={styles.dongLabel}>{dongName}</Text>
-          <ChevronDown size={16} color={C.muted} />
-        </Pressable>
+        <NeighborhoodMenu dongLabel={dongName} />
       </View>
 
       <View style={styles.search}>
@@ -249,18 +241,6 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: 4 },
-  dong: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    height: 36,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: C.line,
-    backgroundColor: C.surface,
-    paddingHorizontal: 12,
-  },
-  dongLabel: { fontSize: 13, fontWeight: "600", color: C.label },
   search: {
     marginTop: 16,
     height: 50,

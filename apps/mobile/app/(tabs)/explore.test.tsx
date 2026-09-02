@@ -13,8 +13,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockOpportunity } from "@/data/opportunities";
 import type { UserAnchors } from "@motungi/core";
 
-const { pushMock, state } = vi.hoisted(() => ({
+const { pushMock, setAnchorMock, state } = vi.hoisted(() => ({
   pushMock: vi.fn(),
+  setAnchorMock: vi.fn(),
   state: {
     catalog: [] as MockOpportunity[],
     catalogStatus: "idle" as string,
@@ -28,7 +29,8 @@ vi.mock("expo-router", () => ({
 }));
 
 vi.mock("@/store/useAppStore", () => ({
-  useAppStore: (selector: (s: typeof state) => unknown) => selector(state),
+  useAppStore: (selector: (s: typeof state & { setAnchor: typeof setAnchorMock }) => unknown) =>
+    selector({ ...state, setAnchor: setAnchorMock }),
 }));
 
 vi.mock("@/hooks/useEnsureCatalog", () => ({ useEnsureCatalog: vi.fn() }));
@@ -53,6 +55,7 @@ function makeOpp(overrides: Partial<MockOpportunity> & { id: string; title: stri
 
 beforeEach(() => {
   pushMock.mockReset();
+  setAnchorMock.mockReset();
   state.catalog = [];
   state.catalogStatus = "idle";
   state.answers = null;
@@ -213,5 +216,40 @@ describe("ExploreScreen", () => {
     render(<ExploreScreen />);
 
     expect(screen.getByText("망원 한강 러닝 클래스").closest('[role="button"]')).not.toBeNull();
+  });
+
+  describe("동네 변경(M-085)", () => {
+    it("인기 동네를 고르면 setAnchor를 호출해 인라인으로 앵커를 갱신하고, 화면 이동은 하지 않는다", () => {
+      state.catalogStatus = "ok";
+      state.anchors = { home: { dongName: "성수동" } };
+
+      render(<ExploreScreen />);
+
+      fireEvent.click(screen.getByLabelText("동네 변경"));
+      fireEvent.click(screen.getByText("망원동"));
+
+      expect(setAnchorMock).toHaveBeenCalledTimes(1);
+      expect(setAnchorMock).toHaveBeenCalledWith("home", {
+        dongName: "망원동",
+        admCode: undefined,
+        region: "서울 마포구",
+        point: { lat: 37.5556, lng: 126.9019 },
+      });
+      // 재진단 플로우로 튕겨나가지 않는다 — 탐색 화면에 그대로 머문다.
+      expect(pushMock).not.toHaveBeenCalled();
+    });
+
+    it("'동네 다시 설정하기'는 별도 동작으로 /location 재진단 플로우로 이동하고 setAnchor는 직접 호출하지 않는다", () => {
+      state.catalogStatus = "ok";
+      state.anchors = { home: { dongName: "성수동" } };
+
+      render(<ExploreScreen />);
+
+      fireEvent.click(screen.getByLabelText("동네 변경"));
+      fireEvent.click(screen.getByText("동네 다시 설정하기"));
+
+      expect(pushMock).toHaveBeenCalledWith("/location");
+      expect(setAnchorMock).not.toHaveBeenCalled();
+    });
   });
 });
