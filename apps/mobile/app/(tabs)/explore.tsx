@@ -1,5 +1,5 @@
 import type { Opportunity, OpportunityCategory } from "@motungi/core";
-import { nearestAnchorKm, normalizeGu, scoreAll } from "@motungi/core";
+import { EXPLORE_CATEGORY_FILTERS, nearestAnchorKm, normalizeGu, scoreAll } from "@motungi/core";
 import { useRouter } from "expo-router";
 import { memo, useCallback, useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -57,16 +57,12 @@ const ActivityItem = memo(function ActivityItem({
   );
 });
 
-/** 필터 라벨 → 카테고리. "전체"는 null. 데이터 있는 카테고리만 동적으로 노출된다. */
-const FILTERS: { label: string; category: OpportunityCategory | null }[] = [
-  { label: "전체", category: null },
-  { label: "문화·공연", category: "culture" },
-  { label: "운동·산책", category: "active" },
-  { label: "먹거리·마켓", category: "food" },
-  { label: "클래스", category: "class" },
-  { label: "마켓", category: "market" },
-  { label: "부업", category: "side_job" },
-];
+/**
+ * 필터 라벨 → 카테고리. "전체"는 null. 데이터 있는 카테고리만 동적으로 노출된다.
+ * taxonomy는 core 단일 출처(`EXPLORE_CATEGORY_FILTERS`, M-080) — web(explore-filters.ts)과
+ * 동일 배열을 공유한다.
+ */
+const FILTERS = EXPLORE_CATEGORY_FILTERS;
 
 /** B1 · 탐색 (전체 기회) */
 export default function ExploreScreen() {

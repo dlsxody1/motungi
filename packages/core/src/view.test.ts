@@ -4,11 +4,13 @@ import type { Opportunity } from "./types";
 import {
   buildMeta,
   buildWhyReasonsPrompt,
+  CATEGORY_LABEL,
   deadlineLabel,
   decodeHtmlEntities,
   diagnosisSummaryChips,
   displayNameOf,
   ENERGY_LABEL,
+  EXPLORE_CATEGORY_FILTERS,
   normalizeDong,
   normalizeGu,
   type OpportunityRow,
@@ -425,5 +427,36 @@ describe("buildWhyReasonsPrompt — M-044 LLM 근거 생성 입력(breakdown 전
       breakdown,
     });
     expect(prompt).toMatch(/지어내지 마세요/);
+  });
+});
+
+// M-080: web(explore-filters.ts)·mobile(explore.tsx)이 각자 들고 있던 탐색 필터
+// taxonomy를 core 단일 출처로 승격. "전체"(category: null) 포함 7개, 순서 고정.
+describe("EXPLORE_CATEGORY_FILTERS — 탐색 필터 taxonomy 단일 출처(M-080)", () => {
+  it("전체 포함 7개 항목을, web/mobile 원본과 동일한 순서·라벨·카테고리로 갖는다", () => {
+    expect(EXPLORE_CATEGORY_FILTERS).toEqual([
+      { label: "전체", category: null },
+      { label: "문화·공연", category: "culture" },
+      { label: "운동·산책", category: "active" },
+      { label: "먹거리·마켓", category: "food" },
+      { label: "클래스", category: "class" },
+      { label: "마켓", category: "market" },
+      { label: "부업", category: "side_job" },
+    ]);
+  });
+
+  it("첫 항목만 category:null('전체'), 나머지는 전부 값이 있다", () => {
+    expect(EXPLORE_CATEGORY_FILTERS[0]?.category).toBeNull();
+    expect(EXPLORE_CATEGORY_FILTERS.slice(1).every((f) => f.category != null)).toBe(true);
+  });
+
+  it("CATEGORY_LABEL(카드 태그용)과는 다른 매핑이다 — 병합하지 않는다", () => {
+    // CATEGORY_LABEL은 6개 카테고리 전부(레코드), EXPLORE_CATEGORY_FILTERS는 "전체"를 포함한
+    // 7개 배열이고 라벨 문구도 다르다(예: culture → "동네 문화·공연" vs "문화·공연").
+    expect(Object.keys(CATEGORY_LABEL)).toHaveLength(6);
+    expect(EXPLORE_CATEGORY_FILTERS).toHaveLength(7);
+    const cultureFilterLabel = EXPLORE_CATEGORY_FILTERS.find((f) => f.category === "culture")?.label;
+    expect(cultureFilterLabel).toBe("문화·공연");
+    expect(cultureFilterLabel).not.toBe(CATEGORY_LABEL.culture);
   });
 });

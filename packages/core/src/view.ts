@@ -135,6 +135,26 @@ export const CATEGORY_LABEL: Record<OpportunityCategory, string> = {
   market: "마켓·플리마켓",
 };
 
+/**
+ * 탐색(/explore) 카테고리 필터 라벨 ↔ 카테고리 (M-080).
+ *
+ * web(`apps/web/src/lib/explore-filters.ts`)과 mobile(`apps/mobile/app/(tabs)/explore.tsx`)이
+ * 각자 들고 있던 동일한 배열을 core로 승격한 단일 출처. CATEGORY_LABEL(카드 태그용, 6개
+ * Record)과는 다른 매핑이다 — "전체"(category: null)를 포함한 7개 배열이고 라벨 문구도
+ * 다르므로(예: culture → "문화·공연" vs "동네 문화·공연") 병합하지 않는다.
+ *
+ * "전체"는 category=null이고 URL엔 쓰지 않는다(파라미터 없음 = 전체).
+ */
+export const EXPLORE_CATEGORY_FILTERS: { label: string; category: OpportunityCategory | null }[] = [
+  { label: "전체", category: null },
+  { label: "문화·공연", category: "culture" },
+  { label: "운동·산책", category: "active" },
+  { label: "먹거리·마켓", category: "food" },
+  { label: "클래스", category: "class" },
+  { label: "마켓", category: "market" },
+  { label: "부업", category: "side_job" },
+];
+
 /** 카테고리별 카드 톤(브랜드/민트 강조). active만 민트. */
 export function categoryTone(category: OpportunityCategory): "brand" | "mint" {
   return category === "active" ? "mint" : "brand";
