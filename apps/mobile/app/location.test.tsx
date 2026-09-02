@@ -12,21 +12,30 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { pushMock, setAnchorMock, requestPermMock, getPositionMock, reverseGeocodeMock, searchNeighborhoodsMock } =
-  vi.hoisted(() => ({
-    pushMock: vi.fn(),
-    setAnchorMock: vi.fn(),
-    requestPermMock: vi.fn(),
-    getPositionMock: vi.fn(),
-    reverseGeocodeMock: vi.fn(),
-    searchNeighborhoodsMock: vi.fn(),
-  }));
+const {
+  pushMock,
+  setAnchorMock,
+  getForegroundPermMock,
+  requestPermMock,
+  getPositionMock,
+  reverseGeocodeMock,
+  searchNeighborhoodsMock,
+} = vi.hoisted(() => ({
+  pushMock: vi.fn(),
+  setAnchorMock: vi.fn(),
+  getForegroundPermMock: vi.fn(),
+  requestPermMock: vi.fn(),
+  getPositionMock: vi.fn(),
+  reverseGeocodeMock: vi.fn(),
+  searchNeighborhoodsMock: vi.fn(),
+}));
 
 vi.mock("expo-router", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
 vi.mock("expo-location", () => ({
+  getForegroundPermissionsAsync: getForegroundPermMock,
   requestForegroundPermissionsAsync: requestPermMock,
   getCurrentPositionAsync: getPositionMock,
 }));
@@ -46,6 +55,7 @@ import LocationScreen from "./location";
 beforeEach(() => {
   pushMock.mockReset();
   setAnchorMock.mockReset();
+  getForegroundPermMock.mockReset();
   requestPermMock.mockReset();
   getPositionMock.mockReset();
   reverseGeocodeMock.mockReset();
@@ -58,6 +68,7 @@ afterEach(() => {
 
 describe("LocationScreen — 현재 위치로 찾기", () => {
   it("권한 허용 → 좌표 조회 → 역지오코딩 성공 시 선택 동네가 갱신되고 geoError는 뜨지 않는다", async () => {
+    getForegroundPermMock.mockResolvedValueOnce({ status: "undetermined", canAskAgain: true });
     requestPermMock.mockResolvedValueOnce({ status: "granted" });
     getPositionMock.mockResolvedValueOnce({
       coords: { latitude: 37.5, longitude: 127.0 },
@@ -83,7 +94,8 @@ describe("LocationScreen — 현재 위치로 찾기", () => {
     expect(screen.queryByText(/위치를 가져오지 못했어요/)).not.toBeInTheDocument();
   });
 
-  it("권한이 거부되면 geoError를 보여주고 좌표 조회는 하지 않는다", async () => {
+  it("최초 거부(재요청 가능)면 geoError를 보여주고 좌표 조회는 하지 않는다", async () => {
+    getForegroundPermMock.mockResolvedValueOnce({ status: "undetermined", canAskAgain: true });
     requestPermMock.mockResolvedValueOnce({ status: "denied" });
 
     render(<LocationScreen />);
@@ -101,7 +113,30 @@ describe("LocationScreen — 현재 위치로 찾기", () => {
     ).toBeInTheDocument();
   });
 
+  it("영구 거부(재요청 불가)면 설정 안내 문구를 보여주고 재요청도 하지 않는다", async () => {
+    getForegroundPermMock.mockResolvedValueOnce({ status: "denied", canAskAgain: false });
+
+    render(<LocationScreen />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("현재 위치로 찾기"));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(getForegroundPermMock).toHaveBeenCalledTimes(1);
+    expect(requestPermMock).not.toHaveBeenCalled();
+    expect(getPositionMock).not.toHaveBeenCalled();
+    const permanentMsg = screen.getByText(/설정 앱 ?> ?개인정보 보호 ?> ?위치 서비스/);
+    expect(permanentMsg).toBeInTheDocument();
+    // 최초 거부 메시지와 다른 문구여야 한다(회복 경로가 다르므로).
+    expect(
+      screen.queryByText("위치 권한이 없어요. 아래에서 동네를 직접 골라주세요."),
+    ).not.toBeInTheDocument();
+  });
+
   it("흐름 중 예외가 발생하면 catch되어 geoError를 보여준다", async () => {
+    getForegroundPermMock.mockResolvedValueOnce({ status: "undetermined", canAskAgain: true });
     requestPermMock.mockResolvedValueOnce({ status: "granted" });
     getPositionMock.mockRejectedValueOnce(new Error("boom"));
 

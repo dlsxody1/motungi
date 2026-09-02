@@ -87,6 +87,15 @@ export default function LocationScreen() {
     setLocating(true);
     setGeoError(null);
     try {
+      // 영구 거부(status:"denied" & canAskAgain:false)면 request*를 불러도 OS가 조용히
+      // 같은 결과만 반환한다(재프롬프트 없음) — 미리 조회해 그 경우만 별도 안내로 갈라낸다.
+      const precheck = await ExpoLocation.getForegroundPermissionsAsync();
+      if (precheck.status === "denied" && !precheck.canAskAgain) {
+        setGeoError(
+          "위치 권한이 꺼져 있어요. 설정 앱 > 개인정보 보호 > 위치 서비스에서 모퉁이 앱의 위치 접근을 허용하거나, 아래에서 동네를 직접 골라주세요.",
+        );
+        return;
+      }
       const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         setGeoError("위치 권한이 없어요. 아래에서 동네를 직접 골라주세요.");
