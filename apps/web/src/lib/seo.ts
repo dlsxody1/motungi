@@ -191,3 +191,34 @@ export function eventJsonLd(o: MockOpportunity, id: string): string {
       : {}),
   });
 }
+
+/** FAQ 한 쌍. 화면과 JSON-LD가 **같은 객체**를 쓰게 해서 둘이 갈라지지 않게 한다. */
+export interface FaqItem {
+  q: string;
+  a: string;
+}
+
+/**
+ * FAQ 목록 → schema.org FAQPage JSON-LD. 빈 목록이면 `null`.
+ *
+ * `null`을 반환하는 게 핵심이다. 항목 0개짜리 FAQPage는 구조화 데이터 오류이고,
+ * 호출부가 `{... && <script>}`로 통째로 빼게 만든다 — 빈 스크립트 태그를 내보내지 않는다.
+ *
+ * **화면에 없는 답변을 여기 넣지 마라.** 구글 정책상 FAQPage는 사용자가 실제로 볼 수 있는
+ * 내용이어야 한다. 그래서 이 함수는 마크업을 만들지 않는다 — 같은 `FaqItem[]`을 화면도
+ * 받아 렌더하는 구조를 강제하려는 것이다(호출부 참조).
+ *
+ * 이스케이프는 `safeJson`이 한다(`</script>` 조기 종료 방어) — eventJsonLd와 같은 이유.
+ */
+export function faqJsonLd(items: readonly FaqItem[]): string | null {
+  if (items.length === 0) return null;
+  return safeJson({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map(({ q, a }) => ({
+      "@type": "Question",
+      name: q,
+      acceptedAnswer: { "@type": "Answer", text: a },
+    })),
+  });
+}

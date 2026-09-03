@@ -139,3 +139,75 @@ function withCopula(label: string): string {
   const hasBatchim = (code - 0xac00) % 28 !== 0;
   return hasBatchim ? `${label}이다` : `${label}다`;
 }
+
+/** 질문/답변 한 쌍. 화면과 JSON-LD가 같은 값을 쓴다(웹의 `FaqItem`과 같은 모양). */
+export interface GuFaq {
+  q: string;
+  a: string;
+}
+
+/** 답변 하나에 나열할 활동 이름 최대 개수. 넘으면 문장이 목록처럼 읽혀 인용이 안 된다. */
+const FAQ_EXAMPLES = 3;
+
+/** 퇴근 직후로 볼 시작 시각의 하한(18시~). `timeStartHour`가 없으면 판정하지 않는다. */
+const AFTER_WORK_FROM = 18;
+
+/**
+ * 구 활동 목록 → 그 구의 Q&A (M-095).
+ *
+ * ## 이 함수의 계약: 답을 못 하면 질문을 만들지 않는다
+ * 무료 활동이 0개인 구에 "무료로 뭘 할 수 있나요?" → "없습니다"를 내보내면 그 페이지는
+ * 검색에서 들어온 사람에게 쓸모가 없고, FAQPage 리치 결과로도 최악이다. 그래서 각 질문은
+ * **근거 데이터가 있을 때만** 배열에 들어간다. 결과가 빈 배열일 수 있고, 그건 정상이다
+ * (호출부가 섹션을 통째로 빼면 된다).
+ *
+ * ## 왜 활동 이름을 답변에 박는가
+ * 답변 엔진은 "무료 활동이 12개 있다"보다 "무료로는 A·B·C가 있다"를 인용한다. 다만
+ * 이름은 **실제 카탈로그에서** 온 것이어야 한다 — `summarySentence`와 같은 규율이다.
+ * 지어낸 활동명 하나가 인용 신뢰를 통째로 깎는다.
+ *
+ * 호출부가 마감 필터를 이미 걸었다고 가정한다(`summarizeGu`와 같은 전제).
+ */
+export function guFaqs(summary: GuSummary, items: readonly MockOpportunity[]): GuFaq[] {
+  const faqs: GuFaq[] = [];
+
+  const free = items.filter((o) => o.costKrw === 0);
+  if (free.length > 0) {
+    faqs.push({
+      q: `${summary.gu}에서 무료로 할 수 있는 건 뭐가 있나요?`,
+      a: `지금 ${summary.gu}에는 참가비가 없는 활동이 ${free.length}개 있다. ${nameList(free)} 등이다. 마감이 지난 활동은 빼고 매일 한 번 새로 확인한다.`,
+    });
+  }
+
+  // 퇴근 직후(18시~) 시작하는 활동.
+  //
+  // `timeWindow`를 쓴다 — `scoringWindow`가 아니다. 후자는 종료시각을 추정으로 채우므로
+  // 점수엔 쓰되 화면·문장에 새면 안 된다(types.ts의 명시적 계약). 시작 시각을 모르는
+  // 활동은 "퇴근하고 갈 수 있다"고 말하지 않는다 — 모르는 것을 아는 척하지 않는 쪽이
+  // 수를 부풀리는 것보다 낫다. 그 사실은 답변 문장에도 밝힌다.
+  const afterWork = items.filter((o) => (o.timeWindow?.startHour ?? -1) >= AFTER_WORK_FROM);
+  if (afterWork.length > 0) {
+    faqs.push({
+      q: `${summary.gu}에서 퇴근하고 바로 갈 수 있는 곳이 있나요?`,
+      a: `저녁 ${AFTER_WORK_FROM}시 이후에 시작하는 활동이 ${afterWork.length}개 있다. ${nameList(afterWork)} 등이 여기 해당한다. 시작 시각이 표기되지 않은 활동은 이 수에서 뺐다.`,
+    });
+  }
+
+  // 갈래를 고정 문구로 나열하지 않는다. "가장 많은 갈래는 퇴근후 부업이다. 전시·공연·강좌를
+  // 모아…"처럼 앞 문장의 실측값이 뒤 문장의 하드코딩 목록에 없는 사고가 난다(강서구 실측).
+  // 집계에서 나온 값만 말하고, 나머지는 출처와 필터 규칙처럼 항상 참인 것만 쓴다.
+  faqs.push({
+    q: `${summary.gu}에는 어떤 종류의 활동이 많나요?`,
+    a: `${summary.gu}에 지금 올라와 있는 활동 ${summary.total}개 가운데 가장 많은 갈래는 ${withCopula(summary.topCategoryLabel)}. 공공 데이터에서 모아 마감이 지나지 않은 것만 보여주고, 하루 한 번 새로 확인한다.`,
+  });
+
+  return faqs;
+}
+
+/** 활동 이름 최대 3개를 "A·B·C"로. 가운뎃점은 한국어에서 동격 나열의 기본 부호다. */
+function nameList(items: readonly MockOpportunity[]): string {
+  return items
+    .slice(0, FAQ_EXAMPLES)
+    .map((o) => o.title)
+    .join("·");
+}

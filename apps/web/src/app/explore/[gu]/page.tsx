@@ -21,12 +21,14 @@ import type { ReactNode } from "react";
 import {
   fetchOpportunities,
   GU_MIN_ACTIVITIES,
+  guFaqs,
   isSeoulGu,
   summarizeGu,
   summarySentence,
   type GuSummary,
   type MockOpportunity,
 } from "@motungi/core";
+import { FaqSection } from "@/components/faq-section";
 import { SiteFooter, TopNav, WebContainer } from "@/components/web-shell";
 import { opportunityPath, SITE_URL } from "@/lib/seo";
 import { supabase } from "@/lib/supabase";
@@ -45,7 +47,7 @@ const LIST_MAX = 40;
  */
 async function getGuData(
   gu: string,
-): Promise<{ summary: GuSummary; items: MockOpportunity[] } | null> {
+): Promise<{ summary: GuSummary; items: MockOpportunity[]; all: MockOpportunity[] } | null> {
   if (!supabase) return null;
   const today = new Date().toISOString().slice(0, 10);
   // 구 필터는 DB에서 못 건다 — dong_name이 "종로구"/"서울 종로구"로 분열돼 있어
@@ -57,10 +59,11 @@ async function getGuData(
   // 임계 미달이면 페이지를 만들지 않는다 — summarizeGu가 이미 걸러서 여기로 안 온다.
   if (!summary) return null;
 
-  const items = data
-    .filter((o) => o.location?.dongName?.includes(gu))
-    .slice(0, LIST_MAX);
-  return { summary, items };
+  const all = data.filter((o) => o.location?.dongName?.includes(gu));
+  // `all`과 `items`를 나눠 내보내는 이유: 목록은 40건에서 자르지만 **집계는 자르면 안 된다.**
+  // 잘린 배열로 FAQ를 만들면 "무료 4개"가 상위 40건 안의 4개가 되어, 상단 요약이 말하는
+  // 전체 수치와 조용히 어긋난다. 이 페이지의 계약은 "숫자를 설명할 수 있을 것"이다.
+  return { summary, items: all.slice(0, LIST_MAX), all };
 }
 
 /**
@@ -163,7 +166,7 @@ export default async function GuPage({ params }: { params: Promise<{ gu: string 
     );
   }
 
-  const { summary, items } = found;
+  const { summary, items, all } = found;
 
   return (
     <GuFrame gu={gu}>
@@ -206,6 +209,17 @@ export default async function GuPage({ params }: { params: Promise<{ gu: string 
           </li>
         ))}
       </ul>
+
+      {/*
+        Q&A는 목록 **뒤**에 둔다. 답변 엔진은 위에서부터 읽으므로 이 페이지의 본론
+        (요약 산문 + 실제 활동)이 먼저 와야 한다. FAQ는 그 답을 보강하는 자리다.
+        내용은 전부 위 `items`·`summary`에서 나온다 — guFaqs가 근거 없는 질문은 만들지 않는다.
+      */}
+      <FaqSection
+        className="mt-14 border-t border-line pt-10"
+        heading={`${gu} 활동, 자주 묻는 것`}
+        items={guFaqs(summary, all)}
+      />
 
       <p className="mt-10 text-[15px] leading-[23px] text-label">
         찾는 게 없나요?{" "}

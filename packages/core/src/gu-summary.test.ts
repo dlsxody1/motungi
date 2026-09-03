@@ -10,6 +10,7 @@ import type { MockOpportunity } from "./catalog";
 import {
   GU_MIN_ACTIVITIES,
   SEOUL_GU,
+  guFaqs,
   isSeoulGu,
   summarizeGu,
   summarySentence,
@@ -171,5 +172,84 @@ describe("summarySentence", () => {
     );
     expect(summarySentence(noBatchim[0]!)).toContain("동네 먹거리다");
     expect(summarySentence(noBatchim[0]!)).not.toContain("먹거리이다");
+  });
+});
+
+/**
+ * guFaqs — FAQPage로 나갈 Q&A (M-095).
+ *
+ * 여기서 고정하는 계약은 하나다: **답할 근거가 없으면 질문을 만들지 않는다.**
+ * "무료로 뭘 하나요?" → "없습니다"를 구조화 데이터로 내보내는 건 검색에서 들어온
+ * 사람에게도, 리치 결과로도 최악이다. 나머지 단언은 전부 "지어내지 않았는가"다.
+ */
+describe("guFaqs", () => {
+  const summary = { gu: "종로구", total: 10, freeCount: 4, topCategoryLabel: "동네 문화·공연" };
+
+  it("무료 활동이 0개면 무료 질문 자체를 만들지 않는다", () => {
+    const paid = Array.from({ length: 5 }, (_, i) => opp({ id: `p${i}`, costKrw: 15_000 }));
+    const faqs = guFaqs({ ...summary, freeCount: 0 }, paid);
+
+    expect(faqs.some((f) => f.q.includes("무료"))).toBe(false);
+    // 카테고리 질문은 집계만으로 답할 수 있으니 남는다 — 빈 배열이 되진 않는다.
+    expect(faqs.length).toBeGreaterThan(0);
+  });
+
+  it("무료 활동 이름을 실제 카탈로그에서 최대 3개까지 넣는다", () => {
+    const free = ["가", "나", "다", "라"].map((t, i) => opp({ id: `f${i}`, title: t, costKrw: 0 }));
+    const answer = guFaqs(summary, free).find((f) => f.q.includes("무료"))!.a;
+
+    expect(answer).toContain("가·나·다");
+    // 4번째는 넣지 않는다 — 문장이 목록처럼 길어지면 인용되지 않는다.
+    expect(answer).not.toContain("라");
+    expect(answer).toContain("4개");
+  });
+
+  it("시작 시각을 모르는 활동은 '퇴근 후 가능'으로 세지 않는다", () => {
+    const items = [
+      opp({ id: "t1", timeWindow: { startHour: 19, endHour: 21 } }),
+      // 시작 시각 미상 — seoul_culture 상당수가 이 상태다. 모르는 걸 아는 척하지 않는다.
+      opp({ id: "t2", timeWindow: undefined }),
+      opp({ id: "t3", timeWindow: { startHour: 10, endHour: 12 } }),
+    ];
+    const answer = guFaqs(summary, items).find((f) => f.q.includes("퇴근"))!.a;
+
+    expect(answer).toContain("1개");
+    // 그 사실을 답변이 직접 밝힌다 — 수를 부풀리지 않았음을 독자가 알 수 있게.
+    expect(answer).toContain("표기되지 않은");
+  });
+
+  it("퇴근 후 활동이 하나도 없으면 그 질문을 만들지 않는다", () => {
+    const daytime = [opp({ id: "d1", timeWindow: { startHour: 10, endHour: 12 } })];
+    expect(guFaqs(summary, daytime).some((f) => f.q.includes("퇴근"))).toBe(false);
+  });
+
+  it("모든 답변이 실제 집계 수치를 쓴다 — 하드코딩된 숫자가 없다", () => {
+    const items = Array.from({ length: 3 }, (_, i) => opp({ id: `c${i}`, costKrw: 0 }));
+    const faqs = guFaqs({ ...summary, total: 42 }, items);
+
+    expect(faqs.find((f) => f.q.includes("종류"))!.a).toContain("42개");
+    // 구 이름이 모든 질문에 들어간다 — 답변 엔진이 맥락 없이 떼어가도 성립해야 한다.
+    expect(faqs.every((f) => f.q.includes("종로구"))).toBe(true);
+  });
+
+  /**
+   * 실측 회귀(강서구, 2026-09-03): 답변이 "가장 많은 갈래는 퇴근후 부업이다.
+   * 전시·공연·강좌·운동·산책길을 모아…"였다. 앞 문장의 실측값이 뒤 문장의 하드코딩
+   * 목록에 없어서, 한 답변 안에서 자기모순이 났다. 고정 나열을 다시 넣지 못하게 막는다.
+   */
+  it("갈래를 하드코딩해 나열하지 않는다 — 집계값과 어긋날 수 있다", () => {
+    const answer = guFaqs(
+      { ...summary, topCategoryLabel: "퇴근후 부업" },
+      [opp({ costKrw: 12_000 })],
+    ).find((f) => f.q.includes("종류"))!.a;
+
+    expect(answer).toContain("퇴근후 부업이다");
+    expect(answer).not.toContain("전시·공연·강좌");
+  });
+
+  it("활동이 하나도 없어도 터지지 않고, 집계로 답할 수 있는 질문만 남는다", () => {
+    const faqs = guFaqs({ ...summary, freeCount: 0 }, []);
+    expect(faqs).toHaveLength(1);
+    expect(faqs[0]!.q).toContain("종류");
   });
 });
