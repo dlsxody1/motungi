@@ -5,6 +5,7 @@ import {
   type CoordFallbackRow,
   type GuCentroidRow,
 } from "./gu-fallback";
+import { normalizeGu } from "../view";
 
 /** neighborhoods 테이블 형태의 최소 픽스처(같은 구에 여러 동 = 중심 평균 대상). */
 const NEIGHBORHOODS: GuCentroidRow[] = [
@@ -12,6 +13,27 @@ const NEIGHBORHOODS: GuCentroidRow[] = [
   { sigungu: "종로구", lat: 37.59, lng: 127.0 },
   { sigungu: "마포구", lat: 37.55, lng: 126.9 },
 ];
+
+describe("normalizeGu 복제본 (배포 제약으로 view.ts에서 의도적으로 복제됨)", () => {
+  it("view.ts의 normalizeGu와 결과가 같다 — 갈라지면 여기서 잡는다", () => {
+    // gu-fallback은 leaf여야 해서(Deno 배포 제약) normalizeGu를 복제해 들고 있다.
+    // 직접 export하지 않으므로 buildGuCentroids의 키 생성 경로로 대조한다.
+    const cases = [
+      "서울특별시 종로구",
+      "서울 마포구",
+      "경기도 성남시",
+      "경기 고양시",
+      "인천광역시 미추홀구",
+      "인천 남동구",
+      "종로구", // 접두사 없음
+      "  서울특별시   강남구  ", // 공백 섞임
+    ];
+    for (const raw of cases) {
+      const viaClone = [...buildGuCentroids([{ sigungu: raw, lat: 1, lng: 2 }]).keys()][0];
+      expect(viaClone).toBe(normalizeGu(raw));
+    }
+  });
+});
 
 describe("buildGuCentroids", () => {
   it("같은 구의 동 좌표를 평균해 구 중심을 만든다", () => {
