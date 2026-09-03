@@ -165,7 +165,7 @@ export function normalizeGu(dong: string | null | undefined): string | null {
 export const CATEGORY_LABEL: Record<OpportunityCategory, string> = {
   culture: "동네 문화·공연",
   active: "동네 산책·운동",
-  side_job: "퇴근후 부업",
+  side_job: "동네 소일거리",
   class: "클래스·배움",
   food: "동네 먹거리",
   market: "마켓·플리마켓",
@@ -188,7 +188,7 @@ export const EXPLORE_CATEGORY_FILTERS: { label: string; category: OpportunityCat
   { label: "먹거리·마켓", category: "food" },
   { label: "클래스", category: "class" },
   { label: "마켓", category: "market" },
-  { label: "부업", category: "side_job" },
+  { label: "소일거리", category: "side_job" },
 ];
 
 /** 카테고리별 카드 톤(브랜드/민트 강조). active만 민트. */
