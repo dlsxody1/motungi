@@ -18,6 +18,7 @@ export type OpportunityCategory =
 /**
  * 데이터 소스 (docs/DATA-SOURCES.md · docs/API-DESIGN.md).
  * - seoul_culture: 서울시 문화행사 (culture, 1순위).
+ * - kopis: 공연예술통합전산망 (culture, 민간 공연 — 소극장 연극·클래식·재즈).
  * - culture_info: 한눈에보는문화정보 data.go.kr (culture, 전국).
  * - sports_facility: 공공체육시설 data.go.kr (active).
  * - trail: 두루누비 걷기길 data.go.kr (active).
@@ -26,6 +27,7 @@ export type OpportunityCategory =
  */
 export type SourceKind =
   | "seoul_culture"
+  | "kopis"
   | "culture_info"
   | "sports_facility"
   | "trail"

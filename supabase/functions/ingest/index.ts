@@ -15,11 +15,18 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import {
   mapCultureInfo,
+  mapKopis,
   mapSeoulCulture,
   mapSeoulJob,
   mapTrail,
   type OppRow,
 } from "./adapters.ts";
+import {
+  buildFacilityIndex,
+  facilityKey,
+  parseGuFromAddress,
+} from "../../../packages/core/src/adapters/kopis.ts";
+import { parsePoint } from "../../../packages/core/src/adapters/util.ts";
 import {
   dedupByKey,
   inMetro,
@@ -108,6 +115,104 @@ async function fetchDataGoKrXml(url: string): Promise<Record<string, string>[]> 
   return parseXmlItems(xml);
 }
 
+// ── KOPIS ────────────────────────────────────────────────
+//
+// KOPIS는 좌표를 공연목록이 아니라 시설상세에만 준다. 공연목록엔 시설ID조차 없고
+// 공연장 '이름'만 오므로, 시설목록을 이름으로 색인해 시설ID를 얻고(core kopis.ts)
+// 그 시설만 상세 조회해 좌표·구를 채운다. 공연상세(공연 1건당 1콜)를 건너뛰는 우회다.
+// 실측(2026-09-03, 서울): 공연 100건이 쓰는 공연장 63곳이 63/63 매칭.
+
+const KOPIS_BASE = "http://www.kopis.or.kr/openApi/restful";
+/** 목록/사전 페이지당 건수(API 상한 100). */
+const KOPIS_ROWS = 100;
+/**
+ * 시설 사전 순회 상한. 서울 실측 1,734곳이라 20페이지(2,000)면 덮는다.
+ * ⚠️ 여기서 잘리면 가나다순 뒷부분 공연장이 사전에 없어 좌표가 조용히 비고,
+ *    매칭률이 63/63 → 34/63으로 떨어진다(실측). 시설이 늘면 이 수를 올린다.
+ */
+const KOPIS_FACILITY_MAX_PAGES = 20;
+/** 공연목록 순회 상한(LIMIT까지 모으면 멈춘다). */
+const KOPIS_LIST_MAX_PAGES = 5;
+
+async function fetchKopis(url: string): Promise<Record<string, string>[]> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`KOPIS HTTP ${res.status}`);
+  const xml = await res.text();
+  // KOPIS는 <dbs><db>…</db></dbs> — data.go.kr의 <item>과 태그명만 다르다.
+  return parseXmlItems(xml, "db");
+}
+
+/** 공연장 이름 → 시설ID 색인(서울 전량). */
+async function fetchKopisFacilityIndex(key: string): Promise<Map<string, string>> {
+  const all: Record<string, string>[] = [];
+  for (let page = 1; page <= KOPIS_FACILITY_MAX_PAGES; page++) {
+    const url = `${KOPIS_BASE}/prfplc?service=${encodeURIComponent(key)}&cpage=${page}&rows=${KOPIS_ROWS}&signgucode=11`;
+    const rows = await fetchKopis(url);
+    if (rows.length === 0) break;
+    all.push(...rows);
+  }
+  return buildFacilityIndex(all);
+}
+
+/** 시설상세 1건 → 좌표·시군구. 실패는 null로 삼킨다(좌표 하나로 적재를 막지 않는다). */
+async function fetchKopisFacilityDetail(
+  key: string,
+  mt10id: string,
+): Promise<{ lat: number | null; lng: number | null; gu: string | null } | null> {
+  try {
+    const url = `${KOPIS_BASE}/prfplc/${encodeURIComponent(mt10id)}?service=${encodeURIComponent(key)}`;
+    const [row] = await fetchKopis(url);
+    if (!row) return null;
+    const point = parsePoint(row.la, row.lo);
+    return {
+      lat: point?.lat ?? null,
+      lng: point?.lng ?? null,
+      gu: parseGuFromAddress(row.adres),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** 시설상세 동시 호출 수(공연장 수만큼만 호출되므로 trail보다 여유롭다). */
+const KOPIS_DETAIL_CONCURRENCY = 6;
+
+/**
+ * 공연 행에 좌표·구를 백필한다.
+ * 시설상세는 **공연장 종류만큼**만 부른다 — 같은 극장에서 열리는 공연이 많을수록 이득.
+ */
+async function enrichKopisVenues(rows: OppRow[], key: string): Promise<OppRow[]> {
+  const index = await fetchKopisFacilityIndex(key);
+  // 이 배치에 실제로 등장한 공연장만 추린다.
+  const wanted = new Map<string, string>(); // facilityKey → mt10id
+  for (const r of rows) {
+    const k = facilityKey(r.venue_name);
+    if (!k || wanted.has(k)) continue;
+    const id = index.get(k);
+    if (id) wanted.set(k, id);
+  }
+
+  const entries = [...wanted.entries()];
+  const detail = new Map<string, { lat: number | null; lng: number | null; gu: string | null }>();
+  for (let i = 0; i < entries.length; i += KOPIS_DETAIL_CONCURRENCY) {
+    const chunk = entries.slice(i, i + KOPIS_DETAIL_CONCURRENCY);
+    const got = await Promise.all(chunk.map(([, id]) => fetchKopisFacilityDetail(key, id)));
+    got.forEach((d, j) => {
+      if (d) detail.set(chunk[j]![0], d);
+    });
+  }
+
+  for (const r of rows) {
+    const k = facilityKey(r.venue_name);
+    const d = k ? detail.get(k) : undefined;
+    if (!d) continue;
+    r.lat = d.lat;
+    r.lng = d.lng;
+    r.dong_name = d.gu;
+  }
+  return rows;
+}
+
 /**
  * 걷기길 시점 좌표 — GPX 파일 첫 trkpt.
  *
@@ -181,7 +286,8 @@ async function upsertRows(rows: OppRow[]): Promise<number> {
    * 한 곳에서 건다. 원본 좌표는 덮어쓰지 않는다(applyGuCoordFallback 계약).
    */
   const centroids = await getGuCentroids();
-  const payload = rows.map((r) => ({
+  // venue_name은 kopis 좌표 백필용 임시 필드다 — DB 컬럼이 아니라 실으면 upsert가 죽는다.
+  const payload = rows.map(({ venue_name: _venue, ...r }) => ({
     ...applyGuCoordFallback(r, centroids),
     fetched_at: now,
   }));
@@ -245,6 +351,30 @@ Deno.serve(async (req) => {
         rows = dedupByKey(candidates, (r) => r.external_id);
       }
       return rows;
+    }),
+    runSource("kopis", async () => {
+      const kopisKey = (Deno.env.get("KOPIS_SERVICE_KEY") ?? "").trim();
+      if (!kopisKey) throw new Error("KOPIS_SERVICE_KEY 없음");
+      // 조회기간은 API 상한이 31일이다. 오늘부터 31일 안에 열리는 공연만 받는다.
+      const d = new Date();
+      const stdate = d.toISOString().slice(0, 10).replace(/-/g, "");
+      d.setDate(d.getDate() + 31);
+      const eddate = d.toISOString().slice(0, 10).replace(/-/g, "");
+
+      const rows: OppRow[] = [];
+      for (let page = 1; page <= KOPIS_LIST_MAX_PAGES && rows.length < LIMIT; page++) {
+        // signgucode=11(서울)로 지역을 API 단에서 좁힌다 — 받아서 거르는 것보다 싸다.
+        const url = `${KOPIS_BASE}/pblprfr?service=${encodeURIComponent(kopisKey)}&stdate=${stdate}&eddate=${eddate}&cpage=${page}&rows=${KOPIS_ROWS}&signgucode=11`;
+        const raw = await fetchKopis(url);
+        if (raw.length === 0) break; // 마지막 페이지
+        // 항목 단위 격리(M-028): 한 항목이 던져도 그 항목만 스킵.
+        const { results: mapped, skipped } = safeMapItems(raw, mapKopis);
+        if (skipped) console.warn(`kopis: 매핑 실패 ${skipped}건 스킵(page ${page})`);
+        for (const m of mapped) if (m) rows.push(m);
+      }
+      const deduped = dedupByKey(rows, (r) => r.external_id);
+      // 좌표·구는 시설 색인을 거쳐 채운다. 실패해도 행은 살린다(구 중심 폴백이 upsert에서 받는다).
+      return await enrichKopisVenues(deduped, kopisKey);
     }),
     runSource("trail", async () => {
       if (!dataGoKrKey) throw new Error("DATA_GO_KR_SERVICE_KEY 없음");

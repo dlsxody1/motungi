@@ -6,11 +6,16 @@
  * 어떤 모듈도 import하지 않는 leaf 모듈로 유지할 것.
  */
 
-/** data.go.kr/공공 API의 XML 응답에서 <item>...</item> 블록별 태그를 레코드로 추출(경량 파서). */
-export function parseXmlItems(xml: string): Record<string, string>[] {
+/**
+ * 공공 API XML 응답에서 반복 블록별 태그를 레코드로 추출(경량 파서).
+ *
+ * 기본 블록명은 data.go.kr 계열의 `item`. KOPIS는 같은 구조에 태그명만 `db`라서
+ * (`<dbs><db>…</db></dbs>`) 파서를 새로 짜지 않고 블록명만 바꿔 재사용한다.
+ */
+export function parseXmlItems(xml: string, block = "item"): Record<string, string>[] {
   const items: Record<string, string>[] = [];
-  for (const block of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
-    const inner = block[1]!;
+  for (const b of xml.matchAll(new RegExp(`<${block}>([\\s\\S]*?)</${block}>`, "g"))) {
+    const inner = b[1]!;
     const rec: Record<string, string> = {};
     for (const tag of inner.matchAll(/<([a-zA-Z0-9_]+)>([\s\S]*?)<\/\1>/g)) {
       rec[tag[1]!] = tag[2]!

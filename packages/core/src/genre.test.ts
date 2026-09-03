@@ -34,6 +34,19 @@ describe("normalizeGenre", () => {
     expect(normalizeGenre("영화")).not.toBe(normalizeGenre("교육/체험"));
   });
 
+  it("kopis 어휘도 같은 라벨로 모인다 — 소스가 셋이 되면서 음악이 3갈래로 갈렸다", () => {
+    // 실측(2026-09-03, 서울 300건): 서양음악(클래식) 99 · 대중음악 83 · 한국음악(국악) 21.
+    expect(normalizeGenre("서양음악(클래식)")).toBe("음악");
+    expect(normalizeGenre("대중음악")).toBe("음악");
+    expect(normalizeGenre("한국음악(국악)")).toBe("음악");
+    // 기존 소스의 "콘서트"·"클래식"과 같은 라벨이어야 필터가 한 줄로 선다.
+    expect(normalizeGenre("서양음악(클래식)")).toBe(normalizeGenre("클래식"));
+    expect(normalizeGenre("무용(서양/한국무용)")).toBe("무용");
+    expect(normalizeGenre("대중무용")).toBe("무용");
+    // kopis는 "뮤지컬"만 주는데 기존 소스는 "뮤지컬/오페라"다 — 갈리면 안 된다.
+    expect(normalizeGenre("뮤지컬")).toBe(normalizeGenre("뮤지컬/오페라"));
+  });
+
   it("모르는 값은 원문을 그대로 돌려준다 — 새 장르가 사라지지 않게", () => {
     expect(normalizeGenre("판소리")).toBe("판소리");
     expect(normalizeGenre("  서커스  ")).toBe("서커스");

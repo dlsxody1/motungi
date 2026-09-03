@@ -52,6 +52,11 @@ export interface OppRow {
   source_label: string;
   time_start_hour: number | null;
   time_end_hour: number | null;
+  /**
+   * 공연장명(kopis 전용, DB 컬럼 아님 — 적재 계층이 좌표 백필에 쓰고 upsert 전에 버린다).
+   * summary 문자열을 되파싱하면 공연장 이름에 " · "가 들어갈 때 깨지므로 원본을 따로 들고 간다.
+   */
+  venue_name?: string | null;
   /** 걷기길 코스 안내(trail 전용, 그 외 소스는 미지정). 마이그레이션 0013. */
   course_start?: string | null;
   course_end?: string | null;
@@ -139,6 +144,56 @@ export function mapCultureInfo(raw: Record<string, string>): OppRow | null {
     source_label: "한눈에보는문화정보",
     time_start_hour: null,
     time_end_hour: null,
+  };
+}
+
+// ── KOPIS 공연 → culture ──────────────────────────────────
+//
+// 왜 넣었나: seoul_culture는 공공 주최 행사 위주라 소극장 연극·클래식·재즈 같은
+// "퇴근 후 1픽"에 맞는 민간 공연이 통째로 빠져 있었다. KOPIS가 그 구멍을 메운다.
+//
+// 좌표는 이 함수가 채우지 않는다 — KOPIS 공연목록엔 좌표도 시설ID도 없고 공연장
+// '이름'만 온다. 적재 계층(index.ts)이 시설 색인으로 좌표·구를 백필한다(core kopis.ts).
+// trail이 GPX로 좌표를 채우는 것과 같은 2단 구조다.
+
+export function mapKopis(raw: Record<string, string>): OppRow | null {
+  const id = raw.mt20id?.trim();
+  const title = raw.prfnm?.trim();
+  if (!id || !title) return null;
+  // 공연완료는 적재하지 않는다(목록 API가 기간과 무관하게 끼워 보내는 경우가 있다).
+  if (raw.prfstate?.includes("완료")) return null;
+  // 컨셉 게이트 — 성인 직장인용. 이 소스엔 대상 필드가 없어 제목 폴백으로만 판정한다.
+  if (isKidsOnly(null, title)) return null;
+  return {
+    source: "kopis",
+    category: "culture",
+    external_id: id,
+    title,
+    // area는 "서울특별시"까지만 와서 구 단위가 아니다 — 공연장명이 더 쓸모 있다.
+    summary: [raw.fcltynm?.trim(), raw.genrenm?.trim()].filter(Boolean).join(" · ") || title,
+    // 목록 API는 줄거리(sty)를 주지 않는다. 상세를 부르지 않으므로 없는 게 정상.
+    description: null,
+    genre: raw.genrenm?.trim() || null,
+    // 대상 정보를 주지 않는다 — 지어내지 않고 null(미상=성인 가능).
+    audience: null,
+    // 티켓가격(pcseguidance)은 상세에만 있다. 목록만 쓰므로 미상 — 0으로 두면
+    // "무료"로 표시돼 사실이 아닌 정보가 카드에 찍힌다.
+    cost_krw: null,
+    difficulty: null,
+    // 적재 계층이 시설 주소에서 구를 채운다. 실패하면 null로 남는다.
+    dong_name: null,
+    lat: null,
+    lng: null,
+    cta_url: `https://www.kopis.or.kr/por/db/pblprfr/pblprfrView.do?mt20Id=${encodeURIComponent(id)}`,
+    image_url: raw.poster?.trim() || null,
+    // prfpdto는 "2026.09.22" 형식 — toIsoDate가 점 구분을 읽는다.
+    deadline: toIsoDate(raw.prfpdto) ?? null,
+    source_label: "KOPIS 공연예술통합전산망",
+    // 공연시간(dtguidance)도 상세 전용이다. 추정하지 않는다(seoul_culture의 start+2 전례).
+    time_start_hour: null,
+    time_end_hour: null,
+    // 좌표 백필용 — upsert 전에 적재 계층이 제거한다(DB 컬럼이 아니다).
+    venue_name: raw.fcltynm?.trim() || null,
   };
 }
 
