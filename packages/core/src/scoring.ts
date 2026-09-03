@@ -148,15 +148,20 @@ export function scoreOpportunity(
   // 않아 timeWindow가 영원히 undefined였고, 그래서 시작시각을 파싱해두고도 229행의
   // time 축이 0.5로 죽어 있었다(실측 2026-09-03). scoringWindow는 종료가 없으면
   // 기본 지속시간으로 추정하되 그 추정이 화면에는 새지 않는다(view.ts).
+  //
+  // 분모는 선호 창 폭이 아니라 **활동 길이**다. "이 활동 시간의 몇 %가 내가 원하는
+  // 시간대인가"가 맞는 질문이기 때문. 선호 창 폭으로 나누면 활동이 창보다 짧을 때
+  // 만점을 받을 수 없어, 19–21시 활동(겹침 2h / 창 4h = 0.5)이 **시간 정보가 아예 없는**
+  // 활동의 중립값 0.5와 동점이 됐다 — 아는 것이 모르는 것보다 유리하지 않았다
+  // (실측 2026-09-03: 19시시작·20시시작·시간미상이 총점 77로 전부 같았다).
   const prefWindow = TIMESLOT_WINDOW[answers.timeSlot];
   const scoringWindow = opp.scoringWindow ?? opp.timeWindow;
+  const activityHours =
+    scoringWindow == null ? 0 : scoringWindow.endHour - scoringWindow.startHour;
   const time =
-    prefWindow == null || scoringWindow == null
+    prefWindow == null || scoringWindow == null || activityHours <= 0
       ? 0.5
-      : clamp01(
-          overlapHours(prefWindow, scoringWindow) /
-            (prefWindow.endHour - prefWindow.startHour),
-        );
+      : clamp01(overlapHours(prefWindow, scoringWindow) / activityHours);
 
   // 난이도: 성향 허용치 이내면 만점, 넘으면 감점.
   const tolerance = ENERGY_DIFFICULTY_TOLERANCE[answers.energy];

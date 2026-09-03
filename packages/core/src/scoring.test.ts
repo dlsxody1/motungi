@@ -174,14 +174,16 @@ describe("scoreOpportunity 축", () => {
     expect(noOverlap.breakdown.time).toBe(0);
   });
 
-  it("time: 부분 겹침은 겹친 시간 비율로 계산된다", () => {
+  it("time: 부분 겹침은 활동 시간 대비 비율로 계산된다", () => {
     const partial = scoreOpportunity(
       opp({ timeWindow: { startHour: 21, endHour: 23 } }),
       answers,
       anchors,
     );
-    // overlapHours = min(22,23) - max(18,21) = 22 - 21 = 1, ratio = 1 / (22-18) = 0.25
-    expect(partial.breakdown.time).toBe(0.25);
+    // 21–23시 활동(2시간) 중 18–22시 창에 드는 건 21–22시 1시간 → 1/2 = 0.5.
+    // 분모가 선호 창 폭(4h)이 아니라 활동 길이(2h)다 — 아래 "time 축 — 활동 길이 기준
+    // 겹침" describe 참조(모르는 활동 0.5와 동점이 되던 문제).
+    expect(partial.breakdown.time).toBe(0.5);
   });
 
   it("time: timeWindow가 없으면 중립값 0.5", () => {
@@ -331,5 +333,48 @@ describe("PREFILTERED_WEIGHTS — 사전 필터 경로의 가중치", () => {
     const a = scoreOpportunity(interesting, answers, anchors).score;
     const b = scoreOpportunity(notInteresting, answers, anchors).score;
     expect(a).toBeGreaterThan(b);
+  });
+});
+
+/**
+ * time 축의 분모 문제 — 겹침을 "선호 창 폭"으로 나누면 활동이 선호 창보다 짧을 때
+ * 만점을 받을 수 없다. 19–21시 활동은 퇴근후 창(18–22시, 4시간)과 2시간 겹쳐 0.5인데,
+ * 시간 정보가 **아예 없는** 활동의 중립값도 0.5다 → 아는 것과 모르는 것이 동점이 된다
+ * (실측 2026-09-03: 19시시작·20시시작·시간미상이 총점 77로 전부 같았다).
+ * 분모를 활동 길이로 바꾸면 "이 활동 시간의 몇 %가 내가 원하는 시간대인가"가 된다.
+ */
+describe("time 축 — 활동 길이 기준 겹침", () => {
+  const eveningAnswers: DiagnosisAnswers = { ...answers, timeSlot: "weekday_evening" };
+
+  it("선호 창 안에 완전히 들어가면 만점 — 모름(0.5)보다 확실히 높다", () => {
+    const inside = opp({ timeWindow: { startHour: 19, endHour: 21 } });
+    const unknown = opp({});
+    const a = scoreOpportunity(inside, eveningAnswers, anchors).breakdown.time;
+    const b = scoreOpportunity(unknown, eveningAnswers, anchors).breakdown.time;
+    expect(a).toBe(1);
+    expect(a).toBeGreaterThan(b);
+  });
+
+  it("절반만 걸치면 0.5", () => {
+    // 16–20시 활동: 18–22시 창과 18–20시(2시간) 겹침, 활동 길이는 4시간 → 0.5
+    const half = opp({ timeWindow: { startHour: 16, endHour: 20 } });
+    expect(scoreOpportunity(half, eveningAnswers, anchors).breakdown.time).toBe(0.5);
+  });
+
+  it("선호 창 밖이면 0", () => {
+    const daytime = opp({ timeWindow: { startHour: 10, endHour: 12 } });
+    expect(scoreOpportunity(daytime, eveningAnswers, anchors).breakdown.time).toBe(0);
+  });
+
+  it("선호 창보다 긴 활동도 걸친 만큼만 — 종일 행사가 만점이 되지 않는다", () => {
+    // 9–21시(12시간) 활동: 18–21시 3시간 겹침 → 0.25
+    const allDay = opp({ timeWindow: { startHour: 9, endHour: 21 } });
+    expect(scoreOpportunity(allDay, eveningAnswers, anchors).breakdown.time).toBeCloseTo(0.25, 6);
+  });
+
+  it("길이가 0인 창은 0으로 나누지 않는다", () => {
+    const zero = opp({ timeWindow: { startHour: 19, endHour: 19 } });
+    const t = scoreOpportunity(zero, eveningAnswers, anchors).breakdown.time;
+    expect(Number.isFinite(t)).toBe(true);
   });
 });
