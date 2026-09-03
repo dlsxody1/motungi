@@ -352,8 +352,20 @@ describe("fetchOpportunities — Supabase 쿼리 계약", () => {
     expect(client.or).not.toHaveBeenCalled();
     expect(client.in).not.toHaveBeenCalled();
     expect(client.not).not.toHaveBeenCalled();
-    // 정렬은 항상 마감 임박순.
+    // 기본 정렬은 마감 임박순(unsorted를 켜지 않는 한).
     expect(client.order).toHaveBeenCalledWith("deadline", { ascending: true, nullsFirst: false });
+  });
+
+  it("unsorted를 주면 마감 정렬을 걸지 않는다 — 스코어링 호출부가 점수순으로 자른다", async () => {
+    const client = makeClient({ data: [makeRow({ category: "culture" })], error: null });
+
+    await fetchOpportunities(asClient(client), { unsorted: true, limit: 200 });
+
+    // 정렬 후 limit이면 "가장 좋은 N건"이 아니라 "가장 빨리 마감되는 N건"이 남는다.
+    // 실측(2026-09-03): 망원동 10km·culture 후보 236건 중 30건만 창에 들어왔고
+    // 그 창은 사흘치(9/6까지)로 닫혀 있었다.
+    expect(client.order).not.toHaveBeenCalled();
+    expect(client.limit).toHaveBeenCalledWith(200);
   });
 
   it("today를 주면 마감 유효(null 또는 today 이후)만 서버에서 거른다", async () => {

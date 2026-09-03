@@ -170,6 +170,18 @@ export interface FetchOpportunitiesOptions {
    * 정확한 원이 아니라 바운딩 박스다(boundingBox 주석 참조).
    */
   near?: { point: GeoPoint; radiusKm: number };
+  /**
+   * 마감 임박순 정렬을 끈다(기본 false = 정렬함).
+   *
+   * 왜 필요한가: 정렬 후 limit이라 **"가장 좋은 N건"이 아니라 "가장 빨리 마감되는 N건"**이
+   * 잘려 나간다. 원픽 경로(limit 30)에서 실측하면 망원동 10km·culture 후보 236건 중
+   * 30건만 스코어링에 들어가고 그 창은 사흘치(9/6까지)로 닫혀 있었다. 상시 활동
+   * (deadline null)은 nullsFirst:false로 맨 뒤라 창에 아예 못 들어온다.
+   *
+   * 스코어링을 하는 호출부는 이걸 켜고 **점수순으로 자기가 자른다**(pickTop).
+   * 마감순 그대로가 맞는 곳(목록·캐러셀)은 기본값을 쓴다.
+   */
+  unsorted?: boolean;
 }
 
 /**
@@ -205,9 +217,11 @@ export async function fetchOpportunities(
       .lte("lng", box.maxLng);
   }
   // 마감 임박순(가까운 것 먼저), 상시(null)는 뒤로. 상한까지만.
-  const { data, error } = await query
-    .order("deadline", { ascending: true, nullsFirst: false })
-    .limit(options.limit ?? DEFAULT_LIMIT);
+  // unsorted면 정렬을 걸지 않는다 — 스코어링 호출부가 점수순으로 자를 것이기 때문(위 주석).
+  const sorted = options.unsorted
+    ? query
+    : query.order("deadline", { ascending: true, nullsFirst: false });
+  const { data, error } = await sorted.limit(options.limit ?? DEFAULT_LIMIT);
   if (error) return { data: [], status: "error" };
   if (!data || data.length === 0) return { data: [], status: "empty" };
   // DB의 category/source enum에는 앱이 모르는 레거시 값이 남아있을 수 있고, 스키마 드리프트로
