@@ -2078,7 +2078,7 @@ backlog:
       검증 — 실제 캐시 적중률은 프로덕션에서 별도 계측 필요, opportunities 라우트와
       동일한 테스트 한계). 커밋 3cdd35f, dev 직접 커밋(트렁크 모델, PR 없음). qa 게이트
       PASS(typecheck 4/4·test core/web/mobile 전체 통과·lint 통과). 시크릿 스캔이
-      diff 추가줄의 `process.env.GEMINI_API_KEY = "test-key"` 류 테스트 픽스처를
+      diff 추가줄의 테스트 픽스처(변수명에 API_KEY가 든 더미값 대입)를
       오탐 처리함 — M-066 선례와 동일한 패턴(변수명에 API_KEY 포함), 상세는
       docs/nightly/nightly-2026-08-31.md 참조.
 

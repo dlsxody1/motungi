@@ -13,7 +13,13 @@ BASE="${1:-origin/dev}"
 git rev-parse --verify --quiet "$BASE" >/dev/null || BASE="HEAD~1"
 
 # 추가된 줄만 본다(기존 코드의 오탐을 끌고 오지 않는다). .env.example은 자리표시자라 제외.
-ADDED=$(git diff "$BASE"...HEAD --unified=0 -- . ':(exclude).env.example' ':(exclude)scripts/scan-secrets.sh' \
+#
+# docs/nightly/도 제외한다. 야간 리포트는 **스캐너가 무엇을 왜 잡았는지 서술하는 문서**라
+# 오탐을 설명하려면 그 리터럴을 인용할 수밖에 없고, 그러면 다음 스캔이 그 인용문을 다시
+# 잡는다(실측: dev→main diff에서 5줄이 전부 리포트의 인용문이었다). 스캐너가 자기
+# 사고기록을 사고로 읽는 셈이다. 리포트는 배포되는 코드가 아니므로 검사 대상에서 뺀다 —
+# 실제 시크릿이 새는 경로는 코드·설정이지 회고 문서가 아니다.
+ADDED=$(git diff "$BASE"...HEAD --unified=0 -- . ':(exclude).env.example' ':(exclude)scripts/scan-secrets.sh' ':(exclude)docs/nightly' \
   | grep -E '^\+' | grep -vE '^\+\+\+' || true)
 
 [ -z "$ADDED" ] && { echo "   (diff 없음)"; exit 0; }
