@@ -1,5 +1,5 @@
 import type { Opportunity, OpportunityCategory } from "@motungi/core";
-import { nearestAnchorKm, normalizeGu, scoreAll } from "@motungi/core";
+import { nearestAnchorKm, normalizeGenre, normalizeGu, scoreAll } from "@motungi/core";
 import { useRouter } from "expo-router";
 import { memo, useCallback, useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -128,7 +128,18 @@ export default function ExploreScreen() {
       if (cat && o.category !== cat) return false;
       if (region && normalizeGu(o.location?.dongName) !== region) return false;
       if (easyOnly && !(o.difficulty != null && o.difficulty <= 0.33)) return false;
-      if (q && !`${o.title} ${o.summary}`.includes(q)) return false;
+      /**
+       * genre 원문 + 통합 라벨을 검색 대상에 넣는다(웹 explore와 동일).
+       * 소스마다 어휘가 갈려(전시/미술 55 vs 전시 44) 원문만으로는 "미술" 검색에
+       * culture_info 44건이 통째로 빠진다.
+       */
+      if (
+        q &&
+        !`${o.title} ${o.summary} ${o.genre ?? ""} ${normalizeGenre(o.genre) ?? ""}`
+          .toLowerCase()
+          .includes(q.toLowerCase())
+      )
+        return false;
       return true;
     });
   }, [filter, region, easyOnly, query, sorted]);

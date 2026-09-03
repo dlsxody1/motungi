@@ -3,6 +3,7 @@ export * from "./diagnosis";
 export * from "./scoring";
 export * from "./adapters";
 export * from "./view";
+export * from "./genre";
 export * from "./catalog";
 export * from "./store";
 export * from "./database.types";
