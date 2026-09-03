@@ -87,6 +87,8 @@ export interface Database {
           created_at: string; // timestamptz (ISO)
           time_start_hour: number | null;
           time_end_hour: number | null;
+          /** 좌표 정밀도(0018). null=소스 원본, "sigungu"=구 중심 폴백. */
+          coord_level: string | null;
           lat: number | null;
           lng: number | null;
           // 걷기길 코스 안내(0013). trail 전용 — 그 외 소스는 null.
@@ -120,6 +122,7 @@ export interface Database {
           created_at?: string;
           time_start_hour?: number | null;
           time_end_hour?: number | null;
+          coord_level?: string | null;
           lat?: number | null;
           lng?: number | null;
           course_start?: string | null;
@@ -152,6 +155,7 @@ export interface Database {
           created_at?: string;
           time_start_hour?: number | null;
           time_end_hour?: number | null;
+          coord_level?: string | null;
           lat?: number | null;
           lng?: number | null;
           course_start?: string | null;

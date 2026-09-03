@@ -31,6 +31,11 @@ import {
   parseXmlItems,
   safeMapItems,
 } from "../../../packages/core/src/adapters/ingest-fetch.ts";
+import {
+  applyGuCoordFallback,
+  buildGuCentroids,
+  type GuCentroidRow,
+} from "../../../packages/core/src/adapters/gu-fallback.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 // Edge 런타임 자동 주입은 SERVICE_ROLE_KEY. 커스텀 secret도 fallback 허용.
@@ -149,11 +154,37 @@ async function enrichTrailCoords(rows: OppRow[]): Promise<OppRow[]> {
   return rows;
 }
 
+/**
+ * 구 중심좌표 맵 — 요청당 1회만 neighborhoods를 읽어 재사용한다.
+ * 소스마다 upsertRows가 불리므로 캐시하지 않으면 같은 426행을 4번 읽는다.
+ */
+let guCentroidsCache: Map<string, { lat: number; lng: number }> | null = null;
+
+async function getGuCentroids(): Promise<Map<string, { lat: number; lng: number }>> {
+  if (guCentroidsCache) return guCentroidsCache;
+  const { data, error } = await supabase
+    .from("neighborhoods")
+    .select("sigungu,lat,lng")
+    .not("lat", "is", null);
+  // 폴백은 있으면 좋은 것이지 적재의 전제가 아니다 — 실패하면 빈 맵으로 넘어간다.
+  if (error || !data) return (guCentroidsCache = new Map());
+  return (guCentroidsCache = buildGuCentroids(data as GuCentroidRow[]));
+}
+
 /** OppRow[] → opportunities upsert. (source, external_id) 충돌 시 갱신. */
 async function upsertRows(rows: OppRow[]): Promise<number> {
   if (!rows.length) return 0;
   const now = new Date().toISOString();
-  const payload = rows.map((r) => ({ ...r, fetched_at: now }));
+  /**
+   * 좌표 없는 행에 구 중심좌표를 채운다(0018). 여기서 거는 이유: 마이그레이션 백필만
+   * 하면 **다음 적재가 다시 null로 덮어써** 재오염된다. 모든 소스가 이 함수를 지나므로
+   * 한 곳에서 건다. 원본 좌표는 덮어쓰지 않는다(applyGuCoordFallback 계약).
+   */
+  const centroids = await getGuCentroids();
+  const payload = rows.map((r) => ({
+    ...applyGuCoordFallback(r, centroids),
+    fetched_at: now,
+  }));
   const { error, count } = await supabase
     .from("opportunities")
     .upsert(payload, { onConflict: "source,external_id", count: "exact" });

@@ -41,6 +41,11 @@ export interface OppRow {
   dong_name: string | null;
   lat: number | null;
   lng: number | null;
+  /**
+   * 좌표 정밀도 표식(0018). null=소스 원본 좌표, "sigungu"=구 중심 폴백.
+   * 어댑터는 채우지 않는다 — 적재 계층(upsertRows)의 applyGuCoordFallback이 붙인다.
+   */
+  coord_level?: string;
   cta_url: string | null;
   image_url: string | null;
   deadline: string | null;
