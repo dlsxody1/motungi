@@ -1,11 +1,13 @@
 import type { Opportunity } from "@motungi/core";
 import { useRouter } from "expo-router";
 import { memo, useCallback } from "react";
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
+import { useSavedOpportunities } from "@/hooks/useSavedOpportunities";
 import { useAppStore } from "@/store/useAppStore";
 import { Txt } from "@/ui/components";
 import { Bookmark, Location, User } from "@/ui/icons";
+import { Thumbnail } from "@/ui/thumbnail";
 import { C, R } from "@/ui/theme";
 
 /** 보관함 목록 뷰 모델 — catalog 원소에 뷰 필드(categoryLabel/costLabel/tone)가 붙은 형태. */
@@ -25,7 +27,16 @@ const SavedItem = memo(function SavedItem({
 }) {
   const accent = item.tone === "mint" ? C.mint : C.primary;
   return (
-    <Pressable onPress={() => onOpen(item.id)} style={[styles.item, !first && styles.itemBorder]}>
+    <Pressable
+      onPress={() => onOpen(item.id)}
+      accessibilityRole="button"
+      style={[styles.item, !first && styles.itemBorder]}
+    >
+      <Thumbnail
+        imageUrl={item.imageUrl}
+        tone={item.tone === "mint" ? "mint" : "brand"}
+        style={styles.thumb}
+      />
       <View style={{ flex: 1 }}>
         <Text style={[styles.cat, { color: accent }]}>{item.categoryLabel}</Text>
         <Text style={styles.title}>{item.title}</Text>
@@ -33,7 +44,13 @@ const SavedItem = memo(function SavedItem({
       </View>
       <View style={{ alignItems: "flex-end", gap: 6 }}>
         <Text style={[styles.cost, { color: accent }]}>{item.costLabel}</Text>
-        <Pressable onPress={() => onToggle(item.id)} hitSlop={10}>
+        <Pressable
+          onPress={() => onToggle(item.id)}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="저장 취소"
+          aria-pressed={true}
+        >
           <Bookmark size={20} filled color={C.primary} />
         </Pressable>
       </View>
@@ -50,10 +67,9 @@ export default function SavedScreen() {
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
 
   const catalog = useAppStore((s) => s.catalog);
-  // 저장 id를 서버 카탈로그에서 해소. 카탈로그에 없는(상위 200건 밖) 항목은 조용히 빠진다.
-  const items = savedIds
-    .map((id) => catalog.find((o) => o.id === id))
-    .filter((o): o is NonNullable<typeof o> => !!o);
+  // 저장 id를 해소. catalog(반경으로 좁힌 창)에 있으면 그대로 쓰고, 없으면 단건 조회한다
+  // (M-045 — 이전엔 catalog.find만 써서 창 밖 저장 id가 조용히 사라졌다).
+  const { items, status, retry } = useSavedOpportunities(savedIds, catalog);
   const openDetail = useCallback(
     (id: string) => router.push({ pathname: "/opportunity", params: { id } }),
     [router],
@@ -79,14 +95,22 @@ export default function SavedScreen() {
           <Text style={styles.bannerTitle}>이번 주 동네 다시 보기</Text>
           <Text style={styles.bannerSub}>상황이 바뀌었나요? 60초면 재진단해요.</Text>
         </View>
-        <Pressable style={styles.redo} hitSlop={8} onPress={() => router.push("/diagnosis")}>
+        <Pressable
+          style={styles.redo}
+          hitSlop={8}
+          onPress={() => router.push("/diagnosis")}
+          accessibilityRole="button"
+        >
           <Text style={styles.redoLabel}>재진단</Text>
         </Pressable>
       </View>
 
       <View style={styles.savedHead}>
         <Txt preset="headline">저장한 활동</Txt>
-        <Text style={styles.count}>{items.length}개</Text>
+        {/* 로딩·에러 중엔 count 노드 자체를 렌더하지 않는다 — "0개"로 오독되면 안 된다(M-046). */}
+        {status !== "loading" && status !== "error" && (
+          <Text style={styles.count}>{items.length}개</Text>
+        )}
       </View>
     </>
   );
@@ -102,14 +126,36 @@ export default function SavedScreen() {
         <SavedItem item={item} first={index === 0} onOpen={openDetail} onToggle={toggleSaved} />
       )}
       ListEmptyComponent={
-        <View style={styles.empty}>
-          <Bookmark size={28} color={C.faint} />
-          <Text style={styles.emptyTitle}>아직 저장한 활동이 없어요</Text>
-          <Text style={styles.emptySub}>마음에 드는 활동의 북마크를 눌러 담아두세요.</Text>
-          <Pressable style={styles.emptyCta} onPress={() => router.push("/explore")}>
-            <Text style={styles.emptyCtaLabel}>둘러보기</Text>
-          </Pressable>
-        </View>
+        status === "loading" ? (
+          <View style={styles.empty}>
+            <ActivityIndicator size="large" color={C.primary} />
+            <Text style={styles.emptyTitle}>저장한 활동을 불러오는 중…</Text>
+          </View>
+        ) : status === "error" ? (
+          <View style={styles.empty}>
+            <Bookmark size={28} color={C.faint} />
+            <Text style={styles.emptyTitle}>활동을 불러오지 못했어요</Text>
+            <Text style={styles.emptySub}>네트워크 상태를 확인하고 다시 시도해 주세요.</Text>
+            <Pressable style={styles.emptyCta} onPress={retry} accessibilityRole="button">
+              <Text style={styles.emptyCtaLabel}>다시 시도</Text>
+            </Pressable>
+          </View>
+        ) : (
+          // status === "empty"(저장한 id 자체가 없음) 또는 status === "ok"인데 items가 0인
+          // 드문 경우(저장한 활동이 전부 삭제됨) — 둘 다 "보여줄 게 없다"는 점은 같다.
+          <View style={styles.empty}>
+            <Bookmark size={28} color={C.faint} />
+            <Text style={styles.emptyTitle}>아직 저장한 활동이 없어요</Text>
+            <Text style={styles.emptySub}>마음에 드는 활동의 북마크를 눌러 담아두세요.</Text>
+            <Pressable
+              style={styles.emptyCta}
+              onPress={() => router.push("/explore")}
+              accessibilityRole="button"
+            >
+              <Text style={styles.emptyCtaLabel}>둘러보기</Text>
+            </Pressable>
+          </View>
+        )
       }
       initialNumToRender={8}
       windowSize={7}
@@ -139,6 +185,7 @@ const styles = StyleSheet.create({
   savedHead: { marginTop: 24, marginBottom: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   count: { fontSize: 13, color: C.muted },
   item: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 16 },
+  thumb: { width: 64, height: 64 },
   itemBorder: { borderTopWidth: 1, borderTopColor: C.lineAlt },
   cat: { fontSize: 12, fontWeight: "700" },
   title: { marginTop: 4, fontSize: 16, fontWeight: "700", color: C.ink },

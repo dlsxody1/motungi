@@ -24,10 +24,19 @@ vi.mock("next/cache", () => ({
   unstable_cache: (fn: (...args: unknown[]) => unknown) => fn,
 }));
 
+/**
+ * fetchOpportunities만 모킹한다 — loadCatalogByRadiusLadder(M-072로 core에 승격된 반경
+ * 사다리 정책)는 실제 구현을 그대로 통과시켜, 라우트가 그 정책과 올바르게 배선됐는지까지
+ * 검증한다. importActual로 나머지 export(순수 함수라 부작용 없음)는 실물을 쓴다.
+ */
 const fetchOpportunities = vi.fn();
-vi.mock("@motungi/core", () => ({
-  fetchOpportunities: (...args: unknown[]) => fetchOpportunities(...args),
-}));
+vi.mock("@motungi/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@motungi/core")>();
+  return {
+    ...actual,
+    fetchOpportunities: (...args: unknown[]) => fetchOpportunities(...args),
+  };
+});
 
 import { GET } from "./route";
 

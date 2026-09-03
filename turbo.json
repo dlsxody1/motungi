@@ -10,7 +10,8 @@
     "KAKAO_REST_API_KEY",
     "DATA_GO_KR_SERVICE_KEY",
     "SEOUL_OPENAPI_KEY",
-    "INGEST_CRON_SECRET"
+    "INGEST_CRON_SECRET",
+    "GEMINI_API_KEY"
   ],
   "tasks": {
     "build": {

@@ -11,8 +11,8 @@
  */
 import type { StateStorage } from "zustand/middleware";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { createStore, type StoreApi } from "zustand/vanilla";
-import type { DiagnosisAnswers } from "./diagnosis";
+import { createStore } from "zustand/vanilla";
+import { isValidDiagnosisAnswers, type DiagnosisAnswers } from "./diagnosis";
 import type { Location, UserAnchors } from "./types";
 
 export type AnchorSlot = "home" | "work";
@@ -92,9 +92,7 @@ export interface CreateAppStoreDeps {
 export function createAppStore<
   TOpportunity extends { id: string },
   TCatalogStatus extends string,
->(
-  deps: CreateAppStoreDeps,
-): StoreApi<AppState<TOpportunity, TCatalogStatus>> {
+>(deps: CreateAppStoreDeps) {
   return createStore<AppState<TOpportunity, TCatalogStatus>>()(
     persist(
       (set, get) => ({
@@ -152,6 +150,19 @@ export function createAppStore<
           answers: s.answers,
           savedIds: s.savedIds,
         }),
+        // M-070: rehydrate 시 answers를 재검증한다. 쓰기 경로(draftToAnswers)는 이미
+        // 검증하지만 읽기(storage에서 되돌아오는 JSON)는 무방비였다 — 구버전 스키마나
+        // 수동 변조로 유효하지 않은 값이 들어와도 크래시 대신 안전하게 null로 되돌린다.
+        merge: (persistedState, currentState) => {
+          const merged = {
+            ...currentState,
+            ...(persistedState as Partial<AppState<TOpportunity, TCatalogStatus>>),
+          };
+          if (merged.answers != null && !isValidDiagnosisAnswers(merged.answers)) {
+            merged.answers = null;
+          }
+          return merged;
+        },
       },
     ),
   );

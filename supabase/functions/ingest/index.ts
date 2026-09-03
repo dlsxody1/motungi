@@ -15,19 +15,34 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import {
   mapCultureInfo,
+  mapKopis,
   mapSeoulCulture,
   mapSeoulJob,
   mapTrail,
   type OppRow,
 } from "./adapters.ts";
 import {
+  buildFacilityIndex,
+  facilityKey,
+  parseGuFromAddress,
+} from "../../../packages/core/src/adapters/kopis.ts";
+import { parsePoint } from "../../../packages/core/src/adapters/util.ts";
+import {
   dedupByKey,
   inMetro,
+  isAllowedGpxUrl,
   isCronAuthorized,
+  isPlainRecord,
   judgeIngest,
   parseJsonItems,
   parseXmlItems,
+  safeMapItems,
 } from "../../../packages/core/src/adapters/ingest-fetch.ts";
+import {
+  applyGuCoordFallback,
+  buildGuCentroids,
+  type GuCentroidRow,
+} from "../../../packages/core/src/adapters/gu-fallback.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 // Edge 런타임 자동 주입은 SERVICE_ROLE_KEY. 커스텀 secret도 fallback 허용.
@@ -80,7 +95,8 @@ async function fetchSeoul(
     if (emptyOnNoRow && start > 1) return [];
     throw new Error(`${service}: row 없음 (${body?.RESULT?.MESSAGE ?? "?"})`);
   }
-  return body.row;
+  // row 원소 중 평범한 객체가 아닌 값은 걸러낸다(M-028) — parseJsonItems 가드와 동일한 이유.
+  return Array.isArray(body.row) ? body.row.filter(isPlainRecord) : [];
 }
 
 /** data.go.kr JSON 응답 fetch — 파싱(단일object quirk 정규화 포함)은 core parseJsonItems가 담당. */
@@ -99,17 +115,118 @@ async function fetchDataGoKrXml(url: string): Promise<Record<string, string>[]> 
   return parseXmlItems(xml);
 }
 
+// ── KOPIS ────────────────────────────────────────────────
+//
+// KOPIS는 좌표를 공연목록이 아니라 시설상세에만 준다. 공연목록엔 시설ID조차 없고
+// 공연장 '이름'만 오므로, 시설목록을 이름으로 색인해 시설ID를 얻고(core kopis.ts)
+// 그 시설만 상세 조회해 좌표·구를 채운다. 공연상세(공연 1건당 1콜)를 건너뛰는 우회다.
+// 실측(2026-09-03, 서울): 공연 100건이 쓰는 공연장 63곳이 63/63 매칭.
+
+const KOPIS_BASE = "http://www.kopis.or.kr/openApi/restful";
+/** 목록/사전 페이지당 건수(API 상한 100). */
+const KOPIS_ROWS = 100;
+/**
+ * 시설 사전 순회 상한. 서울 실측 1,734곳이라 20페이지(2,000)면 덮는다.
+ * ⚠️ 여기서 잘리면 가나다순 뒷부분 공연장이 사전에 없어 좌표가 조용히 비고,
+ *    매칭률이 63/63 → 34/63으로 떨어진다(실측). 시설이 늘면 이 수를 올린다.
+ */
+const KOPIS_FACILITY_MAX_PAGES = 20;
+/** 공연목록 순회 상한(LIMIT까지 모으면 멈춘다). */
+const KOPIS_LIST_MAX_PAGES = 5;
+
+async function fetchKopis(url: string): Promise<Record<string, string>[]> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`KOPIS HTTP ${res.status}`);
+  const xml = await res.text();
+  // KOPIS는 <dbs><db>…</db></dbs> — data.go.kr의 <item>과 태그명만 다르다.
+  return parseXmlItems(xml, "db");
+}
+
+/** 공연장 이름 → 시설ID 색인(서울 전량). */
+async function fetchKopisFacilityIndex(key: string): Promise<Map<string, string>> {
+  const all: Record<string, string>[] = [];
+  for (let page = 1; page <= KOPIS_FACILITY_MAX_PAGES; page++) {
+    const url = `${KOPIS_BASE}/prfplc?service=${encodeURIComponent(key)}&cpage=${page}&rows=${KOPIS_ROWS}&signgucode=11`;
+    const rows = await fetchKopis(url);
+    if (rows.length === 0) break;
+    all.push(...rows);
+  }
+  return buildFacilityIndex(all);
+}
+
+/** 시설상세 1건 → 좌표·시군구. 실패는 null로 삼킨다(좌표 하나로 적재를 막지 않는다). */
+async function fetchKopisFacilityDetail(
+  key: string,
+  mt10id: string,
+): Promise<{ lat: number | null; lng: number | null; gu: string | null } | null> {
+  try {
+    const url = `${KOPIS_BASE}/prfplc/${encodeURIComponent(mt10id)}?service=${encodeURIComponent(key)}`;
+    const [row] = await fetchKopis(url);
+    if (!row) return null;
+    const point = parsePoint(row.la, row.lo);
+    return {
+      lat: point?.lat ?? null,
+      lng: point?.lng ?? null,
+      gu: parseGuFromAddress(row.adres),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** 시설상세 동시 호출 수(공연장 수만큼만 호출되므로 trail보다 여유롭다). */
+const KOPIS_DETAIL_CONCURRENCY = 6;
+
+/**
+ * 공연 행에 좌표·구를 백필한다.
+ * 시설상세는 **공연장 종류만큼**만 부른다 — 같은 극장에서 열리는 공연이 많을수록 이득.
+ */
+async function enrichKopisVenues(rows: OppRow[], key: string): Promise<OppRow[]> {
+  const index = await fetchKopisFacilityIndex(key);
+  // 이 배치에 실제로 등장한 공연장만 추린다.
+  const wanted = new Map<string, string>(); // facilityKey → mt10id
+  for (const r of rows) {
+    const k = facilityKey(r.venue_name);
+    if (!k || wanted.has(k)) continue;
+    const id = index.get(k);
+    if (id) wanted.set(k, id);
+  }
+
+  const entries = [...wanted.entries()];
+  const detail = new Map<string, { lat: number | null; lng: number | null; gu: string | null }>();
+  for (let i = 0; i < entries.length; i += KOPIS_DETAIL_CONCURRENCY) {
+    const chunk = entries.slice(i, i + KOPIS_DETAIL_CONCURRENCY);
+    const got = await Promise.all(chunk.map(([, id]) => fetchKopisFacilityDetail(key, id)));
+    got.forEach((d, j) => {
+      if (d) detail.set(chunk[j]![0], d);
+    });
+  }
+
+  for (const r of rows) {
+    const k = facilityKey(r.venue_name);
+    const d = k ? detail.get(k) : undefined;
+    if (!d) continue;
+    r.lat = d.lat;
+    r.lng = d.lng;
+    r.dong_name = d.gu;
+  }
+  return rows;
+}
+
 /**
  * 걷기길 시점 좌표 — GPX 파일 첫 trkpt.
  *
  * 두루누비 courseList는 좌표를 주지 않고 GPX 파일 경로(gpxpath)만 준다. 좌표가 없으면
  * 거리 스코어가 중립(0.5)로 떨어져 "동네" 큐레이션에서 사실상 빠지므로 적재 때 한 번 채운다.
  * 실패(네트워크·형식)는 null로 삼키고 넘어간다 — 좌표 하나 때문에 적재 전체를 막지 않는다.
+ *
+ * gpxUrl은 courseList API가 준 값을 그대로 fetch하기 전에 프로토콜/호스트를 검증한다
+ * (SSRF 방지, M-059) — 읽기 경로(apps/web/src/app/api/trail-route/route.ts)와 동일 규칙.
  */
 async function fetchTrailStartCoord(
   gpxUrl?: string | null,
 ): Promise<{ lat: number; lng: number } | null> {
-  if (!gpxUrl) return null;
+  if (!isAllowedGpxUrl(gpxUrl)) return null;
   try {
     const res = await fetch(gpxUrl, { redirect: "follow" });
     if (!res.ok) return null;
@@ -142,11 +259,38 @@ async function enrichTrailCoords(rows: OppRow[]): Promise<OppRow[]> {
   return rows;
 }
 
+/**
+ * 구 중심좌표 맵 — 요청당 1회만 neighborhoods를 읽어 재사용한다.
+ * 소스마다 upsertRows가 불리므로 캐시하지 않으면 같은 426행을 4번 읽는다.
+ */
+let guCentroidsCache: Map<string, { lat: number; lng: number }> | null = null;
+
+async function getGuCentroids(): Promise<Map<string, { lat: number; lng: number }>> {
+  if (guCentroidsCache) return guCentroidsCache;
+  const { data, error } = await supabase
+    .from("neighborhoods")
+    .select("sigungu,lat,lng")
+    .not("lat", "is", null);
+  // 폴백은 있으면 좋은 것이지 적재의 전제가 아니다 — 실패하면 빈 맵으로 넘어간다.
+  if (error || !data) return (guCentroidsCache = new Map());
+  return (guCentroidsCache = buildGuCentroids(data as GuCentroidRow[]));
+}
+
 /** OppRow[] → opportunities upsert. (source, external_id) 충돌 시 갱신. */
 async function upsertRows(rows: OppRow[]): Promise<number> {
   if (!rows.length) return 0;
   const now = new Date().toISOString();
-  const payload = rows.map((r) => ({ ...r, fetched_at: now }));
+  /**
+   * 좌표 없는 행에 구 중심좌표를 채운다(0018). 여기서 거는 이유: 마이그레이션 백필만
+   * 하면 **다음 적재가 다시 null로 덮어써** 재오염된다. 모든 소스가 이 함수를 지나므로
+   * 한 곳에서 건다. 원본 좌표는 덮어쓰지 않는다(applyGuCoordFallback 계약).
+   */
+  const centroids = await getGuCentroids();
+  // venue_name은 kopis 좌표 백필용 임시 필드다 — DB 컬럼이 아니라 실으면 upsert가 죽는다.
+  const payload = rows.map(({ venue_name: _venue, ...r }) => ({
+    ...applyGuCoordFallback(r, centroids),
+    fetched_at: now,
+  }));
   const { error, count } = await supabase
     .from("opportunities")
     .upsert(payload, { onConflict: "source,external_id", count: "exact" });
@@ -183,7 +327,11 @@ Deno.serve(async (req) => {
   const results = await Promise.all([
     runSource("seoul_culture", async () => {
       const raw = await fetchSeoul(seoulKey, "culturalEventInfo");
-      return raw.map(mapSeoulCulture).filter((r): r is OppRow => r != null);
+      // 항목 단위 격리(M-028): 한 항목이 예상 밖 shape라 mapSeoulCulture가 던져도
+      // 그 항목만 건너뛰고 나머지는 그대로 적재한다(예전엔 소스 배치 전체가 버려졌다).
+      const { results: mapped, skipped } = safeMapItems(raw, mapSeoulCulture);
+      if (skipped) console.warn(`seoul_culture: 매핑 실패 ${skipped}건 스킵`);
+      return mapped.filter((r): r is OppRow => r != null);
     }),
     runSource("culture_info", async () => {
       if (!dataGoKrKey) throw new Error("DATA_GO_KR_SERVICE_KEY 없음");
@@ -194,21 +342,48 @@ Deno.serve(async (req) => {
         const url = `https://apis.data.go.kr/B553457/cultureinfo/period2?serviceKey=${enc}&numOfRows=10&PageNo=${page}&from=20260708&to=20261231`;
         const raw = await fetchDataGoKrXml(url);
         if (raw.length === 0) break; // 마지막 페이지
-        for (const r of raw) {
-          const mapped = mapCultureInfo(r);
+        // 항목 단위 격리(M-028): 페이지 안 한 항목이 던져도 그 항목만 스킵.
+        const { results: mappedPage, skipped } = safeMapItems(raw, mapCultureInfo);
+        if (skipped) console.warn(`culture_info: 매핑 실패 ${skipped}건 스킵(page ${page})`);
+        for (const mapped of mappedPage) {
           if (mapped && inMetro(mapped.dong_name)) candidates.push(mapped);
         }
         rows = dedupByKey(candidates, (r) => r.external_id);
       }
       return rows;
     }),
+    runSource("kopis", async () => {
+      const kopisKey = (Deno.env.get("KOPIS_SERVICE_KEY") ?? "").trim();
+      if (!kopisKey) throw new Error("KOPIS_SERVICE_KEY 없음");
+      // 조회기간은 API 상한이 31일이다. 오늘부터 31일 안에 열리는 공연만 받는다.
+      const d = new Date();
+      const stdate = d.toISOString().slice(0, 10).replace(/-/g, "");
+      d.setDate(d.getDate() + 31);
+      const eddate = d.toISOString().slice(0, 10).replace(/-/g, "");
+
+      const rows: OppRow[] = [];
+      for (let page = 1; page <= KOPIS_LIST_MAX_PAGES && rows.length < LIMIT; page++) {
+        // signgucode=11(서울)로 지역을 API 단에서 좁힌다 — 받아서 거르는 것보다 싸다.
+        const url = `${KOPIS_BASE}/pblprfr?service=${encodeURIComponent(kopisKey)}&stdate=${stdate}&eddate=${eddate}&cpage=${page}&rows=${KOPIS_ROWS}&signgucode=11`;
+        const raw = await fetchKopis(url);
+        if (raw.length === 0) break; // 마지막 페이지
+        // 항목 단위 격리(M-028): 한 항목이 던져도 그 항목만 스킵.
+        const { results: mapped, skipped } = safeMapItems(raw, mapKopis);
+        if (skipped) console.warn(`kopis: 매핑 실패 ${skipped}건 스킵(page ${page})`);
+        for (const m of mapped) if (m) rows.push(m);
+      }
+      const deduped = dedupByKey(rows, (r) => r.external_id);
+      // 좌표·구는 시설 색인을 거쳐 채운다. 실패해도 행은 살린다(구 중심 폴백이 upsert에서 받는다).
+      return await enrichKopisVenues(deduped, kopisKey);
+    }),
     runSource("trail", async () => {
       if (!dataGoKrKey) throw new Error("DATA_GO_KR_SERVICE_KEY 없음");
       const url = `https://apis.data.go.kr/B551011/Durunubi/courseList?serviceKey=${enc}&numOfRows=${LIMIT}&pageNo=1&MobileOS=ETC&MobileApp=motungi&_type=json`;
       const raw = await fetchDataGoKrJson(url);
-      const rows = raw
-        .map(mapTrail)
-        .filter((r): r is OppRow => r != null && inMetro(r.dong_name));
+      // 항목 단위 격리(M-028): 한 항목이 던져도 그 항목만 스킵.
+      const { results: mappedTrail, skipped } = safeMapItems(raw, mapTrail);
+      if (skipped) console.warn(`trail: 매핑 실패 ${skipped}건 스킵`);
+      const rows = mappedTrail.filter((r): r is OppRow => r != null && inMetro(r.dong_name));
       // 좌표는 GPX 안에만 있다 — 수도권으로 좁힌 뒤에 채운다(전국 152건 fetch 방지).
       return await enrichTrailCoords(rows);
     }),
@@ -228,8 +403,10 @@ Deno.serve(async (req) => {
           true,
         );
         if (raw.length === 0) break; // 마지막 페이지
-        for (const r of raw) {
-          const mapped = mapSeoulJob(r);
+        // 항목 단위 격리(M-028): 페이지 안 한 항목이 던져도 그 항목만 스킵.
+        const { results: mappedJobs, skipped } = safeMapItems(raw, mapSeoulJob);
+        if (skipped) console.warn(`seoul_jobs: 매핑 실패 ${skipped}건 스킵(page ${page})`);
+        for (const mapped of mappedJobs) {
           if (mapped && inMetro(mapped.dong_name)) rows.push(mapped);
         }
       }

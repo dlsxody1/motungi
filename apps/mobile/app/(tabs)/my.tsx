@@ -71,7 +71,12 @@ export default function MyScreen() {
             <Text style={styles.meta}>{metaText}</Text>
           </View>
         </View>
-        <Pressable style={styles.redo} hitSlop={8} onPress={() => router.push("/diagnosis")}>
+        <Pressable
+          style={styles.redo}
+          hitSlop={8}
+          onPress={() => router.push("/diagnosis")}
+          accessibilityRole="button"
+        >
           <Text style={styles.redoLabel}>재진단</Text>
         </Pressable>
       </View>
@@ -85,6 +90,7 @@ export default function MyScreen() {
             key={m.label}
             onPress={m.onPress}
             disabled={m.soon}
+            accessibilityRole="button"
             accessibilityState={{ disabled: m.soon }}
             style={[styles.menuItem, i > 0 && styles.menuBorder]}
           >

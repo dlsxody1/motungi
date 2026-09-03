@@ -51,10 +51,43 @@ export function decodeHtmlEntities(s: string): string {
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">")
       .replace(/&quot;/g, '"')
-      .replace(/&#0*39;/g, "'")
-      .replace(/&#x0*27;/gi, "'")
-      .replace(/&nbsp;/g, " ");
+      .replace(/&nbsp;/g, " ")
+      .replace(/&middot;/g, "·")
+      // 이름 있는 엔티티를 먼저 처리한 뒤 남은 수치 참조를 일반 규칙으로 푼다
+      // (&#39; &#x27; 개별 대응 대신). 제어문자 범위는 건드리지 않는다 — 공공데이터에
+      // 섞여 들어온 &#0; 같은 값이 화면에 널 문자를 심는 걸 막는다.
+      .replace(/&#(\d+);/g, (m, d: string) => {
+        const code = Number(d);
+        return code >= 32 && code <= 0x10ffff ? String.fromCodePoint(code) : m;
+      })
+      .replace(/&#x([0-9a-fA-F]+);/g, (m, h: string) => {
+        const code = Number.parseInt(h, 16);
+        return code >= 32 && code <= 0x10ffff ? String.fromCodePoint(code) : m;
+      });
   return once(once(s));
+}
+
+/**
+ * 종료시각 미상일 때 스코어링에 가정하는 지속시간(시간).
+ *
+ * 공연·전시·강좌의 통상 길이. 정확할 필요는 없다 — time 축은 선호 창(예: 퇴근후 18~22시)과의
+ * **겹침 비율**이라, 2시간이든 3시간이든 "저녁에 하는가"라는 판정은 거의 같게 나온다.
+ * 이 값이 화면에 노출되지 않는다는 게 전제다(표시는 timeWindow가 담당).
+ */
+const ASSUMED_DURATION_HOURS = 2;
+
+/**
+ * 스코어링용 시간창 — 종료가 실측이면 그대로, 없으면 기본 지속시간으로 추정한다.
+ * 시작시각이 없으면 undefined(시작까지 지어내지는 않는다 — 그건 근거 없는 추측이다).
+ */
+function toScoringWindow(
+  startHour: number | null,
+  endHour: number | null,
+): TimeWindow | undefined {
+  if (startHour == null) return undefined;
+  if (endHour != null) return { startHour, endHour };
+  // 자정을 넘기면 24로 자른다 — overlapHours가 startHour > endHour인 창을 다루지 않는다.
+  return { startHour, endHour: Math.min(startHour + ASSUMED_DURATION_HOURS, 24) };
 }
 
 /** DB row → core Opportunity (camelCase). 스코어링 입력 형태. */
@@ -75,10 +108,13 @@ export function rowToOpportunity(r: OpportunityRow): Opportunity {
       dongName: r.dong_name ?? undefined,
       point: r.lat != null && r.lng != null ? { lat: r.lat, lng: r.lng } : undefined,
     },
+    // 표시용 — 둘 다 실측일 때만. 추정 시간대를 카드에 찍지 않는다.
     timeWindow:
       r.time_start_hour != null && r.time_end_hour != null
         ? { startHour: r.time_start_hour, endHour: r.time_end_hour }
         : undefined,
+    // 스코어링용 — 시작만 있어도 창을 만든다(types.ts scoringWindow 주석 참조).
+    scoringWindow: toScoringWindow(r.time_start_hour, r.time_end_hour),
     ctaUrl: r.cta_url ?? undefined,
     imageUrl: r.image_url ?? undefined,
     deadline: r.deadline ?? undefined,
@@ -134,6 +170,26 @@ export const CATEGORY_LABEL: Record<OpportunityCategory, string> = {
   food: "동네 먹거리",
   market: "마켓·플리마켓",
 };
+
+/**
+ * 탐색(/explore) 카테고리 필터 라벨 ↔ 카테고리 (M-080).
+ *
+ * web(`apps/web/src/lib/explore-filters.ts`)과 mobile(`apps/mobile/app/(tabs)/explore.tsx`)이
+ * 각자 들고 있던 동일한 배열을 core로 승격한 단일 출처. CATEGORY_LABEL(카드 태그용, 6개
+ * Record)과는 다른 매핑이다 — "전체"(category: null)를 포함한 7개 배열이고 라벨 문구도
+ * 다르므로(예: culture → "문화·공연" vs "동네 문화·공연") 병합하지 않는다.
+ *
+ * "전체"는 category=null이고 URL엔 쓰지 않는다(파라미터 없음 = 전체).
+ */
+export const EXPLORE_CATEGORY_FILTERS: { label: string; category: OpportunityCategory | null }[] = [
+  { label: "전체", category: null },
+  { label: "문화·공연", category: "culture" },
+  { label: "운동·산책", category: "active" },
+  { label: "먹거리·마켓", category: "food" },
+  { label: "클래스", category: "class" },
+  { label: "마켓", category: "market" },
+  { label: "부업", category: "side_job" },
+];
 
 /** 카테고리별 카드 톤(브랜드/민트 강조). active만 민트. */
 export function categoryTone(category: OpportunityCategory): "brand" | "mint" {
@@ -336,4 +392,38 @@ export function whyReasons(
   }
 
   return reasons.slice(0, 3);
+}
+
+/**
+ * LLM 근거 생성(M-044) 입력. **scoring의 breakdown만** 받는다 — description·summary
+ * 같은 원문(raw row)은 의도적으로 포함하지 않는다. 모델이 점수에 없는 사실(가격·위치·
+ * 후기 등)을 지어낼 표면 자체를 없애기 위함이다. category/title/costLabel/timeLabel은
+ * 이미 규칙엔진이 계산해둔 표시용 값이라 "사실 생성"이 아니라 "표시값 인용"에 해당한다.
+ */
+export interface WhyReasonsPromptInput {
+  category: OpportunityCategory;
+  title: string;
+  costHeading: string;
+  costLabel: string;
+  timeLabel: string | null;
+  /** scoreOpportunity(scoring.ts)의 breakdown. 0~1 범위, 축 5개 전부. */
+  breakdown: Record<"fit" | "distance" | "time" | "difficulty" | "cost", number>;
+}
+
+/**
+ * whyReasons()의 4분기 고정 문구를 대체할 LLM 프롬프트를 만든다(순수 함수, 네트워크 없음).
+ * 입력이 breakdown 숫자 + 표시용 라벨뿐이므로, 이 프롬프트만 보고는 존재하지 않는 사실을
+ * 만들어낼 수 없다 — 그 구조를 테스트로 고정한다(view.test.ts).
+ */
+export function buildWhyReasonsPrompt(input: WhyReasonsPromptInput): string {
+  const { category, title, costHeading, costLabel, timeLabel, breakdown } = input;
+  const lines = [
+    `활동: "${title}" (${CATEGORY_LABEL[category]})`,
+    `${costHeading}: ${costLabel}`,
+    timeLabel ? `시간대: ${timeLabel}` : null,
+    `적합도 점수(0~1, 높을수록 좋음): 관심사 일치 ${breakdown.fit.toFixed(2)} · 거리 ${breakdown.distance.toFixed(2)} · 시간대 ${breakdown.time.toFixed(2)} · 난이도 적합도 ${breakdown.difficulty.toFixed(2)} · 비용 ${breakdown.cost.toFixed(2)}`,
+    "위 점수만 근거로 삼아, 이 활동이 사용자에게 왜 맞는지 2~3개의 짧은 한국어 문장을 줄바꿈으로 구분해 제시하세요.",
+    "점수에 없는 사실(정확한 가격·위치·후기·리뷰 등)은 절대 지어내지 마세요. 문장 앞에 번호나 기호를 붙이지 마세요.",
+  ].filter((l): l is string => l != null);
+  return lines.join("\n");
 }

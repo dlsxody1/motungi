@@ -106,6 +106,7 @@ export function NeighborhoodMenu({
                           point: n.point,
                         })
                       }
+                      aria-current={active ? "true" : undefined}
                       className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-[14px] ${
                         active ? "bg-tint font-bold text-primary-deep" : "font-medium text-label hover:bg-surface-alt"
                       }`}

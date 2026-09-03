@@ -84,7 +84,7 @@
 
 `ergonomics.md` + `@motungi/tokens` 준수 기준(감사 대상 아님, 준수 여부만 검증).
 
-- **히트 타겟** ≥ `MIN_HIT_TARGET = 44`px. 34–36px pill(모바일)은 재점검.
+- **히트 타겟** ≥ `MIN_HIT_TARGET = 44`px. 34–36px pill(모바일)은 재점검. (사실 정정: `apps/mobile`의 hitSlop 값들은 아직 이 상수를 참조하지 않고 개별 하드코딩 리터럴이며, `MIN_HIT_TARGET`은 코드에서 미배선 상태다 — M-067.)
 - **대비** 본문 4.5:1 / UI 3:1. 토큰 `neutral.muted #6b645a`는 본문 AA 통과, `faint`는 장식 전용.
 - **색상 단독 지표 금지.** 카테고리/상태는 라벨·아이콘 병행.
 - **포커스/키보드**(웹): 보관 토글이 `role="button"` span인 경우 포커스·키보드 핸들러 필수.

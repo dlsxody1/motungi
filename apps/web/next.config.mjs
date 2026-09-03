@@ -41,6 +41,9 @@ const nextConfig = {
       { protocol: "https", hostname: "culture.seoul.go.kr" },
       { protocol: "http", hostname: "www.culture.go.kr" },
       { protocol: "https", hostname: "www.culture.go.kr" },
+      // KOPIS 포스터. 실응답이 http로 준다(https도 열려 있어 둘 다 허용).
+      { protocol: "http", hostname: "www.kopis.or.kr" },
+      { protocol: "https", hostname: "www.kopis.or.kr" },
     ],
   },
 };

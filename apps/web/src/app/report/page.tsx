@@ -13,16 +13,16 @@ import {
   ShareIcon,
 } from "@/components/icons";
 import { ReportRelatedCard } from "@/components/report-related-card";
+import { ReportSkeleton } from "@/components/report-skeleton";
 import { Thumbnail } from "@/components/thumbnail";
-import { MobileScreen, SafeBottom, SafeTop, Skeleton, Tag } from "@/components/ui";
+import { MobileScreen, SafeBottom, SafeTop, Tag } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { diagnosisSummaryChips, displayNameOf } from "@motungi/core";
 import { useReportFallback } from "@/hooks/useReportFallback";
 import { exploreHref } from "@/lib/explore-filters";
 import { shareContent } from "@/lib/kakao";
+import { SITE_URL } from "@/lib/seo";
 import { useAppStore } from "@/store/useAppStore";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://motungi.app";
 
 /** ISO 마감일 → "~11/28까지" 라벨. 파싱 실패 시 null(칩 숨김). */
 function formatDeadline(iso: string): string | null {
@@ -176,7 +176,9 @@ export default function ReportPage() {
                   <p className="text-[14px] font-semibold text-label">함께 보면 좋아요</p>
                   <Link
                     href={exploreHref(onePick.category)}
-                    className="text-[13px] font-semibold text-primary hover:text-primary-deep"
+                    /* 밑줄은 장식이 아니라 접근성 요건 — 색약에서 링크색과 본문색이
+                       명도로 붕괴해 가까워지므로 색 외 단서가 반드시 필요하다(화살표+밑줄). */
+                    className="text-[13px] font-semibold text-primary underline underline-offset-2 hover:text-primary-deep"
                   >
                     더 찾아보기 →
                   </Link>
@@ -278,19 +280,15 @@ export default function ReportPage() {
                   </div>
                   {/* 우 참가비 박스 */}
                   <div className="w-full shrink-0 md:w-[220px]">
-                    <div
-                      className="rounded-2xl p-5 text-white"
-                      style={{
-                        background:
-                          "linear-gradient(150deg, var(--color-primary), var(--color-primary-deep))",
-                      }}
-                    >
-                      {/* 흰 텍스트에 투명도를 주지 않는다 — primary 위 white/80은 3.59:1로 AA 미달.
-                          100%면 4.88:1로 통과한다. 위계는 투명도가 아니라 크기·두께로. */}
-                      <p className="text-[12px] font-semibold text-white">{onePick.costHeading}</p>
-                      <p className="text-[30px] font-extrabold leading-tight">{onePick.costLabel}</p>
+                    {/* 참가비는 채색면이 아니다(2026-08-06). rose 솔리드는 보라 CTA 바로 옆에서
+                        두 번째 강한 색면이 되어 시선을 뺏었다 — 게다가 값이 대개 "무료"라
+                        강조할 정보도 아니다. 채색은 CTA 하나로 몰고, 참가비는 중립면 위
+                        큰 ink 숫자로 세운다. 위계는 색이 아니라 크기·두께로. */}
+                    <div className="rounded-2xl bg-gray-100 p-5">
+                      <p className="text-[12px] font-semibold text-muted">{onePick.costHeading}</p>
+                      <p className="text-[30px] font-extrabold leading-tight text-ink">{onePick.costLabel}</p>
                       {onePick.costNote && (
-                        <p className="mt-1 text-[12px] text-white">{onePick.costNote}</p>
+                        <p className="mt-1 text-[12px] text-muted">{onePick.costNote}</p>
                       )}
                     </div>
                     <div className="mt-3 flex gap-2.5">
@@ -318,7 +316,7 @@ export default function ReportPage() {
                 <p className="text-[16px] font-bold text-ink">함께 보면 좋아요</p>
                 <Link
                   href={exploreHref(onePick.category)}
-                  className="text-[14px] font-semibold text-primary hover:text-primary-deep"
+                  className="text-[14px] font-semibold text-primary underline underline-offset-2 hover:text-primary-deep"
                 >
                   더 찾아보기 →
                 </Link>
@@ -332,13 +330,10 @@ export default function ReportPage() {
 
             {/* 우측 스티키 패널 */}
             <aside className="flex flex-col gap-4 lg:sticky lg:top-[88px]">
-              <div
-                className="rounded-[20px] p-6 text-white"
-                style={{
-                  background:
-                    "linear-gradient(150deg, var(--color-purple), var(--color-primary) 118%)",
-                }}
-              >
+              {/* 2026-08-06: 그라데이션을 뺐다. 옛 차가운 보라(#6e4e9c)→로즈 그라데이션은
+                  노을이 아니라 밤/AI퍼플로 읽혔고, 좌측 CTA와 색 관계가 없어 조각이 붕 떴다.
+                  그라데이션은 랜딩 히어로 한 곳에만 남긴다 — 제품 UI는 솔리드. */}
+              <div className="rounded-[20px] bg-primary p-6 text-white">
                 {/* ⚠️ 이 카드는 투명도를 2중으로 쌓지 않는다(2026-08-06 AA 수정).
                     예전엔 bg-white/15 타일 위에 text-white/80~85를 얹어 실측 2.5~3.9:1로
                     전부 AA 미달이었다. 원인은 텍스트가 아니라 **타일**이다 — 흰색을 얹어
@@ -361,7 +356,10 @@ export default function ReportPage() {
               <div className="rounded-[20px] bg-surface p-5 shadow-web">
                 <div className="flex items-center justify-between">
                   <p className="text-[15px] font-bold text-ink">{displayName}님 진단 요약</p>
-                  <Link href="/diagnosis" className="text-[13px] font-semibold text-primary">
+                  <Link
+                    href="/diagnosis"
+                    className="text-[13px] font-semibold text-primary underline underline-offset-2"
+                  >
                     {summaryChips.length > 0 ? "수정" : "진단하기"}
                   </Link>
                 </div>
@@ -389,84 +387,6 @@ export default function ReportPage() {
               </div>
             </aside>
           </div>
-        </WebContainer>
-      </DesktopShell>
-    </>
-  );
-}
-
-/**
- * 리포트 로딩 자리표시자 — 원픽 히어로 + "함께 보면 좋아요" 골격.
- *
- * 이 화면은 원픽 카드 하나가 전부라 스피너를 띄우면 "무엇을 기다리는지"가 안 보인다.
- * 실제 카드와 같은 형태(썸네일 → 태그 → 제목 → 참가비 박스 → CTA)를 미리 깔아
- * 도착 순간 내용만 채워지게 한다.
- */
-function ReportSkeleton({ dongName }: { dongName: string }) {
-  const Hero = (
-    <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
-      <Skeleton className="h-40 w-full rounded-none md:h-52" />
-      <div className="bg-tint/40 p-5">
-        <Skeleton className="h-[22px] w-28" />
-        <Skeleton className="mt-3 h-6 w-[92%]" />
-        <Skeleton className="mt-2 h-6 w-2/3" />
-        <Skeleton className="mt-3 h-4 w-1/2" />
-        <div className="mt-4 rounded-xl bg-tint px-4 py-3">
-          <Skeleton className="h-3 w-16" />
-          <Skeleton className="mt-2 h-7 w-32" />
-        </div>
-      </div>
-      <div className="p-5">
-        <Skeleton className="h-[50px] w-full rounded-xl" />
-      </div>
-    </div>
-  );
-
-  const Related = (
-    <div className="mt-6 divide-y divide-line-alt">
-      {Array.from({ length: 3 }, (_, i) => (
-        <div key={i} className="flex items-start gap-3 py-4">
-          <Skeleton className="size-16 shrink-0 rounded-xl" />
-          <div className="min-w-0 flex-1">
-            <Skeleton className="h-3.5 w-20" />
-            <Skeleton className="mt-2 h-4 w-[85%]" />
-            <Skeleton className="mt-2 h-3 w-1/2" />
-          </div>
-          <Skeleton className="mt-1 h-4 w-14 shrink-0" />
-        </div>
-      ))}
-    </div>
-  );
-
-  const Body = (
-    <div aria-busy="true" aria-live="polite">
-      <span className="sr-only">동네 리포트를 불러오는 중</span>
-      <div className="flex items-center gap-1">
-        <LocationIcon size={18} className="text-primary" />
-        <span className="text-[18px] font-extrabold text-ink">{dongName} 기준</span>
-      </div>
-      <Skeleton className="mt-2 h-3.5 w-44" />
-      <p className="mb-2.5 mt-5 text-[14px] font-bold text-primary">오늘의 원픽</p>
-      {Hero}
-      {Related}
-    </div>
-  );
-
-  return (
-    <>
-      <div className="md:hidden">
-        <MobileScreen>
-          <div className="flex flex-1 flex-col bg-bg">
-            <SafeTop />
-            <div className="flex-1 overflow-y-auto px-5 pb-4">{Body}</div>
-            <BottomNav active="home" />
-            <SafeBottom />
-          </div>
-        </MobileScreen>
-      </div>
-      <DesktopShell active="report" dongName={dongName}>
-        <WebContainer className="py-9">
-          <div className="mx-auto max-w-[760px]">{Body}</div>
         </WebContainer>
       </DesktopShell>
     </>

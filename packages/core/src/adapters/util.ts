@@ -70,28 +70,51 @@ export function parseHour(time?: string): number | undefined {
 }
 
 /**
+ * 그럴듯한 연도 범위. 공공데이터엔 오타가 섞여 온다 — 실측(2026-09-03)으로
+ * `deadline: '2626-08-08'`(2026의 오타로 보임) 1건이 DB에 들어와 있었다.
+ * 형식만 맞으면 통과시키던 게 원인이라 값의 타당성도 본다.
+ * 상한은 넉넉히 둔다(장기 상설 전시가 몇 년 뒤 종료로 오는 경우가 있다).
+ */
+const MIN_YEAR = 2000;
+const MAX_YEAR = 2100;
+
+/** 달·일이 실재하는 날짜인가(2월 30일 같은 값을 걸러낸다). */
+function isRealDate(y: number, m: number, d: number): boolean {
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+}
+
+/**
  * 다양한 날짜 표기 → ISO date (YYYY-MM-DD).
  * - "20260729" → "2026-07-29"
  * - "2026-10-28 00:00:00.0" → "2026-10-28"
  * - "2026-07-31" → 그대로
- * - 파싱 불가 → undefined
+ * - 파싱 불가/범위 밖/실재하지 않는 날짜 → undefined
+ *
+ * 범위 밖을 버리는 이유: 마감일이 틀리면 없는 것만 못하다. 2626년 마감은 영원히
+ * purge되지 않고 "상시"처럼 남아 목록을 오염시킨다.
  */
 export function toIsoDate(raw?: string): string | undefined {
   if (!raw) return undefined;
   const s = raw.trim();
   if (!s) return undefined;
 
+  const build = (yy: string, mm: string, dd: string): string | undefined => {
+    const y = Number(yy);
+    const m = Number(mm);
+    const d = Number(dd);
+    if (y < MIN_YEAR || y > MAX_YEAR || !isRealDate(y, m, d)) return undefined;
+    return `${yy}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  };
+
   // YYYYMMDD (8자리 숫자)
   const compact = s.match(/^(\d{4})(\d{2})(\d{2})$/);
-  if (compact) return `${compact[1]}-${compact[2]}-${compact[3]}`;
+  if (compact) return build(compact[1]!, compact[2]!, compact[3]!);
 
   // 앞부분의 YYYY-MM-DD(구분자 -, /, .)
   const dash = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
-  if (dash) {
-    const mm = dash[2]!.padStart(2, "0");
-    const dd = dash[3]!.padStart(2, "0");
-    return `${dash[1]}-${mm}-${dd}`;
-  }
+  if (dash) return build(dash[1]!, dash[2]!, dash[3]!);
 
   return undefined;
 }
@@ -136,6 +159,25 @@ export function joinDescription(parts: (string | undefined)[]): string | undefin
     kept.push(t);
   }
   return kept.length ? kept.join("\n\n") : undefined;
+}
+
+/**
+ * 외부 제휴 링크(cta_url) 검증. mapSeoulCulture(ORG_LINK)·mapSportsFacility(HMPG_URL)처럼
+ * 공공 API 응답 문자열을 그대로 cta_url에 넣던 경로가 있었다 — javascript:/data:/intent:
+ * 같은 스킴이 섞여 와도 그대로 저장돼, 웹은 `<a href>`로, 모바일은 RN Linking.openURL로
+ * 검증 없이 열었다(모바일은 커스텀 스킴·intent:도 시도하는 알려진 남용 벡터).
+ * http(s) 스킴만 통과시키고, 그 외(깨진 URL 포함)는 undefined(= DB에 null로 저장).
+ */
+export function parseHttpUrl(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  const s = raw.trim();
+  if (!s) return undefined;
+  try {
+    const protocol = new URL(s).protocol;
+    return protocol === "http:" || protocol === "https:" ? s : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**

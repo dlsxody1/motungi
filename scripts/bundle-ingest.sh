@@ -20,12 +20,17 @@ mkdir -p "$FN/_shared"
 # seoul-jobs.ts는 퇴근후 판정(isAfterWorkShift 등)의 SoT라 함께 번들에 넣는다.
 # audience.ts도 같은 성격 — 아동 전용 게이트(isKidsOnly)의 SoT. 빠뜨리면 배포 번들에서
 # import가 깨져 적재 자체가 안 된다(0017 컬럼도 영영 안 채워진다).
-cp "$SRC/util.ts" "$SRC/ingest-fetch.ts" "$SRC/seoul-jobs.ts" "$SRC/audience.ts" "$FN/_shared/"
+# kopis.ts는 KOPIS 시설 색인/주소 파싱의 SoT(import 없는 leaf).
+cp "$SRC/util.ts" "$SRC/ingest-fetch.ts" "$SRC/seoul-jobs.ts" "$SRC/audience.ts" \
+   "$SRC/kopis.ts" "$SRC/gu-fallback.ts" "$FN/_shared/"
 
 # seoul-jobs.ts는 core ../types를 import한다(번들엔 없는 경로) → types.ts도 함께 복사하고
-# 경로를 ./types로 맞춘다. types.ts는 자체 import가 없어 이 한 겹으로 닫힌다.
+# 경로를 ./types로 맞춘다.
 cp packages/core/src/types.ts "$FN/_shared/"
 sed -i '' 's|from "\.\./types"|from "./types.ts"|g' "$FN/_shared/seoul-jobs.ts"
+
+# gu-fallback.ts는 leaf다(normalizeGu를 복제해 들고 있다) — 따라갈 체인이 없다.
+# core 내부를 import하게 만들면 Deno(확장자 필수)와 tsc(TS5097)가 충돌해 배포가 깨진다.
 
 # import 경로 치환 — 원본 파일은 건드리지 않고 번들용 사본만 만든다.
 for f in index.ts adapters.ts; do

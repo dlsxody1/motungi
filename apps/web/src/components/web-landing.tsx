@@ -18,6 +18,8 @@
  */
 import Link from "next/link";
 import type { MockOpportunity } from "@/data/opportunities";
+import type { FaqItem } from "@/lib/seo";
+import { FaqSection } from "./faq-section";
 import { HeroPosterStage } from "./hero-poster-stage";
 import { ArrowMiniIcon, CheckMiniIcon } from "./landing-icons";
 import { LandingLocationLink } from "./landing-location-link";
@@ -55,6 +57,43 @@ const CATEGORIES: { label: string; q: string }[] = [
   { label: "산책·걷기길", q: "코스" },
 ];
 
+/**
+ * 제품 FAQ — 화면과 FAQPage JSON-LD가 이 배열 하나를 공유한다 (M-095).
+ *
+ * **여기 쓰는 모든 문장은 제품이 실제로 하는 일이어야 한다.** FAQ는 답변 엔진이 특히 잘
+ * 집어가는 자리이고, 그래서 틀린 문장 하나가 그대로 인용된다. 기능을 바꾸면 이 배열도
+ * 같이 고쳐라 — 위 STEPS·CATEGORIES와 달리 이건 화면 밖(검색 결과)까지 나간다.
+ *
+ * 답변은 "~요"체가 아니라 평서형이다. 랜딩 카피와 톤이 다른데, 인용될 때 우리 UI 문구가
+ * 아니라 **사실 서술**로 읽혀야 하기 때문이다(구 페이지 summarySentence와 같은 규율).
+ */
+const LANDING_FAQS: FaqItem[] = [
+  {
+    q: "모퉁이는 어떤 서비스인가요?",
+    a: "서울·수도권에서 퇴근 후나 주말에 할 만한 동네 문화·여가 활동을 골라주는 서비스다. 3문항 진단으로 관심사·시간대·에너지를 받아 오늘 갈 만한 활동 1~3개로 좁혀준다. 목록을 다 보여주고 고르게 하는 대신 하나를 정해주는 쪽을 택했다.",
+  },
+  {
+    q: "회원가입을 해야 쓸 수 있나요?",
+    a: "아니다. 동네를 정하고 진단을 받아 추천까지 보는 데는 로그인이 필요 없다. 마음에 든 활동을 보관함에 저장할 때만 가입하면 된다.",
+  },
+  {
+    q: "어떤 활동이 올라오나요?",
+    a: "전시·미술, 연극·뮤지컬, 콘서트, 클래식·국악, 교육·체험, 산책·걷기길이 들어온다. 서울시 문화행사, 공연예술통합전산망(KOPIS), 한눈에보는문화정보, 공공체육시설, 두루누비 걷기길 같은 공공 데이터에서 모은다.",
+  },
+  {
+    q: "'동네'는 어떻게 정해지나요?",
+    a: "집과 회사 두 곳을 좌표로 잡고, 활동까지의 거리를 둘 중 가까운 쪽으로 계산한다. 행정구역으로 걸러내는 필터가 아니라 거리 점수라서, 구 경계 바로 건너편에 있는 활동도 가깝다면 추천에 들어온다.",
+  },
+  {
+    q: "추천 기준은 무엇인가요?",
+    a: "관심사 적합도·거리·시간대·난이도·비용 다섯 축에 가중치를 둔 규칙 기반 점수다. 각 활동마다 왜 골랐는지 근거를 함께 보여준다.",
+  },
+  {
+    q: "정보는 얼마나 자주 갱신되나요?",
+    a: "하루 한 번 공공 데이터를 새로 받아 마감이 지난 활동을 걸러낸다. 무료 여부와 참가비는 원본 데이터를 그대로 쓰고, 확인되지 않은 값은 표시하지 않는다.",
+  },
+];
+
 export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }) {
   // 벤토 주인공 셀에 세울 실제 원픽. 없으면(로컬/빈 DB) 톤 그라데이션 폴백으로 내려간다.
   const featured = heroPicks.find((o) => o.imageUrl);
@@ -62,7 +101,20 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
   // 링은 장식(aria-hidden)이고 여기가 실제로 클릭 가능한 목록이다.
   const realPicks = heroPicks.filter((o) => o.imageUrl);
   return (
-    <>
+    /* 랜딩만 색약 대응 이전의 밝은 로즈를 쓴다(globals.css의 --color-primary-landing 주석 참조).
+       여기서 --color-primary를 지역 override하면 하위의 bg-primary·text-primary·
+       히어로 그라데이션까지 전부 자동으로 따라오므로 아래 섹션들은 한 줄도 고치지 않는다.
+       display:contents라 래퍼가 레이아웃에 관여하지 않는다 — 물감 섹션들의 경계·스크롤
+       구동 모션이 그대로 유지된다. */
+    <div
+      style={
+        {
+          display: "contents",
+          "--color-primary": "var(--color-primary-landing)",
+          "--color-primary-deep": "var(--color-primary-deep-landing)",
+        } as React.CSSProperties
+      }
+    >
       {/* ══ 1. 히어로 ══
           물감 언어를 여기서 연다: 그라데이션 위에 안료가 번진 얼룩을 얹는다.
           3D 포스터링은 검증된 자산이라 유지 — 새로 만들지 않는다. */}
@@ -415,6 +467,20 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
           </div>
         </WebContainer>
       </section>
-    </>
+
+      {/*
+        ══ 6. FAQ — 답변 엔진이 인용할 자리 (M-095) ══
+        마지막 CTA **뒤**에 둔다. 전환을 막지 않으면서, 크롤러에는 제품을 설명하는
+        구조화된 텍스트를 남긴다. FaqSection이 화면과 FAQPage JSON-LD를 함께 낸다 —
+        구글 정책상 둘이 일치해야 하므로 배열 하나를 공유하는 구조로 강제했다.
+        물감 프리미티브를 쓰지 않는 이유: 여기는 읽는 자리다. 색면을 더 얹으면 위 CTA와
+        시선이 경쟁한다.
+      */}
+      <section className="border-t border-line bg-surface py-[72px]">
+        <WebContainer>
+          <FaqSection heading="자주 묻는 것" items={LANDING_FAQS} className="max-w-[720px]" />
+        </WebContainer>
+      </section>
+    </div>
   );
 }

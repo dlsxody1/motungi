@@ -13,6 +13,17 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { Share as RNShare } from "react-native";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockOpportunity } from "@/data/opportunities";
+import { C } from "@/ui/theme";
+
+/**
+ * 토큰 hex를 getComputedStyle이 돌려주는 `rgb(r, g, b)` 형태로 바꾼다.
+ * 색은 팔레트가 바뀔 때마다 움직이므로 테스트에 hex를 박아두면 안 된다 —
+ * 실제로 브랜드가 로즈→노을보라로 옮겨갔을 때 이 단언들이 통째로 깨졌다.
+ */
+const rgb = (hex: string) => {
+  const n = Number.parseInt(hex.slice(1), 16);
+  return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
+};
 
 const { pushMock, replaceMock, backMock, toggleSavedMock, state, searchParamsState } = vi.hoisted(
   () => ({
@@ -24,6 +35,7 @@ const { pushMock, replaceMock, backMock, toggleSavedMock, state, searchParamsSta
       savedIds: [] as string[],
       answers: null as unknown,
       user: null as unknown,
+      anchors: {} as unknown,
     },
     searchParamsState: { id: undefined as string | undefined },
   }),
@@ -40,6 +52,15 @@ vi.mock("@/store/useAppStore", () => ({
 }));
 
 vi.mock("@/hooks/useEnsureCatalog", () => ({ useEnsureCatalog: vi.fn() }));
+
+// useWhyReasons는 자체 테스트(hooks/useWhyReasons.test.ts)가 있으므로 여기서는 규칙기반
+// 근거를 그대로 반환하는 얇은 흉내로 우회한다(네트워크·LLM 경로는 화면 테스트 관심사가 아님).
+vi.mock("@/hooks/useWhyReasons", () => ({
+  useWhyReasons: (opp: MockOpportunity | null) => ({
+    reasons: opp ? ["테스트용 근거"] : [],
+    isLlm: false,
+  }),
+}));
 
 /**
  * useOpportunity는 자체 테스트가 있으므로 여기선 "카탈로그 캐시 우선" 계약만 얇게
@@ -84,6 +105,13 @@ function makeOpp(overrides: Partial<MockOpportunity> & { id: string; title: stri
   };
 }
 
+/** deadlineLabel(o.deadline, today)이 UTC 자정 기준으로 일수 차를 세므로 UTC로 오프셋한다. */
+function isoDaysFromNow(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 beforeEach(() => {
   pushMock.mockReset();
   replaceMock.mockReset();
@@ -92,6 +120,7 @@ beforeEach(() => {
   state.savedIds = [];
   state.answers = null;
   state.user = null;
+  state.anchors = {};
   searchParamsState.id = undefined;
   useOpportunityState.catalog = [];
   useOpportunityState.status = "idle";
@@ -155,6 +184,99 @@ describe("OpportunityScreen", () => {
     expect(screen.queryByText("활동을 찾을 수 없어요")).not.toBeInTheDocument();
   });
 
+  it("imageUrl이 있으면 상세 배너에 썸네일 이미지를 렌더한다(M-051)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", imageUrl: "https://example.test/a.jpg" }),
+    ];
+    searchParamsState.id = "op-1";
+
+    const { container } = render(<OpportunityScreen />);
+
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+    expect(img).toHaveAttribute("src", "https://example.test/a.jpg");
+  });
+
+  it("imageUrl이 없으면 이미지 태그 없이 플레이스홀더 배너만 렌더한다(M-051)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+    searchParamsState.id = "op-1";
+
+    const { container } = render(<OpportunityScreen />);
+
+    expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
+    expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("deadline·sourceLabel이 둘 다 없으면 마감·출처 블록을 렌더하지 않는다(M-053)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.queryByText("마감")).not.toBeInTheDocument();
+    expect(screen.queryByText("출처")).not.toBeInTheDocument();
+    // 기존 메타 3칸 표시엔 영향 없음(추가일 뿐 대체 아님).
+    expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
+  });
+
+  it("마감일이 지났으면 '마감' 배지를 회색 톤으로 표시한다(M-053)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", deadline: isoDaysFromNow(-2) }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    // "마감" 라벨(dt) + 지난 배지 텍스트 — 둘 다 "마감" 문구로 렌더된다.
+    const matches = screen.getAllByText("마감");
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+    const pill = matches.find((el) => getComputedStyle(el.parentElement!).backgroundColor === rgb(C.gray100));
+    expect(pill).toBeTruthy();
+  });
+
+  it("마감이 3일 이내로 임박하면 D-day 배지를 강조(primary) 톤으로 표시한다(M-053)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", deadline: isoDaysFromNow(2) }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    const pill = screen.getByText("D-2");
+    expect(getComputedStyle(pill.parentElement!).backgroundColor).toBe(rgb(C.primary));
+  });
+
+  it("마감이 여유 있게 남아있으면 D-day 배지를 은은한(tint) 톤으로 표시한다(M-053)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", deadline: isoDaysFromNow(10) }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    const pill = screen.getByText("D-10");
+    expect(getComputedStyle(pill.parentElement!).backgroundColor).toBe(rgb(C.tint));
+  });
+
+  it("sourceLabel이 있으면 출처 행을 렌더한다(M-053)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", sourceLabel: "서울시 문화행사" }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.getByText("출처")).toBeInTheDocument();
+    expect(screen.getByText("서울시 문화행사")).toBeInTheDocument();
+  });
+
   it("공유하면 딥링크 URL이 포함된 메시지로 공유한다", () => {
     const shareSpy = vi.spyOn(RNShare, "share").mockResolvedValue({ action: "sharedAction" });
     useOpportunityState.status = "ok";
@@ -165,9 +287,113 @@ describe("OpportunityScreen", () => {
     fireEvent.click(screen.getByLabelText("공유"));
 
     expect(shareSpy).toHaveBeenCalledTimes(1);
-    const arg = shareSpy.mock.calls[0][0] as { message: string };
+    const arg = shareSpy.mock.calls[0]![0] as { message: string };
     expect(arg.message).toContain("망원 한강 러닝 클래스");
     expect(arg.message).toContain("/opportunity?id=op-1");
+  });
+
+  it("북마크 토글에 저장 상태를 반영하는 접근 가능한 이름이 있다(M-031)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+    searchParamsState.id = "op-1";
+    state.savedIds = [];
+
+    render(<OpportunityScreen />);
+
+    const bookmark = screen.getByLabelText("저장하기");
+    expect(bookmark).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(bookmark);
+    expect(toggleSavedMock).toHaveBeenCalledWith("op-1");
+  });
+
+  it("보러 가기 버튼이 접근 가능한 button role로 노출된다(M-058)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", ctaUrl: "https://example.test" }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.getByRole("button", { name: /보러 가기/ })).toBeInTheDocument();
+  });
+
+  /**
+   * 방어 심층화(M-077) — 적재(adapters.ts)가 이미 http(s)만 저장하지만, RN Linking.openURL은
+   * 커스텀 스킴/intent:도 시도하는 알려진 남용 벡터라 화면에서도 프로토콜을 다시 확인한다.
+   * ctaUrl이 javascript: 스킴이면 "#"과 같은 취급으로 "링크 준비 중"이어야 한다.
+   */
+  it("ctaUrl이 javascript: 스킴이면 '링크 준비 중'으로 처리한다(M-077)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", ctaUrl: "javascript:alert(1)" }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.getByText("링크 준비 중")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /보러 가기/ })).not.toBeInTheDocument();
+  });
+
+  it("summary가 있으면 요약 문구를 렌더한다(M-062)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", summary: "한강변을 따라 걷는 초보자용 코스" }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.getByText("한강변을 따라 걷는 초보자용 코스")).toBeInTheDocument();
+  });
+
+  it("summary가 없으면 요약 문구를 렌더하지 않는다(M-062)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", summary: undefined }),
+    ];
+    searchParamsState.id = "op-1";
+
+    expect(() => render(<OpportunityScreen />)).not.toThrow();
+    expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
+  });
+
+  it("걷기길(source: trail)이면 '주말 나들이' 배지를 렌더한다(M-062)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "북한산 둘레길", source: "trail" }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.getByText("주말 나들이")).toBeInTheDocument();
+  });
+
+  it("반나절 이상 걸리는 활동(durationMin >= 180)이면 '주말 나들이' 배지를 렌더한다(M-062)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "가평 계곡 나들이", durationMin: 200 }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.getByText("주말 나들이")).toBeInTheDocument();
+  });
+
+  it("일반 활동(source: seoul_culture, durationMin 없음)이면 '주말 나들이' 배지를 렌더하지 않는다(M-062)", () => {
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({ id: "op-1", title: "성수 팝업 전시", source: "seoul_culture" }),
+    ];
+    searchParamsState.id = "op-1";
+
+    render(<OpportunityScreen />);
+
+    expect(screen.queryByText("주말 나들이")).not.toBeInTheDocument();
   });
 
   it("공유가 실패해도(rejected) 에러를 던지지 않는다", async () => {

@@ -18,6 +18,7 @@ export type OpportunityCategory =
 /**
  * 데이터 소스 (docs/DATA-SOURCES.md · docs/API-DESIGN.md).
  * - seoul_culture: 서울시 문화행사 (culture, 1순위).
+ * - kopis: 공연예술통합전산망 (culture, 민간 공연 — 소극장 연극·클래식·재즈).
  * - culture_info: 한눈에보는문화정보 data.go.kr (culture, 전국).
  * - sports_facility: 공공체육시설 data.go.kr (active).
  * - trail: 두루누비 걷기길 data.go.kr (active).
@@ -26,6 +27,7 @@ export type OpportunityCategory =
  */
 export type SourceKind =
   | "seoul_culture"
+  | "kopis"
   | "culture_info"
   | "sports_facility"
   | "trail"
@@ -95,8 +97,22 @@ export interface Opportunity {
   /** 시작 난이도 0(쉬움)~1(어려움) */
   difficulty?: number;
   location?: Location;
-  /** 활동 가능 시간대 (퇴근후 18~22시 겹침 가점에 사용) */
+  /**
+   * 활동 시간대 — **표시 전용**(카드 메타 "19–21시", 상세, 근거 문구).
+   * 시작·종료가 **둘 다 실측일 때만** 채워진다. 추정값을 넣으면 카드에 사실이 아닌
+   * 시간대가 찍힌다(과거 실제 버그 — 어댑터가 start+2로 지어내던 것을 고쳤다).
+   */
   timeWindow?: TimeWindow;
+  /**
+   * 활동 시간대 — **스코어링 전용**(time 축 겹침 계산).
+   *
+   * timeWindow와 나눈 이유: seoul_culture는 종료시각을 주지 않아(어댑터가 일부러
+   * 지어내지 않는다) 한 필드로 합치면 파싱해둔 시작시각까지 함께 버려진다. 실측
+   * (2026-09-03) 229행이 "시작만 있음"이라 time 축(가중치 0.15)이 통째로 죽어 있었다.
+   * 종료가 실측이면 그 값을, 없으면 기본 지속시간으로 추정한 창을 담는다 —
+   * 추정이 **점수에는 들어가되 화면에는 새지 않는다.**
+   */
+  scoringWindow?: TimeWindow;
   /** 제휴/외부 상세 연결 URL */
   ctaUrl?: string;
   /** 대표 이미지(썸네일) URL. 원본 제공 소스(문화행사·문화정보)만 채워짐 */

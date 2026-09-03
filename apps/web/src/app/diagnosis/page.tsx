@@ -56,15 +56,21 @@ const QUESTIONS: Question[] = [
   },
 ];
 
+/** Q1(관심사)만 다중선택 — Q2·Q3는 단일선택 그대로(M-049). */
+const MULTI_SELECT_STEP = 0;
+
 export default function DiagnosisPage() {
   const router = useRouter();
   const saveAnswers = useAppStore((s) => s.setAnswers);
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
 
   const q = QUESTIONS[step]!;
   const total = QUESTIONS.length;
-  const selected = answers[step];
+  const isMultiStep = step === MULTI_SELECT_STEP;
+  const stepAnswer = answers[step];
+  const selectedValues = isMultiStep && Array.isArray(stepAnswer) ? stepAnswer : [];
+  const hasSelection = isMultiStep ? selectedValues.length > 0 : !!stepAnswer;
 
   const goNext = () => {
     if (step < total - 1) {
@@ -72,14 +78,21 @@ export default function DiagnosisPage() {
       return;
     }
     // 마지막 질문 완료 → 진단 답변을 core 형태로 검증·매핑해 저장 후 스코어링(로딩)으로.
-    const final = { ...answers, [step]: answers[step]! };
-    const validated = draftToAnswers(final);
+    const validated = draftToAnswers(answers);
     if (!validated) return; // 방어적 분기 — 자동 진행 UX 상 실제로는 도달하지 않음.
     saveAnswers(validated);
     router.push("/loading");
   };
   const pick = (value: string, soon?: boolean) => {
     if (soon) return;
+    if (isMultiStep) {
+      setAnswers((a) => {
+        const cur = Array.isArray(a[MULTI_SELECT_STEP]) ? (a[MULTI_SELECT_STEP] as string[]) : [];
+        const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
+        return { ...a, [MULTI_SELECT_STEP]: next };
+      });
+      return;
+    }
     setAnswers((a) => ({ ...a, [step]: value }));
   };
   const goBack = () => {
@@ -124,7 +137,7 @@ export default function DiagnosisPage() {
 
               <div className="mt-5 space-y-3">
                 {q.options.map((o) => {
-                  const on = selected === o.value;
+                  const on = isMultiStep ? selectedValues.includes(o.value) : stepAnswer === o.value;
                   return (
                     <button
                       key={o.value}
@@ -160,7 +173,7 @@ export default function DiagnosisPage() {
 
               <button
                 onClick={goNext}
-                disabled={!selected}
+                disabled={!hasSelection}
                 className="tap-safe mb-3 flex h-[52px] w-full items-center justify-center rounded-xl bg-primary text-[16px] font-bold text-white disabled:opacity-40"
               >
                 {step === total - 1 ? "결과 보기" : "다음"}
@@ -187,11 +200,10 @@ export default function DiagnosisPage() {
         {/* 진행바 */}
         <div className="h-[6px] bg-track">
           <div
-            className="h-full transition-all duration-300"
-            style={{
-              width: `${((step + 1) / total) * 100}%`,
-              background: "linear-gradient(90deg, var(--color-sun), var(--color-primary))",
-            }}
+            className="h-full bg-primary transition-all duration-300"
+            /* 진행바는 솔리드 — sun(#e8834a)은 흰 글씨를 못 얹는 장식색이고,
+               그라데이션은 랜딩 전용이다. 진행률은 길이가 말하지 색이 말하지 않는다. */
+            style={{ width: `${((step + 1) / total) * 100}%` }}
           />
         </div>
 
@@ -233,7 +245,12 @@ export default function DiagnosisPage() {
                       </span>
                       {done && answers[i] && (
                         <span className="block truncate text-[12px] text-mint">
-                          {qq.options.find((o) => o.value === answers[i])?.title}
+                          {Array.isArray(answers[i])
+                            ? (answers[i] as string[])
+                                .map((v) => qq.options.find((o) => o.value === v)?.title)
+                                .filter(Boolean)
+                                .join(", ")
+                            : qq.options.find((o) => o.value === answers[i])?.title}
                         </span>
                       )}
                     </span>
@@ -253,7 +270,7 @@ export default function DiagnosisPage() {
 
             <div className="mt-7 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               {q.options.map((o) => {
-                const on = selected === o.value;
+                const on = isMultiStep ? selectedValues.includes(o.value) : stepAnswer === o.value;
                 return (
                   <button
                     key={o.value}
@@ -295,7 +312,7 @@ export default function DiagnosisPage() {
               <div className="flex-1" />
               <button
                 onClick={goNext}
-                disabled={!selected}
+                disabled={!hasSelection}
                 className="flex h-[52px] w-[220px] items-center justify-center rounded-xl bg-primary text-[16px] font-bold text-white transition-colors hover:bg-primary-deep disabled:opacity-40"
               >
                 {step === total - 1 ? "결과 보기" : "다음"}

@@ -26,17 +26,17 @@ import {
   deadlineLabel,
   displayNameOf,
   isWeekendOuting,
+  parseHttpUrl,
   timeRangeLabel,
-  whyReasons,
 } from "@motungi/core";
 import { CourseGuide } from "@/components/course-guide";
 import type { MockOpportunity } from "@/data/opportunities";
 import { useTrailRoute } from "@/hooks/useTrailRoute";
 import { useOpportunity } from "@/hooks/useOpportunity";
+import { useWhyReasons } from "@/hooks/useWhyReasons";
 import { shareContent } from "@/lib/kakao";
+import { SITE_URL } from "@/lib/seo";
 import { useAppStore } from "@/store/useAppStore";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://motungi.app";
 
 /**
  * A6 · 기회 상세 (본문) — 반응형.
@@ -58,7 +58,7 @@ export function OpportunityDetail({
 }) {
   const router = useRouter();
   // 상세는 카탈로그 전량을 받지 않는다 — id로 1건만(이미 스토어에 있으면 재사용).
-  const { opportunity: fetched, status } = useOpportunity(id);
+  const { opportunity: fetched, status } = useOpportunity(id, initial);
   // 서버가 준 1건이 우선 — 하이드레이션 시점에 훅은 아직 idle이라 비어 있다.
   const o = initial ?? fetched;
   // 걷기길이면 코스 경로를 받아 지도에 선으로 그린다(그 외 소스는 요청하지 않음).
@@ -69,8 +69,12 @@ export function OpportunityDetail({
   const saved = useAppStore((s) => (o ? s.savedIds.includes(o.id) : false));
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const answers = useAppStore((s) => s.answers);
+  const anchors = useAppStore((s) => s.anchors);
   const user = useAppStore((s) => s.user);
   const homeDong = useAppStore((s) => s.anchors.home?.dongName);
+  // 규칙기반 근거를 즉시 반환하고, 가능하면 LLM 산문으로 교체한다(M-044) — early return보다
+  // 앞에서 불러야 하는 훅이라 o가 아직 null(로딩 중)이어도 여기서 호출한다.
+  const { reasons: why } = useWhyReasons(o, answers, anchors);
 
   // memo된 자식(지도·코스안내)이 걸리려면 콜백이 매 렌더 새로 만들어지면 안 된다.
   const toggleRef = useRef(toggleSaved);
@@ -114,8 +118,10 @@ export function OpportunityDetail({
   }
 
   const displayName = displayNameOf(user);
-  const why = whyReasons(o, answers);
-  const hasLink = !!o.ctaUrl && o.ctaUrl !== "#";
+  // 방어 심층화(M-077) — 적재가 이미 http(s)만 저장하지만(adapters.ts parseHttpUrl),
+  // 여기서도 다시 확인한다. 적재 경로가 바뀌어도 "#" 아니면 그대로 여는 버튼이 무방비가
+  // 되지 않게(trail-route/route.ts의 gpx_url 이중검증과 같은 판단, M-059).
+  const hasLink = !!o.ctaUrl && o.ctaUrl !== "#" && !!parseHttpUrl(o.ctaUrl);
 
   // 사이드바/헤더 보강 표시값 (row에 있는 데이터를 실제로 노출).
   const today = new Date().toISOString().slice(0, 10);
@@ -389,19 +395,15 @@ export function OpportunityDetail({
             {/* 우측 스티키 액션 */}
             <aside className="flex flex-col gap-4 lg:sticky lg:top-[88px]">
               <div className="overflow-hidden rounded-[20px] border border-line bg-surface shadow-web-pick">
-                <div
-                  className="p-5.5 text-white"
-                  style={{
-                    background:
-                      "linear-gradient(150deg, var(--color-primary), var(--color-primary-deep))",
-                  }}
-                >
-                  <p className="text-[12px] font-semibold text-white">{o.costHeading}</p>
-                  <p className="text-[34px] font-extrabold leading-tight">
-                    {o.costLabel} <span className="text-[15px] font-bold text-white/90">/ {o.costUnit}</span>
+                {/* 참가비는 채색면이 아니다(2026-08-06) — report/page.tsx와 같은 이유.
+                    채색은 아래 CTA 하나만. 위계는 색이 아니라 크기·두께로. */}
+                <div className="border-b border-line bg-gray-100 p-5.5">
+                  <p className="text-[12px] font-semibold text-muted">{o.costHeading}</p>
+                  <p className="text-[34px] font-extrabold leading-tight text-ink">
+                    {o.costLabel} <span className="text-[15px] font-bold text-muted">/ {o.costUnit}</span>
                   </p>
                   {o.costNote && (
-                    <p className="mt-1 text-[12px] font-medium text-white/90">{o.costNote}</p>
+                    <p className="mt-1 text-[12px] font-medium text-muted">{o.costNote}</p>
                   )}
                 </div>
                 <div className="p-5">

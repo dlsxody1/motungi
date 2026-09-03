@@ -24,8 +24,9 @@ export function WebLogo({
         style={{
           width: size,
           height: size,
-          background:
-            "linear-gradient(152deg, var(--color-sun), var(--color-primary) 58%, var(--color-purple))",
+          /* 로고는 브랜드 마크라 토큰을 따라가지 않는다 — 원래의 노을 3색을 리터럴로 고정한다.
+             (CTA 색을 보라로 바꿀 때 로고까지 같이 변해버린 사고가 있었다.) */
+          background: "linear-gradient(152deg, #f2a06a, #d42f4a 58%, #6e4e9c)",
         }}
       >
         <svg width={size * 0.56} height={size * 0.56} viewBox="0 0 24 24" fill="none" aria-hidden>

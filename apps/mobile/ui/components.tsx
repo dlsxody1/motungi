@@ -87,6 +87,7 @@ export function Button({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
       style={({ pressed }) => [
         styles.btn,
         { backgroundColor: bg, opacity: disabled ? 0.4 : pressed ? 0.88 : 1 },
@@ -104,21 +105,27 @@ export function Chip({
   active,
   onPress,
   leading,
+  disabled,
 }: {
   label: string;
   active?: boolean;
   onPress?: () => void;
   leading?: ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       hitSlop={{ top: 6, bottom: 6 }}
+      accessibilityRole="button"
+      aria-selected={!!active}
       style={[
         styles.chip,
         active
           ? { borderColor: C.primary, backgroundColor: C.primary }
           : { borderColor: C.line, backgroundColor: C.surface },
+        disabled && { opacity: 0.4 },
       ]}
     >
       {leading}
@@ -136,11 +143,6 @@ export function Tag({ label, tone = "brand" }: { label: string; tone?: "brand" |
       <Text style={[styles.tagLabel, { color: fg }]}>{label}</Text>
     </View>
   );
-}
-
-/** 카드 표면 */
-export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
-  return <View style={[styles.card, style]}>{children}</View>;
 }
 
 /** 로고 */

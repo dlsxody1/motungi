@@ -1,4 +1,4 @@
-import type { OpportunityCategory } from "@motungi/core";
+import { EXPLORE_CATEGORY_FILTERS, type OpportunityCategory } from "@motungi/core";
 
 /**
  * 탐색(/explore)의 카테고리 필터 라벨 ↔ 카테고리.
@@ -8,16 +8,11 @@ import type { OpportunityCategory } from "@motungi/core";
  * 페이지 컴포넌트에서 import하면 순환이 생긴다.
  *
  * "전체"는 category=null이고 URL엔 쓰지 않는다(파라미터 없음 = 전체).
+ *
+ * taxonomy 자체는 core 단일 출처(`EXPLORE_CATEGORY_FILTERS`, M-080) — mobile(explore.tsx)과
+ * 동일 배열을 공유한다. web 전용 헬퍼(filterLabelOf/exploreHref)만 이 파일에 남긴다.
  */
-export const FILTERS: { label: string; category: OpportunityCategory | null }[] = [
-  { label: "전체", category: null },
-  { label: "문화·공연", category: "culture" },
-  { label: "운동·산책", category: "active" },
-  { label: "먹거리·마켓", category: "food" },
-  { label: "클래스", category: "class" },
-  { label: "마켓", category: "market" },
-  { label: "부업", category: "side_job" },
-];
+export const FILTERS = EXPLORE_CATEGORY_FILTERS;
 
 /**
  * 카테고리 → 탐색 필터 라벨. 매칭되는 라벨이 없으면 null

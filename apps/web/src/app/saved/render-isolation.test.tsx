@@ -13,9 +13,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockOpportunity } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 
-const fetchOpportunityById = vi.fn();
+// 보관함 항목은 이제 벌크 id 조회(.in)로 해소된다(M-064).
+const fetchOpportunitiesByIds = vi.fn();
 vi.mock("@/data/opportunities", () => ({
-  fetchOpportunityById: (id: string) => fetchOpportunityById(id),
+  fetchOpportunitiesByIds: (ids: string[]) => fetchOpportunitiesByIds(ids),
 }));
 
 /** 카드가 실제로 렌더된 횟수. memo가 걸리면 저장 취소를 눌러도 남은 카드는 늘지 않는다. */
@@ -69,8 +70,8 @@ beforeEach(() => {
     savedIds: PICKS.map((p) => p.id),
     user: null,
   });
-  fetchOpportunityById.mockImplementation(async (id: string) => ({
-    data: PICKS.find((p) => p.id === id) ?? null,
+  fetchOpportunitiesByIds.mockImplementation(async (ids: string[]) => ({
+    data: PICKS.filter((p) => ids.includes(p.id)),
     status: "ok" as const,
   }));
   renderCounts.card = 0;

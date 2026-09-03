@@ -139,7 +139,12 @@ export function Chip({
   return (
     <button
       aria-pressed={active}
-      className={`inline-flex h-[34px] items-center gap-1 rounded-pill border px-3.5 text-[13px] font-semibold transition-colors ${
+      /* 선택 여부를 **색 + 테두리 두께** 두 신호로 전달한다(PRODUCT.md 접근성:
+         "색만으로 의미를 전달하지 않는다"). 색약에서 로즈와 중립은 명도로 붕괴해 서로
+         가까워지지만, 1px↔2px 두께 차이는 색과 무관하게 남는다.
+         양쪽 다 border-2로 두는 이유는 레이아웃 시프트 방지 — 미선택은 옅은 line 색으로
+         두께를 유지한다(선택 시 굵어지며 칩이 밀리는 현상이 없다). */
+      className={`inline-flex h-[34px] items-center gap-1 rounded-pill border-2 px-3.5 text-[13px] font-semibold transition-colors ${
         active
           ? "border-primary bg-primary text-white"
           : "border-line bg-surface text-label hover:border-faint"
@@ -184,8 +189,12 @@ export function Card({
   children: ReactNode;
   className?: string;
 }) {
+  /* border는 장식이 아니라 위계다 — 아래 InfoBox와 같은 조합(border-line-alt + shadow-card)을
+     쓴다. 배경(#fafaf9)과 카드(#ffffff) 차이가 1.04:1뿐이라 그림자만으로는 경계가 서지 않는다. */
   return (
-    <div className={`rounded-xl bg-surface shadow-card ${className}`}>{children}</div>
+    <div className={`rounded-xl border border-line-alt bg-surface shadow-card ${className}`}>
+      {children}
+    </div>
   );
 }
 

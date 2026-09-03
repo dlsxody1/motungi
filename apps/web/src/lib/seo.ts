@@ -8,7 +8,19 @@
 import type { Metadata } from "next";
 import type { MockOpportunity } from "@/data/opportunities";
 
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://motungi.app";
+/**
+ * 사이트 정식 오리진 — **웹 전역 단일 출처**. canonical·og:url·sitemap·JSON-LD가 전부 이 값을 쓴다.
+ *
+ * fallback이 `motungi.app`이던 시절 프로덕션 env가 비어 있어 이 값이 그대로 새어나갔고,
+ * 그 도메인은 DNS가 없다(2026-09-03 실측 `curl` exit 6). 결과로 sitemap의 모든 `<loc>`,
+ * canonical, og:image가 존재하지 않는 호스트를 가리켰다 — 색인은 물론 카카오·슬랙 공유
+ * 미리보기까지 깨졌다. **fallback은 "설정을 깜빡했을 때의 방어선"이지 정상 경로가 아니므로,
+ * 반드시 실제로 접근 가능한 호스트여야 한다.** 도메인을 붙이면 env와 이 값을 함께 바꾼다.
+ *
+ * 예전엔 layout.tsx·report/page.tsx·opportunity-detail.tsx가 같은 fallback을 각자 복붙했다.
+ * 한 곳만 고치고 나머지를 놓치는 사고를 막으려 여기로 모았다 — 새로 쓸 곳도 여기서 import 한다.
+ */
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://motungi-web.vercel.app";
 const SITE_NAME = "모퉁이 Corner";
 
 /**
@@ -177,5 +189,36 @@ export function eventJsonLd(o: MockOpportunity, id: string): string {
     ...(o.sourceLabel
       ? { organizer: { "@type": "Organization", name: o.sourceLabel } }
       : {}),
+  });
+}
+
+/** FAQ 한 쌍. 화면과 JSON-LD가 **같은 객체**를 쓰게 해서 둘이 갈라지지 않게 한다. */
+export interface FaqItem {
+  q: string;
+  a: string;
+}
+
+/**
+ * FAQ 목록 → schema.org FAQPage JSON-LD. 빈 목록이면 `null`.
+ *
+ * `null`을 반환하는 게 핵심이다. 항목 0개짜리 FAQPage는 구조화 데이터 오류이고,
+ * 호출부가 `{... && <script>}`로 통째로 빼게 만든다 — 빈 스크립트 태그를 내보내지 않는다.
+ *
+ * **화면에 없는 답변을 여기 넣지 마라.** 구글 정책상 FAQPage는 사용자가 실제로 볼 수 있는
+ * 내용이어야 한다. 그래서 이 함수는 마크업을 만들지 않는다 — 같은 `FaqItem[]`을 화면도
+ * 받아 렌더하는 구조를 강제하려는 것이다(호출부 참조).
+ *
+ * 이스케이프는 `safeJson`이 한다(`</script>` 조기 종료 방어) — eventJsonLd와 같은 이유.
+ */
+export function faqJsonLd(items: readonly FaqItem[]): string | null {
+  if (items.length === 0) return null;
+  return safeJson({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map(({ q, a }) => ({
+      "@type": "Question",
+      name: q,
+      acceptedAnswer: { "@type": "Answer", text: a },
+    })),
   });
 }

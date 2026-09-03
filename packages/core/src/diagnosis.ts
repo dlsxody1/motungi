@@ -57,35 +57,65 @@ const VALID_TIME_SLOTS: ReadonlySet<TimeSlot> = new Set([
 const VALID_ENERGIES: ReadonlySet<Energy> = new Set(["drained", "moderate", "active"]);
 
 /**
+ * 임의의 값(예: persist storage에서 읽어온 rehydrate 시점 JSON)이 유효한
+ * DiagnosisAnswers인지 런타임으로 검증한다. draftToAnswers와 달리 인덱스 기반 draft가
+ * 아니라 완성된 {interests, timeSlot, energy} 형태를 그대로 받는다.
+ * M-049 이전 구버전 스키마(interests가 배열이 아닌 단일 string)를 포함해 구조가 다르거나
+ * 멤버십을 벗어난 값은 예외 없이 false를 반환한다(크래시 대신 무효 판정).
+ */
+export function isValidDiagnosisAnswers(value: unknown): value is DiagnosisAnswers {
+  if (value == null || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+
+  const { interests } = candidate;
+  if (!Array.isArray(interests) || interests.length === 0) return false;
+  if (!interests.every((v): v is Interest => typeof v === "string" && VALID_INTERESTS.has(v as Interest))) {
+    return false;
+  }
+
+  const { timeSlot, energy } = candidate;
+  return (
+    typeof timeSlot === "string" &&
+    VALID_TIME_SLOTS.has(timeSlot as TimeSlot) &&
+    typeof energy === "string" &&
+    VALID_ENERGIES.has(energy as Energy)
+  );
+}
+
+/**
  * 진단 화면(web/mobile)의 draft 상태를 검증된 DiagnosisAnswers로 변환한다.
- * draft는 DIAGNOSIS_STEPS 순서(0=interests·1=timeSlot·2=energy)의 문항 인덱스를 키로,
- * 선택된 옵션 value(string)를 값으로 갖는다(미선택 시 undefined 가능).
- * Q1(interests)은 UI가 단일 선택이라 draft[0]는 문자열 하나지만, DiagnosisAnswers.interests는
- * 배열이므로 값 검증 후에만 [interest]로 감싼다 — 미완료/미검증 값이 배열에 undefined로 섞이지 않는다.
+ * draft는 DIAGNOSIS_STEPS 순서(0=interests·1=timeSlot·2=energy)의 문항 인덱스를 키로 갖는다.
+ * Q1(interests, M-049부터 다중선택)은 draft[0]에 문자열 배열을 받는다 — 유효한 카테고리만
+ * 걸러 남기고(순서 보존, 중복 제거), 0개면 미선택으로 취급해 null을 반환한다. 기존 단일
+ * 문자열 draft[0](하위호환)도 받아 [interest] 하나로 감싼다. Q2·Q3는 여전히 단일 문자열이다.
  * 완료되지 않았거나 유효하지 않은 값이 있으면 null을 반환한다.
  */
 export function draftToAnswers(
-  draft: Record<number, string | undefined>,
+  draft: Record<number, string | string[] | undefined>,
 ): DiagnosisAnswers | null {
   const interestRaw = draft[0];
   const timeSlotRaw = draft[1];
   const energyRaw = draft[2];
 
-  const interest =
-    interestRaw != null && VALID_INTERESTS.has(interestRaw as Interest)
-      ? (interestRaw as Interest)
-      : undefined;
+  const interestCandidates: string[] = Array.isArray(interestRaw)
+    ? interestRaw
+    : interestRaw != null
+      ? [interestRaw]
+      : [];
+  const interests = Array.from(
+    new Set(interestCandidates.filter((v): v is Interest => VALID_INTERESTS.has(v as Interest))),
+  );
   const timeSlot =
-    timeSlotRaw != null && VALID_TIME_SLOTS.has(timeSlotRaw as TimeSlot)
+    typeof timeSlotRaw === "string" && VALID_TIME_SLOTS.has(timeSlotRaw as TimeSlot)
       ? (timeSlotRaw as TimeSlot)
       : undefined;
   const energy =
-    energyRaw != null && VALID_ENERGIES.has(energyRaw as Energy)
+    typeof energyRaw === "string" && VALID_ENERGIES.has(energyRaw as Energy)
       ? (energyRaw as Energy)
       : undefined;
 
   const candidate: Partial<DiagnosisAnswers> = {
-    interests: interest != null ? [interest] : undefined,
+    interests: interests.length > 0 ? interests : undefined,
     timeSlot,
     energy,
   };

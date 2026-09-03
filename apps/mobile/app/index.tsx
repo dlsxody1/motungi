@@ -1,8 +1,11 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { fetchOpportunities, type MockOpportunity } from "@/data/opportunities";
 import { Logo } from "@/ui/components";
+import { HeroCarousel } from "@/ui/hero-carousel";
 import { C } from "@/ui/theme";
 
 const TEASERS = [
@@ -11,9 +14,26 @@ const TEASERS = [
   { k: "하이퍼로컬", v: "내 동네 기준으로 추천돼요" },
 ];
 
+/** 캐러셀이 성립하는 최소 건수 — 미만이면 TEASERS 폴백(웹 hero-poster-stage.tsx와 동일 기준). */
+const MIN_HERO_PICKS = 4;
+
 /** A1 · 온보딩 — 선셋 그라데이션 히어로 */
 export default function OnboardingScreen() {
   const router = useRouter();
+  const [heroPicks, setHeroPicks] = useState<MockOpportunity[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    fetchOpportunities({ withImageOnly: true, limit: 12 }).then((r) => {
+      if (alive && r.status === "ok") setHeroPicks(r.data);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const showHero = heroPicks.length >= MIN_HERO_PICKS;
+
   return (
     <LinearGradient
       colors={["#e25067", "#e05f67", "#f2a06a"]}
@@ -33,22 +53,31 @@ export default function OnboardingScreen() {
             </Text>
           </View>
 
-          <View style={{ marginTop: 32, gap: 14 }}>
-            {TEASERS.map((t) => (
-              <View key={t.k} style={styles.teaser}>
-                <Text style={styles.teaserK}>{t.k}</Text>
-                <Text style={styles.teaserV}>{t.v}</Text>
-              </View>
-            ))}
-          </View>
+          {showHero ? (
+            <View style={{ marginTop: 28 }}>
+              <HeroCarousel items={heroPicks} />
+            </View>
+          ) : (
+            <View style={{ marginTop: 32, gap: 14 }}>
+              {TEASERS.map((t) => (
+                <View key={t.k} style={styles.teaser}>
+                  <Text style={styles.teaserK}>{t.k}</Text>
+                  <Text style={styles.teaserV}>{t.v}</Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           <View style={styles.actions}>
             <Pressable style={styles.cta} onPress={() => router.push("/location")}>
               <Text style={styles.ctaLabel}>내 동네에서 찾기</Text>
             </Pressable>
-            <Pressable style={styles.ghost} onPress={() => router.push("/report")}>
-              <Text style={styles.ghostLabel}>로그인 없이 바로 시작</Text>
+            {/* 예전엔 /report(진단 건너뛴 폴백 리포트)로 가는 죽은 링크였다.
+                웹(apps/web/src/app/page.tsx)과 동일하게 /explore로 보내는 실제 둘러보기 경로로 교체(M-050). */}
+            <Pressable style={styles.ghost} onPress={() => router.push("/explore")}>
+              <Text style={styles.ghostLabel}>동네 활동 둘러보기</Text>
             </Pressable>
+            <Text style={styles.caption}>로그인 없이 바로 시작 · 저장할 때만 가입</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -75,4 +104,10 @@ const styles = StyleSheet.create({
   ctaLabel: { fontSize: 16, fontWeight: "700", color: C.primaryDeep },
   ghost: { height: 44, alignItems: "center", justifyContent: "center" },
   ghostLabel: { fontSize: 14, fontWeight: "600", color: "rgba(255,255,255,0.8)" },
+  caption: {
+    marginTop: 2,
+    textAlign: "center",
+    fontSize: 13,
+    color: "rgba(255,255,255,0.7)",
+  },
 });

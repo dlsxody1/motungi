@@ -9,15 +9,22 @@ import {
   Text,
   View,
 } from "react-native";
-import { displayNameOf, whyReasons } from "@motungi/core";
+import { deadlineLabel, displayNameOf, isWeekendOuting, parseHttpUrl } from "@motungi/core";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useOpportunity } from "@/hooks/useOpportunity";
+import { useWhyReasons } from "@/hooks/useWhyReasons";
 import { useAppStore } from "@/store/useAppStore";
 import { Button, FlowHeader, Screen, Tag } from "@/ui/components";
 import { Bookmark, CheckCircle, ExternalLink, Location, Share } from "@/ui/icons";
+import { Thumbnail } from "@/ui/thumbnail";
 import { C, R, cardShadow } from "@/ui/theme";
 
-const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://motungi.app";
+/**
+ * 공유 링크용 오리진. 웹의 `lib/seo.ts` SITE_URL과 **같은 값을 유지해야 한다** —
+ * 여기서 만든 링크가 웹으로 열린다. import로 묶지 못하는 건 런타임이 달라서다
+ * (RN은 `EXPO_PUBLIC_*`, 웹은 `NEXT_PUBLIC_*`). 도메인을 바꾸면 양쪽 다 고칠 것.
+ */
+const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://motungi-web.vercel.app";
 
 /** A6 · 기회 상세 */
 export default function OpportunityScreen() {
@@ -31,6 +38,10 @@ export default function OpportunityScreen() {
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const answers = useAppStore((s) => s.answers);
   const user = useAppStore((s) => s.user);
+  const anchors = useAppStore((s) => s.anchors);
+  // 규칙기반 근거를 즉시 반환하고, 가능하면 LLM 산문으로 교체한다(M-055) — early return보다
+  // 앞에서 불러야 하는 훅이라 o가 아직 null(로딩 중)이어도 여기서 호출한다.
+  const { reasons: why } = useWhyReasons(o, answers, anchors);
 
   if (!o) {
     // 아직 불러오는 중(idle/loading)이면 "없음"이 아니라 로딩 스피너.
@@ -63,8 +74,14 @@ export default function OpportunityScreen() {
   const saved = savedIds.includes(o.id);
 
   const displayName = displayNameOf(user);
-  const why = whyReasons(o, answers);
-  const hasLink = !!o.ctaUrl && o.ctaUrl !== "#";
+  // 방어 심층화(M-077) — 적재가 이미 http(s)만 저장하지만(adapters.ts parseHttpUrl),
+  // Linking.openURL은 커스텀 스킴/intent:도 시도하는 알려진 남용 벡터라 여기서도 다시
+  // 확인한다. "#" 아니면 그대로 여는 버튼이 적재 경로 변경에 무방비가 되지 않게.
+  const hasLink = !!o.ctaUrl && o.ctaUrl !== "#" && !!parseHttpUrl(o.ctaUrl);
+
+  // 마감(D-day)·출처 — 웹(opportunity-detail.tsx)과 동일하게 순수 deadlineLabel로 계산(M-053).
+  const today = new Date().toISOString().slice(0, 10);
+  const deadline = deadlineLabel(o.deadline, today);
 
   const onShare = () => {
     RNShare.share({
@@ -83,12 +100,23 @@ export default function OpportunityScreen() {
       />
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}>
-        <Tag label={o.categoryLabel} />
+        {/* 대표 이미지 배너 — 없거나 로드 실패하면 카테고리 톤 플레이스홀더로 폴백(M-051) */}
+        <Thumbnail imageUrl={o.imageUrl} tone={o.tone} style={styles.banner} />
+
+        <View style={styles.categoryRow}>
+          <Tag label={o.categoryLabel} />
+          {isWeekendOuting(o) && (
+            <View style={styles.weekendBadge}>
+              <Text style={styles.weekendBadgeText}>주말 나들이</Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.title}>{o.title}</Text>
         <View style={styles.locRow}>
           <Location size={16} color={C.primary} />
           <Text style={styles.locText}>{o.location?.dongName ?? "우리 동네"}</Text>
         </View>
+        {!!o.summary && <Text style={styles.summary}>{o.summary}</Text>}
 
         {/* 비용 카드 */}
         <View style={styles.costCard}>
@@ -127,21 +155,25 @@ export default function OpportunityScreen() {
           ))}
         </View>
 
-        {/* 즐기는 방법 (스텝이 있을 때만) */}
-        {!!o.steps && o.steps.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>즐기는 방법</Text>
-            <View style={{ gap: 16 }}>
-              {o.steps.map((s, i) => (
-                <View key={i} style={styles.step}>
-                  <View style={styles.stepNum}>
-                    <Text style={styles.stepNumText}>{i + 1}</Text>
-                  </View>
-                  <Text style={styles.stepText}>{s}</Text>
+        {/* 마감·출처 — 있는 것만(M-053) */}
+        {(deadline || o.sourceLabel) && (
+          <View style={styles.factsCard}>
+            {deadline && (
+              <View style={styles.factsRow}>
+                <Text style={styles.factsLabel}>마감</Text>
+                <View style={styles.factsValueRow}>
+                  <Text style={styles.factsValue}>{deadline.date}</Text>
+                  <DdayPill deadline={deadline} />
                 </View>
-              ))}
-            </View>
-          </>
+              </View>
+            )}
+            {!!o.sourceLabel && (
+              <View style={[styles.factsRow, deadline && styles.factsRowBorder]}>
+                <Text style={styles.factsLabel}>출처</Text>
+                <Text style={styles.factsValue}>{o.sourceLabel}</Text>
+              </View>
+            )}
+          </View>
         )}
 
         <Text style={styles.disclaimer}>
@@ -156,6 +188,9 @@ export default function OpportunityScreen() {
           style={[styles.bookmark, saved && styles.bookmarkOn]}
           onPress={() => toggleSaved(o.id)}
           hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={saved ? "저장 취소" : "저장하기"}
+          aria-pressed={saved}
         >
           <Bookmark size={22} filled={saved} color={saved ? C.primary : C.label} />
         </Pressable>
@@ -163,6 +198,7 @@ export default function OpportunityScreen() {
           style={[styles.startBtn, !hasLink && styles.startBtnDisabled]}
           onPress={() => hasLink && Linking.openURL(o.ctaUrl!)}
           disabled={!hasLink}
+          accessibilityRole="button"
         >
           <Text style={styles.startLabel}>{hasLink ? "보러 가기" : "링크 준비 중"}</Text>
           {hasLink && <ExternalLink size={18} color={C.white} />}
@@ -172,14 +208,35 @@ export default function OpportunityScreen() {
   );
 }
 
+/**
+ * 마감 임박도 배지. D-day에 따라 톤이 달라진다:
+ * 지남=회색, 임박(≤3일)=강조, 여유=은은. 웹 DdayPill(opportunity-detail.tsx)과 동일 톤 규칙.
+ */
+function DdayPill({ deadline }: { deadline: { dday: number; past: boolean } }) {
+  const { dday, past } = deadline;
+  const text = past ? "마감" : dday === 0 ? "오늘 마감" : `D-${dday}`;
+  const pillTone = past ? styles.pillPast : dday <= 3 ? styles.pillImminent : styles.pillComfortable;
+  const textTone = past ? styles.pillTextPast : dday <= 3 ? styles.pillTextImminent : styles.pillTextComfortable;
+  return (
+    <View style={[styles.pill, pillTone]}>
+      <Text style={[styles.pillText, textTone]}>{text}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   iconBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
   nfTitle: { fontSize: 20, fontWeight: "800", color: C.ink, textAlign: "center" },
   nfDesc: { marginTop: 8, fontSize: 14, lineHeight: 21, color: C.muted, textAlign: "center", maxWidth: 320 },
+  banner: { marginTop: 4, width: "100%", aspectRatio: 16 / 9, borderRadius: R.lg },
+  categoryRow: { marginTop: 4, flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 },
+  weekendBadge: { backgroundColor: C.tint, borderRadius: R.pill, paddingHorizontal: 8, paddingVertical: 3 },
+  weekendBadgeText: { fontSize: 11, fontWeight: "700", color: C.primaryDeep },
   title: { marginTop: 12, fontSize: 23, lineHeight: 30, fontWeight: "800", color: C.ink },
   locRow: { marginTop: 8, flexDirection: "row", alignItems: "center", gap: 4 },
   locText: { fontSize: 14, color: C.muted },
+  summary: { marginTop: 8, fontSize: 14, lineHeight: 20, color: C.label },
   costCard: { marginTop: 16, backgroundColor: "rgba(251,232,236,0.6)", borderRadius: R.lg, padding: 16 },
   costCap: { fontSize: 12, fontWeight: "600", color: C.primaryDeep },
   costVal: { fontSize: 30, fontWeight: "800", color: C.primaryDeep },
@@ -194,11 +251,20 @@ const styles = StyleSheet.create({
   metaCard: { flex: 1, backgroundColor: C.surface, borderRadius: R.lg, paddingVertical: 12, alignItems: "center", ...cardShadow },
   metaLabel: { fontSize: 11, color: C.muted },
   metaValue: { marginTop: 4, fontSize: 15, fontWeight: "700", color: C.ink },
-  sectionTitle: { marginTop: 24, marginBottom: 12, fontSize: 17, fontWeight: "700", color: C.ink },
-  step: { flexDirection: "row", gap: 12 },
-  stepNum: { width: 24, height: 24, borderRadius: 999, backgroundColor: C.primary, alignItems: "center", justifyContent: "center" },
-  stepNumText: { fontSize: 12, fontWeight: "700", color: C.white },
-  stepText: { flex: 1, fontSize: 14, lineHeight: 22, color: C.label },
+  factsCard: { marginTop: 12, backgroundColor: C.surface, borderRadius: R.lg, paddingHorizontal: 16, ...cardShadow },
+  factsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10 },
+  factsRowBorder: { borderTopWidth: 1, borderTopColor: C.lineAlt },
+  factsLabel: { fontSize: 13, color: C.muted },
+  factsValueRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  factsValue: { fontSize: 14, fontWeight: "700", color: C.ink },
+  pill: { borderRadius: R.pill, paddingHorizontal: 8, paddingVertical: 2 },
+  pillText: { fontSize: 11, fontWeight: "700" },
+  pillPast: { backgroundColor: C.gray100 },
+  pillTextPast: { color: C.muted },
+  pillImminent: { backgroundColor: C.primary },
+  pillTextImminent: { color: C.white },
+  pillComfortable: { backgroundColor: C.tint },
+  pillTextComfortable: { color: C.primaryDeep },
   disclaimer: { marginTop: 24, backgroundColor: C.gray100, borderRadius: R.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 12, lineHeight: 18, color: C.muted },
   actions: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8 },
   bookmark: { width: 52, height: 52, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },

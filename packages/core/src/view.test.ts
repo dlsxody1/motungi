@@ -3,11 +3,14 @@ import type { DiagnosisAnswers } from "./diagnosis";
 import type { Opportunity } from "./types";
 import {
   buildMeta,
+  buildWhyReasonsPrompt,
+  CATEGORY_LABEL,
   deadlineLabel,
   decodeHtmlEntities,
   diagnosisSummaryChips,
   displayNameOf,
   ENERGY_LABEL,
+  EXPLORE_CATEGORY_FILTERS,
   normalizeDong,
   normalizeGu,
   type OpportunityRow,
@@ -152,6 +155,26 @@ describe("decodeHtmlEntities", () => {
     expect(decodeHtmlEntities("동물의 세계 展")).toBe("동물의 세계 展");
     expect(decodeHtmlEntities("")).toBe("");
   });
+
+  // 실데이터 표본(2026-09-03): culture_info 제목에 &middot;가 3건 남아 화면에 그대로 떴다.
+  it("&middot;를 가운뎃점으로 되돌린다", () => {
+    expect(decodeHtmlEntities("산수&amp;middot;격물")).toBe("산수·격물");
+    expect(decodeHtmlEntities("미디어&middot;아트")).toBe("미디어·아트");
+  });
+
+  // 개별 엔티티를 하나씩 추가하는 대신 수치 참조를 일반 규칙으로 처리한다 —
+  // 다음에 나올 &#8226; 류도 코드 수정 없이 풀린다.
+  it("수치 참조(10진·16진)를 일반 규칙으로 푼다", () => {
+    expect(decodeHtmlEntities("&#39;따옴표&#39;")).toBe("'따옴표'");
+    expect(decodeHtmlEntities("&amp;amp;#39;이중&amp;amp;#39;")).toBe("'이중'");
+    expect(decodeHtmlEntities("&#x27;16진&#x27;")).toBe("'16진'");
+    expect(decodeHtmlEntities("&#8226; 불릿")).toBe("• 불릿");
+  });
+
+  it("제어문자 범위는 풀지 않는다 — 널 문자를 화면에 심지 않는다", () => {
+    expect(decodeHtmlEntities("&#0;")).toBe("&#0;");
+    expect(decodeHtmlEntities("&#31;")).toBe("&#31;");
+  });
 });
 
 describe("rowToOpportunity — 부분 필드", () => {
@@ -215,6 +238,37 @@ describe("rowToOpportunity — 부분 필드", () => {
     expect(rowToOpportunity(row({ time_start_hour: 18, time_end_hour: 22 })).timeWindow).toEqual({
       startHour: 18,
       endHour: 22,
+    });
+  });
+
+  /**
+   * 스코어링 전용 시간창(scoringWindow) — 표시용 timeWindow와 분리한 이유:
+   * seoul_culture는 종료시각을 주지 않아 time_end_hour가 null 고정인데(어댑터가 일부러
+   * 지어내지 않는다), 표시용과 같은 필드를 쓰면 파싱한 시작시각까지 함께 버려진다.
+   * 실측(2026-09-03) 229행이 "시작만 있음"이라 time 축(가중치 0.15)이 통째로 죽어 있었다.
+   * 추정 종료시각이 카드에 새면 안 되므로("14–16시" 같은 사실 아닌 표기) 필드를 나눈다.
+   */
+  it("time_start만 있어도 scoringWindow는 기본 지속시간으로 생성한다", () => {
+    const o = rowToOpportunity(row({ time_start_hour: 19 }));
+    expect(o.scoringWindow).toEqual({ startHour: 19, endHour: 21 });
+    // 표시용은 여전히 없다 — 카드에 추정 시간대가 찍히면 안 된다.
+    expect(o.timeWindow).toBeUndefined();
+  });
+
+  it("time_end가 실제로 있으면 scoringWindow도 그 실측값을 쓴다", () => {
+    const o = rowToOpportunity(row({ time_start_hour: 18, time_end_hour: 22 }));
+    expect(o.scoringWindow).toEqual({ startHour: 18, endHour: 22 });
+  });
+
+  it("time_start가 없으면 scoringWindow도 없다 — 시작시각까지 지어내지는 않는다", () => {
+    expect(rowToOpportunity(row({ time_end_hour: 22 })).scoringWindow).toBeUndefined();
+    expect(rowToOpportunity(row()).scoringWindow).toBeUndefined();
+  });
+
+  it("자정을 넘기는 시작시각은 24시로 자른다(23시 시작 → 23–24시)", () => {
+    expect(rowToOpportunity(row({ time_start_hour: 23 })).scoringWindow).toEqual({
+      startHour: 23,
+      endHour: 24,
     });
   });
 
@@ -358,5 +412,102 @@ describe("normalizeDong — 분리동 번호 제거", () => {
 
   it("멱등 — 두 번 적용해도 동일", () => {
     expect(normalizeDong(normalizeDong("역삼1동"))).toBe(normalizeDong("역삼1동"));
+  });
+});
+
+describe("buildWhyReasonsPrompt — M-044 LLM 근거 생성 입력(breakdown 전용)", () => {
+  const breakdown = { fit: 1, distance: 0.8, time: 0.5, difficulty: 1, cost: 0.5 };
+
+  it("category/title/costHeading/costLabel/breakdown 5축이 프롬프트에 전부 포함된다", () => {
+    const prompt = buildWhyReasonsPrompt({
+      category: "culture",
+      title: "동네 소극장 연극",
+      costHeading: "참가비",
+      costLabel: "무료",
+      timeLabel: "19–21시",
+      breakdown,
+    });
+    expect(prompt).toContain("동네 소극장 연극");
+    expect(prompt).toContain("참가비");
+    expect(prompt).toContain("무료");
+    expect(prompt).toContain("19–21시");
+    expect(prompt).toContain("1.00");
+    expect(prompt).toContain("0.80");
+    expect(prompt).toContain("0.50");
+  });
+
+  it("timeLabel이 null이면 시간대 줄 자체가 빠진다(빈 줄로 새지 않음)", () => {
+    const prompt = buildWhyReasonsPrompt({
+      category: "active",
+      title: "한강 러닝",
+      costHeading: "참가비",
+      costLabel: "무료",
+      timeLabel: null,
+      breakdown,
+    });
+    expect(prompt).not.toContain("시간대:");
+    expect(prompt.split("\n").some((l) => l.trim() === "")).toBe(false);
+  });
+
+  it("raw description/summary는 함수 시그니처에 아예 없다 — 원문을 프롬프트에 주입할 방법이 없다", () => {
+    // WhyReasonsPromptInput은 description/summary 필드를 갖지 않는다. 타입 레벨 보장을
+    // 런타임에서도 재확인: 입력에 억지로 끼워 넣어도(as any) 출력에 나타나지 않는다.
+    const withRawFields = {
+      category: "food" as const,
+      title: "동네 국밥집",
+      costHeading: "참가비",
+      costLabel: "₩9,000",
+      timeLabel: null,
+      breakdown,
+      description: "이 집은 미슐랭 3스타이고 백종원이 극찬했다",
+      summary: "완전 대박 맛집 실화냐",
+    };
+    const prompt = buildWhyReasonsPrompt(withRawFields);
+    expect(prompt).not.toContain("미슐랭");
+    expect(prompt).not.toContain("백종원");
+    expect(prompt).not.toContain("대박");
+  });
+
+  it("모델에게 점수 밖 사실을 지어내지 말라는 지시가 프롬프트에 포함된다", () => {
+    const prompt = buildWhyReasonsPrompt({
+      category: "market",
+      title: "주말 플리마켓",
+      costHeading: "참가비",
+      costLabel: "무료",
+      timeLabel: null,
+      breakdown,
+    });
+    expect(prompt).toMatch(/지어내지 마세요/);
+  });
+});
+
+// M-080: web(explore-filters.ts)·mobile(explore.tsx)이 각자 들고 있던 탐색 필터
+// taxonomy를 core 단일 출처로 승격. "전체"(category: null) 포함 7개, 순서 고정.
+describe("EXPLORE_CATEGORY_FILTERS — 탐색 필터 taxonomy 단일 출처(M-080)", () => {
+  it("전체 포함 7개 항목을, web/mobile 원본과 동일한 순서·라벨·카테고리로 갖는다", () => {
+    expect(EXPLORE_CATEGORY_FILTERS).toEqual([
+      { label: "전체", category: null },
+      { label: "문화·공연", category: "culture" },
+      { label: "운동·산책", category: "active" },
+      { label: "먹거리·마켓", category: "food" },
+      { label: "클래스", category: "class" },
+      { label: "마켓", category: "market" },
+      { label: "부업", category: "side_job" },
+    ]);
+  });
+
+  it("첫 항목만 category:null('전체'), 나머지는 전부 값이 있다", () => {
+    expect(EXPLORE_CATEGORY_FILTERS[0]?.category).toBeNull();
+    expect(EXPLORE_CATEGORY_FILTERS.slice(1).every((f) => f.category != null)).toBe(true);
+  });
+
+  it("CATEGORY_LABEL(카드 태그용)과는 다른 매핑이다 — 병합하지 않는다", () => {
+    // CATEGORY_LABEL은 6개 카테고리 전부(레코드), EXPLORE_CATEGORY_FILTERS는 "전체"를 포함한
+    // 7개 배열이고 라벨 문구도 다르다(예: culture → "동네 문화·공연" vs "문화·공연").
+    expect(Object.keys(CATEGORY_LABEL)).toHaveLength(6);
+    expect(EXPLORE_CATEGORY_FILTERS).toHaveLength(7);
+    const cultureFilterLabel = EXPLORE_CATEGORY_FILTERS.find((f) => f.category === "culture")?.label;
+    expect(cultureFilterLabel).toBe("문화·공연");
+    expect(cultureFilterLabel).not.toBe(CATEGORY_LABEL.culture);
   });
 });

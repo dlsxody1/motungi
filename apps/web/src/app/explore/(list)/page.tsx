@@ -1,6 +1,6 @@
 "use client";
 
-import { nearestAnchorKm, normalizeGu, scoreAll } from "@motungi/core";
+import { nearestAnchorKm, normalizeGenre, normalizeGu, scoreAll } from "@motungi/core";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BottomNav } from "@/components/bottom-nav";
@@ -136,7 +136,23 @@ function ExploreInner() {
     for (const o of source) {
       m.set(
         o.id,
-        [o.title, o.summary, o.categoryLabel, o.location?.dongName, normalizeGu(o.location?.dongName)]
+        [
+          o.title,
+          o.summary,
+          o.categoryLabel,
+          o.location?.dongName,
+          normalizeGu(o.location?.dongName),
+          /**
+           * genre는 0017이 컬럼·백필·인덱스까지 만들었는데 읽는 코드가 0곳이었다.
+           * summary에 우연히 섞여 들어가 부분적으로만 검색됐다.
+           *
+           * 원문과 통합 라벨을 **둘 다** 넣는다 — 소스마다 어휘가 갈려서
+           * (전시/미술 55 vs 전시 44, 콘서트 17 vs 음악/콘서트 17) 원문만으로는
+           * "미술"로 검색했을 때 culture_info 44건이 통째로 빠진다.
+           */
+          o.genre,
+          normalizeGenre(o.genre),
+        ]
           .filter(Boolean)
           .join(" ")
           .toLowerCase(),

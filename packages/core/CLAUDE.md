@@ -17,3 +17,7 @@
 ## 주의
 - 타입 변경은 core → web/mobile로 전파됨. 하위 앱 typecheck가 깨질 수 있으니 함께 확인.
 - fetch/IO는 adapter 경계에만. **실제 적재 어댑터는 여기가 아니라 `supabase/functions/ingest/adapters.ts`**다.
+- (M-029, 2026-08-08) `adapters/{seoul-culture,culture-info,sports-facility,trail}.ts`와
+  `seoul-jobs.ts`의 `normalizeSeoulJob`류는 위 실제 SoT의 죽은 미러였다(호출자 0) — 제거됨.
+  같은 실수를 반복하지 않도록: 새 소스 매핑은 `adapters.ts`에만 추가하고, 여기 core에는
+  그 매핑이 실제로 import해 쓰는 공용 순수 함수(util/판정 로직)만 둔다.

@@ -1,6 +1,6 @@
 "use client";
 
-import { pickTop } from "@motungi/core";
+import { PREFILTERED_WEIGHTS, pickTop } from "@motungi/core";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
@@ -37,12 +37,22 @@ export default function LoadingPage() {
         near: anchorsNow.home?.point
           ? { point: anchorsNow.home.point, radiusKm: 10 }
           : undefined,
-        limit: 30,
+        /**
+         * 마감 정렬을 끄고 넉넉히 받아 **pickTop이 점수순으로 자른다.**
+         * 예전엔 limit 30이었는데 서버가 마감 임박순으로 정렬한 뒤 자르는 구조라
+         * 후보가 "가장 좋은 30건"이 아니라 "가장 빨리 마감되는 30건"이었다 —
+         * 실측(2026-09-03) 망원동 10km·culture 236건 중 30건만 들어왔고 그 창은
+         * 사흘치(9/6까지)로 닫혀 있었다. 상시 활동(deadline null)은 아예 못 들어왔다.
+         */
+        unsorted: true,
+        limit: 200,
       });
       if (cancelled) return;
       // pickTop은 slice(0, topN)이라 후보가 적으면 그만큼만 — "나온 만큼" 렌더.
+      // PREFILTERED_WEIGHTS: 위에서 categories로 사전 필터를 걸었으므로 남은 후보가
+      // 전부 fit=1.0 상수다. 그 몫(0.35)을 살아있는 네 축에 배분한 가중치를 쓴다.
       const ranked = answers
-        ? pickTop(candidates, answers, anchorsNow, 6).map((r) => {
+        ? pickTop(candidates, answers, anchorsNow, 6, PREFILTERED_WEIGHTS).map((r) => {
             return { ...r.opportunity, matchScore: Math.round(r.score * 100) };
           })
         : candidates.slice(0, 6);

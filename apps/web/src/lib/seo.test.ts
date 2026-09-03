@@ -7,7 +7,15 @@
  */
 import { describe, expect, it } from "vitest";
 import type { MockOpportunity } from "@/data/opportunities";
-import { absoluteUrl, eventJsonLd, isExpired, opportunityMetadata, truncate } from "./seo";
+import {
+  absoluteUrl,
+  eventJsonLd,
+  faqJsonLd,
+  isExpired,
+  opportunityMetadata,
+  SITE_URL,
+  truncate,
+} from "./seo";
 
 const BASE: MockOpportunity = {
   id: "op-1",
@@ -157,5 +165,68 @@ describe("eventJsonLd", () => {
     expect(raw).toContain("\\u003c");
     // 이스케이프해도 JSON으로는 여전히 유효해야 한다.
     expect(JSON.parse(raw).name).toContain("</script>");
+  });
+});
+
+/**
+ * SITE_URL 회귀 방지.
+ *
+ * 2026-09-03 실측: 프로덕션이 fallback `https://motungi.app`을 그대로 내보내고 있었는데
+ * 그 도메인은 DNS가 없다(curl exit 6). 그래서 sitemap의 모든 `<loc>`·canonical·og:image·
+ * JSON-LD url이 존재하지 않는 호스트를 가리켰다 — 색인은 물론 카카오·슬랙 공유 미리보기까지
+ * 깨졌는데, **코드만 봐선 멀쩡해 보여** 리뷰로 못 잡았다. 그래서 테스트로 고정한다.
+ *
+ * 여기서 도메인 문자열을 하드코딩해 단언하지 않는 이유: 실제 도메인을 붙이면 값이 바뀌는데
+ * 그때 이 테스트가 "틀린 이유로" 깨지면 안 된다. 대신 **어떤 값이 와도 지켜야 할 성질**만 본다.
+ */
+describe("SITE_URL", () => {
+  it("절대 URL이고 https다 — canonical·og:image는 상대경로일 수 없다", () => {
+    expect(() => new URL(SITE_URL)).not.toThrow();
+    expect(SITE_URL.startsWith("https://")).toBe(true);
+  });
+
+  it("끝에 슬래시가 없다 — 붙으면 `${SITE_URL}/path`가 //path가 된다", () => {
+    expect(SITE_URL.endsWith("/")).toBe(false);
+  });
+
+  it("DNS 없는 옛 fallback 도메인으로 되돌아가지 않는다", () => {
+    // motungi.app을 실제로 확보해 연결했다면 이 단언을 지우고 값을 바꿔라.
+    expect(new URL(SITE_URL).hostname).not.toBe("motungi.app");
+  });
+});
+
+/**
+ * faqJsonLd (M-095).
+ *
+ * 빈 목록에서 `null`을 주는 게 이 함수의 핵심 판단이다 — 항목 0개짜리 FAQPage는
+ * 구조화 데이터 오류인데, 문자열을 반환하면 호출부가 그걸 그대로 `<script>`에 박는다.
+ */
+describe("faqJsonLd", () => {
+  it("빈 목록이면 null — 항목 없는 FAQPage를 내보내지 않는다", () => {
+    expect(faqJsonLd([])).toBeNull();
+  });
+
+  it("FAQPage 형태로 질문·답변을 싣는다", () => {
+    const json = JSON.parse(faqJsonLd([{ q: "무료인가요?", a: "네, 무료입니다." }])!);
+
+    expect(json["@type"]).toBe("FAQPage");
+    expect(json.mainEntity).toHaveLength(1);
+    expect(json.mainEntity[0].name).toBe("무료인가요?");
+    expect(json.mainEntity[0].acceptedAnswer.text).toBe("네, 무료입니다.");
+  });
+
+  it("`</script>`가 섞여도 스크립트 블록을 조기 종료시키지 않는다", () => {
+    // eventJsonLd와 같은 방어. 활동 제목은 외부 공공데이터라 무엇이든 들어올 수 있다.
+    const out = faqJsonLd([{ q: "q", a: "</script><img src=x onerror=alert(1)>" }])!;
+
+    expect(out).not.toContain("</script>");
+    expect(out).toContain("\\u003c");
+    // 이스케이프해도 JSON 의미는 보존된다 — 파싱하면 원문이 그대로 나와야 한다.
+    expect(JSON.parse(out).mainEntity[0].acceptedAnswer.text).toContain("</script>");
+  });
+
+  it("특수문자·따옴표가 답변에 있어도 유효한 JSON이다", () => {
+    const a = '따옴표 "안녕" · 역슬래시 \\ · 줄바꿈\n포함';
+    expect(JSON.parse(faqJsonLd([{ q: "q", a }])!).mainEntity[0].acceptedAnswer.text).toBe(a);
   });
 });

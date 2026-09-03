@@ -21,6 +21,13 @@ export const queryKeys = {
   /** 단건 상세. 보관함·상세가 같은 키를 공유해 중복 조회가 사라진다. */
   opportunity: (id: string) => ["opportunity", id] as const,
   /**
+   * 보관함 벌크 조회(useSavedOpportunities). id 집합을 정렬해 키에 넣는다 —
+   * 같은 저장 목록이라도 저장 순서가 다르면 다른 배열이 되므로, 정렬해야 같은
+   * id 집합이 항상 같은 캐시 항목으로 모인다(응답을 저장 순서로 되돌리는 건 훅의 몫).
+   */
+  savedOpportunities: (ids: string[]) =>
+    ["saved-opportunities", [...ids].sort().join(",")] as const,
+  /**
    * 리포트 직접진입 fallback(6건). 카탈로그와 다른 쿼리다 — limit이 달라 섞이면 안 된다.
    * point가 키에 들어간다: 예전엔 키가 상수여서 동네를 바꿔도 이전 동네 6건이 캐시에서
    * 그대로 나왔다(강남에서 금천 원픽이 뜨던 경로 중 하나).
@@ -29,6 +36,11 @@ export const queryKeys = {
     ["report-fallback", point ? `${point.lat},${point.lng}` : "no-anchor"] as const,
   /** 걷기길 경로. */
   trailRoute: (id: string) => ["trail-route", id] as const,
+  /**
+   * LLM 근거 생성(M-044). breakdownKey는 breakdown 5축 직렬화값 —
+   * 진단답변·앵커가 바뀌어 breakdown이 달라지면 자동으로 다른 캐시 항목이 된다.
+   */
+  whyReasons: (id: string, breakdownKey: string) => ["why-reasons", id, breakdownKey] as const,
 } as const;
 
 export function QueryProvider({ children }: { children: ReactNode }) {

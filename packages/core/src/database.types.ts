@@ -41,6 +41,7 @@ export type SourceKindDb =
   | "affiliate_feed" // 레거시, 미사용, DB에만 잔존 (구 기획: 제휴 피드)
   | "seoul_jobs" // 서울시 일자리플러스센터
   | "seoul_culture" // 서울시 문화행사
+  | "kopis" // KOPIS 공연예술통합전산망 (0019)
   | "culture_info" // 한눈에보는문화정보 data.go.kr
   | "sports_facility" // 공공체육시설 data.go.kr
   | "trail"; // 두루누비 걷기길 data.go.kr
@@ -87,6 +88,8 @@ export interface Database {
           created_at: string; // timestamptz (ISO)
           time_start_hour: number | null;
           time_end_hour: number | null;
+          /** 좌표 정밀도(0018). null=소스 원본, "sigungu"=구 중심 폴백. */
+          coord_level: string | null;
           lat: number | null;
           lng: number | null;
           // 걷기길 코스 안내(0013). trail 전용 — 그 외 소스는 null.
@@ -120,6 +123,7 @@ export interface Database {
           created_at?: string;
           time_start_hour?: number | null;
           time_end_hour?: number | null;
+          coord_level?: string | null;
           lat?: number | null;
           lng?: number | null;
           course_start?: string | null;
@@ -152,6 +156,7 @@ export interface Database {
           created_at?: string;
           time_start_hour?: number | null;
           time_end_hour?: number | null;
+          coord_level?: string | null;
           lat?: number | null;
           lng?: number | null;
           course_start?: string | null;
@@ -264,9 +269,10 @@ const APP_OPPORTUNITY_CATEGORIES = new Set<string>([
   "market",
 ] satisfies OpportunityCategory[]);
 
-/** 앱이 실제로 쓰는 소스 6종 (`./types`의 `SourceKind`와 동기화 유지). */
+/** 앱이 실제로 쓰는 소스 7종 (`./types`의 `SourceKind`와 동기화 유지). */
 const APP_SOURCE_KINDS = new Set<string>([
   "seoul_culture",
+  "kopis",
   "culture_info",
   "sports_facility",
   "trail",
