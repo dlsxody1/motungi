@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { DiagnosisAnswers } from "./diagnosis";
-import { pickTop, scoreAll, scoreOpportunity } from "./scoring";
+import {
+  DEFAULT_WEIGHTS,
+  PREFILTERED_WEIGHTS,
+  pickTop,
+  scoreAll,
+  scoreOpportunity,
+} from "./scoring";
 import type { Location, Opportunity, UserAnchors } from "./types";
 
 const answers: DiagnosisAnswers = {
@@ -276,5 +282,54 @@ describe("scoreOpportunity time 축 — timeSlot 분기", () => {
     const a = { ...answers, timeSlot: "flexible" as const };
     expect(scoreOpportunity(evening, a, anchors).breakdown.time).toBe(0.5);
     expect(scoreOpportunity(daytime, a, anchors).breakdown.time).toBe(0.5);
+  });
+});
+
+/**
+ * 사전 필터가 fit을 무력화하는 문제(가중치 0.35가 상수) — PREFILTERED_WEIGHTS로 푼다.
+ * 원픽 경로(loading)는 서버에서 관심 카테고리를 이미 걸러 남은 후보가 전부 fit=1.0이다.
+ * 탐색(explore)은 전량을 받아 fit이 실제로 변별하므로 기본 가중치를 그대로 쓴다.
+ */
+describe("PREFILTERED_WEIGHTS — 사전 필터 경로의 가중치", () => {
+  it("합이 1이다(기본 가중치와 동일한 정규화)", () => {
+    const sum = Object.values(PREFILTERED_WEIGHTS).reduce((a, b) => a + b, 0);
+    expect(sum).toBeCloseTo(1, 6);
+  });
+
+  it("fit 가중치가 0 — 사전 필터로 이미 상수라 점수에 기여하지 못한다", () => {
+    expect(PREFILTERED_WEIGHTS.fit).toBe(0);
+  });
+
+  it("죽은 fit 몫이 살아있는 네 축으로 갔다 — 전부 기본보다 커진다", () => {
+    for (const axis of ["distance", "time", "difficulty", "cost"] as const) {
+      expect(PREFILTERED_WEIGHTS[axis]).toBeGreaterThan(DEFAULT_WEIGHTS[axis]);
+    }
+  });
+
+  it("같은 카테고리 후보들의 점수 차이가 기본 가중치보다 커진다", () => {
+    // 관심 카테고리(culture)로 사전 필터된 상황: 둘 다 fit=1.0이고 거리만 다르다.
+    const near = opp({ id: "near", location: here, costKrw: 0, difficulty: 0.1 });
+    const far = opp({
+      id: "far",
+      location: { dongName: "먼동", point: { lat: 37.65, lng: 127.05 } },
+      costKrw: 40000,
+      difficulty: 0.9,
+    });
+    const gapDefault =
+      scoreOpportunity(near, answers, anchors, DEFAULT_WEIGHTS).score -
+      scoreOpportunity(far, answers, anchors, DEFAULT_WEIGHTS).score;
+    const gapPrefiltered =
+      scoreOpportunity(near, answers, anchors, PREFILTERED_WEIGHTS).score -
+      scoreOpportunity(far, answers, anchors, PREFILTERED_WEIGHTS).score;
+    // fit이 상수인 상황에서 나머지 축의 변별력이 커져야 한다.
+    expect(gapPrefiltered).toBeGreaterThan(gapDefault);
+  });
+
+  it("탐색 경로(기본 가중치)는 여전히 fit으로 관심 밖 카테고리를 밀어낸다", () => {
+    const interesting = opp({ id: "c", category: "culture", location: here });
+    const notInteresting = opp({ id: "j", category: "side_job", location: here });
+    const a = scoreOpportunity(interesting, answers, anchors).score;
+    const b = scoreOpportunity(notInteresting, answers, anchors).score;
+    expect(a).toBeGreaterThan(b);
   });
 });

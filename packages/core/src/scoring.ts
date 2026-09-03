@@ -17,12 +17,35 @@ interface ScoreWeights {
   cost: number; // 비용(무료·저예산 가점)
 }
 
-const DEFAULT_WEIGHTS: ScoreWeights = {
+export const DEFAULT_WEIGHTS: ScoreWeights = {
   fit: 0.35,
   distance: 0.2,
   time: 0.15,
   difficulty: 0.15,
   cost: 0.15,
+};
+
+/**
+ * 후보가 **이미 관심 카테고리로 걸러진** 경로용 가중치 (원픽/loading).
+ *
+ * 문제: `/loading`은 서버에 `categories: answers.interests`를 넘겨 사전 필터를 건다.
+ * 그러면 남은 후보가 전부 관심 카테고리라 fit이 1.0 상수가 되고, **점수의 35%가
+ * 움직이지 않는다**(실측 2026-09-03: fit σ=0.0000). 남은 0.65 안에서만 순위가 갈리니
+ * 변별력이 그만큼 깎인다.
+ *
+ * 그래서 fit 몫 0.35를 살아있는 네 축에 **비례 배분**한다(0.2:0.15:0.15:0.15 비율 유지).
+ * 사전 필터를 푸는 대안도 있었지만, 망원동 10km 실측이 culture 236 / side_job 19라
+ * 필터를 풀면 "퇴근하고 뭐하지"에 부업 공고가 원픽으로 뜰 수 있다 — 컨셉이 무너진다.
+ *
+ * 탐색(explore)은 카테고리 필터 없이 전량을 받으므로 fit이 실제로 변별한다 →
+ * 거기선 DEFAULT_WEIGHTS를 그대로 쓴다.
+ */
+export const PREFILTERED_WEIGHTS: ScoreWeights = {
+  fit: 0,
+  distance: 0.2 / 0.65,
+  time: 0.15 / 0.65,
+  difficulty: 0.15 / 0.65,
+  cost: 0.15 / 0.65,
 };
 
 const ENERGY_DIFFICULTY_TOLERANCE: Record<Energy, number> = {

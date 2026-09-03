@@ -1,6 +1,6 @@
 "use client";
 
-import { pickTop } from "@motungi/core";
+import { PREFILTERED_WEIGHTS, pickTop } from "@motungi/core";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
@@ -49,8 +49,10 @@ export default function LoadingPage() {
       });
       if (cancelled) return;
       // pickTop은 slice(0, topN)이라 후보가 적으면 그만큼만 — "나온 만큼" 렌더.
+      // PREFILTERED_WEIGHTS: 위에서 categories로 사전 필터를 걸었으므로 남은 후보가
+      // 전부 fit=1.0 상수다. 그 몫(0.35)을 살아있는 네 축에 배분한 가중치를 쓴다.
       const ranked = answers
-        ? pickTop(candidates, answers, anchorsNow, 6).map((r) => {
+        ? pickTop(candidates, answers, anchorsNow, 6, PREFILTERED_WEIGHTS).map((r) => {
             return { ...r.opportunity, matchScore: Math.round(r.score * 100) };
           })
         : candidates.slice(0, 6);
