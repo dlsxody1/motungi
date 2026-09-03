@@ -17,6 +17,7 @@ function HeroCard({ item }: { item: MockOpportunity }) {
   return (
     <Pressable
       onPress={() => router.push({ pathname: "/opportunity", params: { id: item.id } })}
+      accessibilityRole="button"
       style={styles.card}
     >
       {item.imageUrl ? (

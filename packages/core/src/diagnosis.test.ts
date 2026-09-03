@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { draftToAnswers, isDiagnosisComplete } from "./diagnosis";
+import { draftToAnswers, isDiagnosisComplete, isValidDiagnosisAnswers } from "./diagnosis";
 
 describe("draftToAnswers — M-012", () => {
   it("완전하고 유효한 draft는 올바른 DiagnosisAnswers를 반환한다", () => {
@@ -112,5 +112,64 @@ describe("draftToAnswers — M-049 Q1 다중선택", () => {
       timeSlot: "weekday_evening",
       energy: "moderate",
     });
+  });
+});
+
+describe("isValidDiagnosisAnswers — M-070", () => {
+  it("완전하고 유효한 answers는 true다", () => {
+    expect(
+      isValidDiagnosisAnswers({
+        interests: ["culture", "active"],
+        timeSlot: "weekday_evening",
+        energy: "moderate",
+      }),
+    ).toBe(true);
+  });
+
+  it("null/undefined/객체가 아닌 값은 false다", () => {
+    expect(isValidDiagnosisAnswers(null)).toBe(false);
+    expect(isValidDiagnosisAnswers(undefined)).toBe(false);
+    expect(isValidDiagnosisAnswers("culture")).toBe(false);
+    expect(isValidDiagnosisAnswers(42)).toBe(false);
+  });
+
+  it("interests가 배열이 아닌 구버전 스키마(M-049 이전 단일 string)는 크래시 없이 false다", () => {
+    expect(
+      isValidDiagnosisAnswers({
+        interests: "culture",
+        timeSlot: "weekday_evening",
+        energy: "moderate",
+      }),
+    ).toBe(false);
+  });
+
+  it("interests가 빈 배열이면 false다", () => {
+    expect(
+      isValidDiagnosisAnswers({ interests: [], timeSlot: "weekday_evening", energy: "moderate" }),
+    ).toBe(false);
+  });
+
+  it("interests에 유효하지 않은 카테고리가 섞이면 false다", () => {
+    expect(
+      isValidDiagnosisAnswers({
+        interests: ["culture", "not_a_category"],
+        timeSlot: "weekday_evening",
+        energy: "moderate",
+      }),
+    ).toBe(false);
+  });
+
+  it("timeSlot·energy가 유효 멤버십을 벗어나면 false다", () => {
+    expect(
+      isValidDiagnosisAnswers({ interests: ["culture"], timeSlot: "evening", energy: "moderate" }),
+    ).toBe(false);
+    expect(
+      isValidDiagnosisAnswers({ interests: ["culture"], timeSlot: "weekday_evening", energy: "low" }),
+    ).toBe(false);
+  });
+
+  it("필드가 누락되면 false다", () => {
+    expect(isValidDiagnosisAnswers({})).toBe(false);
+    expect(isValidDiagnosisAnswers({ interests: ["culture"] })).toBe(false);
   });
 });

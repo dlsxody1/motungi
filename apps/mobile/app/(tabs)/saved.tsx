@@ -7,6 +7,7 @@ import { useSavedOpportunities } from "@/hooks/useSavedOpportunities";
 import { useAppStore } from "@/store/useAppStore";
 import { Txt } from "@/ui/components";
 import { Bookmark, Location, User } from "@/ui/icons";
+import { Thumbnail } from "@/ui/thumbnail";
 import { C, R } from "@/ui/theme";
 
 /** 보관함 목록 뷰 모델 — catalog 원소에 뷰 필드(categoryLabel/costLabel/tone)가 붙은 형태. */
@@ -26,7 +27,16 @@ const SavedItem = memo(function SavedItem({
 }) {
   const accent = item.tone === "mint" ? C.mint : C.primary;
   return (
-    <Pressable onPress={() => onOpen(item.id)} style={[styles.item, !first && styles.itemBorder]}>
+    <Pressable
+      onPress={() => onOpen(item.id)}
+      accessibilityRole="button"
+      style={[styles.item, !first && styles.itemBorder]}
+    >
+      <Thumbnail
+        imageUrl={item.imageUrl}
+        tone={item.tone === "mint" ? "mint" : "brand"}
+        style={styles.thumb}
+      />
       <View style={{ flex: 1 }}>
         <Text style={[styles.cat, { color: accent }]}>{item.categoryLabel}</Text>
         <Text style={styles.title}>{item.title}</Text>
@@ -85,7 +95,12 @@ export default function SavedScreen() {
           <Text style={styles.bannerTitle}>이번 주 동네 다시 보기</Text>
           <Text style={styles.bannerSub}>상황이 바뀌었나요? 60초면 재진단해요.</Text>
         </View>
-        <Pressable style={styles.redo} hitSlop={8} onPress={() => router.push("/diagnosis")}>
+        <Pressable
+          style={styles.redo}
+          hitSlop={8}
+          onPress={() => router.push("/diagnosis")}
+          accessibilityRole="button"
+        >
           <Text style={styles.redoLabel}>재진단</Text>
         </Pressable>
       </View>
@@ -121,7 +136,7 @@ export default function SavedScreen() {
             <Bookmark size={28} color={C.faint} />
             <Text style={styles.emptyTitle}>활동을 불러오지 못했어요</Text>
             <Text style={styles.emptySub}>네트워크 상태를 확인하고 다시 시도해 주세요.</Text>
-            <Pressable style={styles.emptyCta} onPress={retry}>
+            <Pressable style={styles.emptyCta} onPress={retry} accessibilityRole="button">
               <Text style={styles.emptyCtaLabel}>다시 시도</Text>
             </Pressable>
           </View>
@@ -132,7 +147,11 @@ export default function SavedScreen() {
             <Bookmark size={28} color={C.faint} />
             <Text style={styles.emptyTitle}>아직 저장한 활동이 없어요</Text>
             <Text style={styles.emptySub}>마음에 드는 활동의 북마크를 눌러 담아두세요.</Text>
-            <Pressable style={styles.emptyCta} onPress={() => router.push("/explore")}>
+            <Pressable
+              style={styles.emptyCta}
+              onPress={() => router.push("/explore")}
+              accessibilityRole="button"
+            >
               <Text style={styles.emptyCtaLabel}>둘러보기</Text>
             </Pressable>
           </View>
@@ -166,6 +185,7 @@ const styles = StyleSheet.create({
   savedHead: { marginTop: 24, marginBottom: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   count: { fontSize: 13, color: C.muted },
   item: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 16 },
+  thumb: { width: 64, height: 64 },
   itemBorder: { borderTopWidth: 1, borderTopColor: C.lineAlt },
   cat: { fontSize: 12, fontWeight: "700" },
   title: { marginTop: 4, fontSize: 16, fontWeight: "700", color: C.ink },

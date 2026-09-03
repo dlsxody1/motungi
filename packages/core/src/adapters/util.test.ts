@@ -4,12 +4,37 @@ import {
   joinDescription,
   parseFeeKrw,
   parseHour,
+  parseHttpUrl,
   parsePoint,
   parseGpxPoints,
   parseTrailGuide,
   stripHtml,
   toIsoDate,
 } from "./util";
+
+describe("parseHttpUrl", () => {
+  it("http(s) URL은 그대로 통과시킨다", () => {
+    expect(parseHttpUrl("https://example.org/event")).toBe("https://example.org/event");
+    expect(parseHttpUrl("http://example.org")).toBe("http://example.org");
+  });
+
+  it("앞뒤 공백은 잘라낸다", () => {
+    expect(parseHttpUrl("  https://example.org  ")).toBe("https://example.org");
+  });
+
+  it("javascript:/data:/intent: 등 비 http(s) 스킴은 거부한다(M-077)", () => {
+    expect(parseHttpUrl("javascript:alert(1)")).toBeUndefined();
+    expect(parseHttpUrl("data:text/html,<script>alert(1)</script>")).toBeUndefined();
+    expect(parseHttpUrl("intent://scan/#Intent;scheme=zxing;end")).toBeUndefined();
+  });
+
+  it("깨진 URL·빈 값·undefined는 거부한다", () => {
+    expect(parseHttpUrl("not a url")).toBeUndefined();
+    expect(parseHttpUrl("")).toBeUndefined();
+    expect(parseHttpUrl(undefined)).toBeUndefined();
+    expect(parseHttpUrl("   ")).toBeUndefined();
+  });
+});
 
 describe("stripHtml", () => {
   it("<br>은 개행으로 바꿔 문장이 붙지 않게 한다", () => {

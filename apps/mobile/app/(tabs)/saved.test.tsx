@@ -83,6 +83,66 @@ describe("SavedScreen", () => {
     expect(screen.getByText("망원동 기준")).toBeInTheDocument();
   });
 
+  it("행 썸네일이 item.imageUrl로 고정 64x64 크기로 렌더된다(M-089)", () => {
+    state.catalog = [
+      makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", imageUrl: "https://example.test/a.jpg" }),
+    ];
+    state.savedIds = ["op-1"];
+
+    const { container } = render(<SavedScreen />);
+
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+    expect(img).toHaveAttribute("src", "https://example.test/a.jpg");
+    // 썸네일 컨테이너(Thumbnail의 최상위 View)가 64x64 고정 크기다 — 이미지 로드
+    // 전/후 레이아웃이 흔들리지 않는다. react-native-web의 Image는 내부에 래퍼 div를
+    // 하나 더 두므로(ImageLoader), 컨테이너는 img의 조부모다.
+    const thumb = img!.parentElement!.parentElement!;
+    expect(getComputedStyle(thumb).width).toBe("64px");
+    expect(getComputedStyle(thumb).height).toBe("64px");
+  });
+
+  it("imageUrl이 없으면 플레이스홀더만 렌더한다(이미지 태그 없음, M-089)", () => {
+    state.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+    state.savedIds = ["op-1"];
+
+    const { container } = render(<SavedScreen />);
+
+    expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
+    expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("썸네일 이미지 로드가 실패하면 크래시 없이 플레이스홀더로 폴백한다(M-089)", async () => {
+    // react-native-web Image는 window.Image().onerror로 로드 실패를 판정한다
+    // (thumbnail.test.tsx의 AlwaysErrorsImage 더블과 동일 이유).
+    class AlwaysErrorsImage {
+      onerror: (() => void) | null = null;
+      onload: (() => void) | null = null;
+      set src(_value: string) {
+        queueMicrotask(() => this.onerror?.());
+      }
+    }
+    const originalImage = window.Image;
+    // @ts-expect-error 테스트 더블 — 항상 실패하는 window.Image
+    window.Image = AlwaysErrorsImage;
+
+    try {
+      state.catalog = [
+        makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", imageUrl: "https://example.test/broken.jpg" }),
+      ];
+      state.savedIds = ["op-1"];
+
+      const { container } = render(<SavedScreen />);
+
+      expect(container.querySelector("img")).not.toBeNull();
+      await waitFor(() => {
+        expect(container.querySelector("img")).toBeNull();
+      });
+    } finally {
+      window.Image = originalImage;
+    }
+  });
+
   it("저장 토글에 접근 가능한 이름과 44px 이상 터치영역이 있다(M-031)", () => {
     state.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
     state.savedIds = ["op-1"];
@@ -137,6 +197,41 @@ describe("SavedScreen", () => {
     expect(screen.getByText("저장한 활동을 불러오는 중…")).toBeInTheDocument();
     // 로딩 중엔 "0개"로 오독될 수 있는 개수 표시를 렌더하지 않는다.
     expect(screen.queryByText(/개$/)).not.toBeInTheDocument();
+  });
+
+  it("주요 컨트롤 4곳이 button role로 노출된다(M-073)", () => {
+    state.anchors = { home: { dongName: "망원동" } };
+    state.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+    state.savedIds = ["op-1"];
+
+    render(<SavedScreen />);
+
+    // 카드 자체(Pressable) — 저장 취소 버튼과 별개로 카드 전체도 button role이어야 한다.
+    const card = screen.getByText("망원 한강 러닝 클래스").closest('[role="button"]');
+    expect(card).not.toBeNull();
+    // 재진단
+    expect(screen.getByText("재진단").closest('[role="button"]')).not.toBeNull();
+  });
+
+  it("빈 상태의 둘러보기 버튼이 button role로 노출된다(M-073)", () => {
+    state.savedIds = [];
+
+    render(<SavedScreen />);
+
+    expect(screen.getByText("둘러보기").closest('[role="button"]')).not.toBeNull();
+  });
+
+  it("에러 상태의 다시 시도 버튼이 button role로 노출된다(M-073)", async () => {
+    state.catalog = [];
+    state.savedIds = ["창밖-id"];
+    fetchOpportunityByIdMock.mockResolvedValueOnce({ data: null, status: "error" });
+
+    render(<SavedScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText("활동을 불러오지 못했어요")).toBeInTheDocument();
+    });
+    expect(screen.getByText("다시 시도").closest('[role="button"]')).not.toBeNull();
   });
 
   it("단건 조회가 실패하면 에러 상태 + 다시 시도 버튼을 렌더하고, 버튼을 누르면 재조회한다(M-046)", async () => {

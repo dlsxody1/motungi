@@ -26,6 +26,7 @@ import {
   deadlineLabel,
   displayNameOf,
   isWeekendOuting,
+  parseHttpUrl,
   timeRangeLabel,
 } from "@motungi/core";
 import { CourseGuide } from "@/components/course-guide";
@@ -57,7 +58,7 @@ export function OpportunityDetail({
 }) {
   const router = useRouter();
   // 상세는 카탈로그 전량을 받지 않는다 — id로 1건만(이미 스토어에 있으면 재사용).
-  const { opportunity: fetched, status } = useOpportunity(id);
+  const { opportunity: fetched, status } = useOpportunity(id, initial);
   // 서버가 준 1건이 우선 — 하이드레이션 시점에 훅은 아직 idle이라 비어 있다.
   const o = initial ?? fetched;
   // 걷기길이면 코스 경로를 받아 지도에 선으로 그린다(그 외 소스는 요청하지 않음).
@@ -117,7 +118,10 @@ export function OpportunityDetail({
   }
 
   const displayName = displayNameOf(user);
-  const hasLink = !!o.ctaUrl && o.ctaUrl !== "#";
+  // 방어 심층화(M-077) — 적재가 이미 http(s)만 저장하지만(adapters.ts parseHttpUrl),
+  // 여기서도 다시 확인한다. 적재 경로가 바뀌어도 "#" 아니면 그대로 여는 버튼이 무방비가
+  // 되지 않게(trail-route/route.ts의 gpx_url 이중검증과 같은 판단, M-059).
+  const hasLink = !!o.ctaUrl && o.ctaUrl !== "#" && !!parseHttpUrl(o.ctaUrl);
 
   // 사이드바/헤더 보강 표시값 (row에 있는 데이터를 실제로 노출).
   const today = new Date().toISOString().slice(0, 10);

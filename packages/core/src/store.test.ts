@@ -255,6 +255,84 @@ describe("createAppStore", () => {
     });
   });
 
+  describe("persist rehydrate 검증(M-070)", () => {
+    /** persist storage에 이미 저장된 것처럼 answers를 직접 심어둔다(다음 store 인스턴스가 읽어들일 값). */
+    function seedPersistedAnswers(storage: StateStorage, answers: unknown) {
+      storage.setItem(
+        "motungi-app",
+        JSON.stringify({
+          state: { anchors: {}, answers, savedIds: [] },
+          version: 0,
+        }),
+      );
+    }
+
+    it("유효한 저장값은 rehydrate 후 그대로 유지된다", async () => {
+      const storage = createSyncStorage();
+      const validAnswers = {
+        interests: ["culture"],
+        timeSlot: "weekday_evening",
+        energy: "moderate",
+      };
+      seedPersistedAnswers(storage, validAnswers);
+
+      const store = createAppStore<TestOpportunity, TestCatalogStatus>({
+        storage,
+        supabase: null,
+      });
+      await store.persist.rehydrate();
+
+      expect(store.getState().answers).toEqual(validAnswers);
+    });
+
+    it("유효 멤버십을 벗어난 저장값은 rehydrate 시 null로 되돌린다", async () => {
+      const storage = createSyncStorage();
+      seedPersistedAnswers(storage, {
+        interests: ["not_a_category"],
+        timeSlot: "weekday_evening",
+        energy: "moderate",
+      });
+
+      const store = createAppStore<TestOpportunity, TestCatalogStatus>({
+        storage,
+        supabase: null,
+      });
+      await store.persist.rehydrate();
+
+      expect(store.getState().answers).toBeNull();
+    });
+
+    it("구버전 스키마(interests가 배열이 아닌 단일 string, M-049 이전)는 크래시 없이 null로 무효화된다", async () => {
+      const storage = createSyncStorage();
+      seedPersistedAnswers(storage, {
+        interests: "culture",
+        timeSlot: "weekday_evening",
+        energy: "moderate",
+      });
+
+      const store = createAppStore<TestOpportunity, TestCatalogStatus>({
+        storage,
+        supabase: null,
+      });
+
+      await expect(store.persist.rehydrate()).resolves.not.toThrow();
+      expect(store.getState().answers).toBeNull();
+    });
+
+    it("저장값이 answers=null이면(진단 전 게스트) 그대로 null 유지된다", async () => {
+      const storage = createSyncStorage();
+      seedPersistedAnswers(storage, null);
+
+      const store = createAppStore<TestOpportunity, TestCatalogStatus>({
+        storage,
+        supabase: null,
+      });
+      await store.persist.rehydrate();
+
+      expect(store.getState().answers).toBeNull();
+    });
+  });
+
   describe("비동기 storage(AsyncStorage 계약)로 인스턴스화", () => {
     it("동기 시나리오와 동일하게 동작하고 setItem이 비동기로 호출된다", async () => {
       const storage = createAsyncStorage();
