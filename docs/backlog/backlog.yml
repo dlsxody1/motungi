@@ -1849,7 +1849,7 @@ backlog:
   - id: M-073
     title: "AEO 1단계 — /explore/[gu] 구별 SSR 페이지 24개 (답변 엔진이 인용할 본문)"
     priority: high
-    status: todo
+    status: done
     scope: [apps/web/src/app/explore, apps/web/src/lib/seo.ts, packages/core/src/catalog.ts]
     done_when:
       - "/explore/종로구 같은 구 단위 경로가 서버 컴포넌트로 렌더되고, JS 끄고 봐도 활동 목록 본문이 HTML에 있다"
@@ -1874,6 +1874,23 @@ backlog:
       노원/관악 10 · 마포/광진/영등포 9 · 동작 8 · 금천/강북 7 · 중랑 6 · 도봉 5 · 강서 2.
       기존 `/explore`는 클라이언트 렌더 + 가상화라 크롤러에게 사실상 빈 페이지다
       (`sitemap.ts` 주석이 이미 이 사실을 인정한다). 이 이슈가 그 공백을 메운다.
+
+      **구현 결과 (2026-09-03) — 위 스펙과 달라진 점 3가지:**
+      1. **집계는 반경이 아니라 `dong_name` 그룹이다.** 반경 3km는 종로구를 105건으로 세는데
+         그중 상당수가 옆 구 활동이라 "종로구 페이지인데 중구 활동"이 된다. `dong_name` 그룹은
+         74건으로 작지만 "종로구라고 적힌 활동"만 센다 — 페이지에 쓴 숫자를 설명할 수 있어야 하므로
+         후자를 택했다. 위 반경 커버리지 수치는 이제 구현과 무관하다.
+      2. **페이지는 24개가 아니라 22개다.** 임계(5건) 넘는 서울 구가 실측 22개(2026-09-03).
+         경기 시(파주 11·김포 9·용인 9·안산 8·수원 7·화성 6)도 임계는 넘지만 이번 범위에서 제외 —
+         좌표 결실이 크고(수원 1/7·용인 3/9) 무료 활동이 0건이라 페이지 품질이 안 나온다.
+      3. **`explore/`에 `(list)` 라우트 그룹을 만들었다.** `explore/loading.tsx`가 하위 세그먼트로
+         상속되면서 구 페이지 프리렌더 HTML에 `DesktopShell` 스켈레톤이 통째로 한 벌 더 실렸다
+         (실측: nav 3·footer 2·"활동을 불러오는 중" 4회). 기존 page/loading/테스트를 `(list)/`로
+         옮겨 경계를 `/explore`에만 묶었다. URL은 그대로다.
+
+      실측 검증(프리렌더 HTML 기준): 본문 2,079자 · nav 1·footer 1·h1 1(중복 없음) ·
+      canonical `/explore/종로구` · description이 실집계 문장 · ItemList JSON-LD 40건.
+      집계 로직은 `packages/core/src/gu-summary.ts`(테스트 13개).
 
   - id: M-074
     title: "AEO 2단계 — FAQPage JSON-LD (랜딩 + 구 페이지)"

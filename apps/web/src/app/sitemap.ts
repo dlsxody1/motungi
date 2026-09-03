@@ -9,7 +9,7 @@
  * 로그인·진단 상태에 따라 내용이 달라져 공개 색인 대상이 아니다(robots.ts와 동일 목록).
  */
 import type { MetadataRoute } from "next";
-import { fetchOpportunities } from "@motungi/core";
+import { fetchOpportunities, summarizeGu } from "@motungi/core";
 import { isExpired, opportunityPath, SITE_URL } from "@/lib/seo";
 import { supabase } from "@/lib/supabase";
 
@@ -50,5 +50,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     }));
 
-  return [...staticEntries, ...detailEntries];
+  /**
+   * 구 페이지(`/explore/[gu]`) — 답변 엔진이 인용할 집합 서술 페이지(M-073).
+   *
+   * `summarizeGu`가 임계 미달 구를 이미 걸러주므로, 여기 실리는 건 **실제로 생성되는
+   * 페이지뿐**이다. 페이지가 없는 구를 사이트맵에 넣으면 404를 광고하는 꼴이고,
+   * 반대로 임계를 넘는데 안 넣으면 크롤러가 발견할 경로가 없다 —
+   * `/explore`가 클라이언트 렌더라 거기서 링크를 못 긁기 때문이다.
+   * 같은 함수를 페이지와 사이트맵이 공유하므로 두 목록이 갈라지지 않는다.
+   */
+  const guEntries: MetadataRoute.Sitemap = summarizeGu(data).map((s) => ({
+    url: `${SITE_URL}/explore/${encodeURIComponent(s.gu)}`,
+    // 활동이 매일 들고나므로 목록 요약도 그만큼 바뀐다. 상세(weekly)보다 잦다.
+    changeFrequency: "daily" as const,
+    // 개별 활동(0.6)보다 높고 /explore(0.8)와 같은 급 — 지역 진입점이다.
+    priority: 0.8,
+  }));
+
+  return [...staticEntries, ...guEntries, ...detailEntries];
 }
