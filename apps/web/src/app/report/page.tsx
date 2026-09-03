@@ -21,9 +21,8 @@ import { diagnosisSummaryChips, displayNameOf } from "@motungi/core";
 import { useReportFallback } from "@/hooks/useReportFallback";
 import { exploreHref } from "@/lib/explore-filters";
 import { shareContent } from "@/lib/kakao";
+import { SITE_URL } from "@/lib/seo";
 import { useAppStore } from "@/store/useAppStore";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://motungi.app";
 
 /** ISO 마감일 → "~11/28까지" 라벨. 파싱 실패 시 null(칩 숨김). */
 function formatDeadline(iso: string): string | null {

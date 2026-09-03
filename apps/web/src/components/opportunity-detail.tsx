@@ -34,9 +34,8 @@ import { useTrailRoute } from "@/hooks/useTrailRoute";
 import { useOpportunity } from "@/hooks/useOpportunity";
 import { useWhyReasons } from "@/hooks/useWhyReasons";
 import { shareContent } from "@/lib/kakao";
+import { SITE_URL } from "@/lib/seo";
 import { useAppStore } from "@/store/useAppStore";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://motungi.app";
 
 /**
  * A6 · 기회 상세 (본문) — 반응형.

@@ -5,6 +5,7 @@ import { AuthBoot } from "@/components/auth-boot";
 import { KakaoSDK } from "@/components/kakao-sdk";
 import { WebVitals } from "@/components/web-vitals";
 import { QueryProvider } from "@/lib/query";
+import { SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
 /* 워드마크 전용 귀여운 둥근고딕 — 로고 '모퉁이'에만 쓴다(본문은 Pretendard 유지). */
@@ -15,7 +16,6 @@ const jua = Jua({
   variable: "--font-wordmark-jua",
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://motungi.app";
 const TITLE = "모퉁이 Corner";
 const DESCRIPTION =
   "퇴근하고 뭐하지? — 위치 + 60초 진단으로, 퇴근 후·주말 내 동네 문화·여가를 딱 하나만 골라주는 하이퍼로컬 큐레이션.";

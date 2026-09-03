@@ -19,7 +19,12 @@ import { Bookmark, CheckCircle, ExternalLink, Location, Share } from "@/ui/icons
 import { Thumbnail } from "@/ui/thumbnail";
 import { C, R, cardShadow } from "@/ui/theme";
 
-const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://motungi.app";
+/**
+ * 공유 링크용 오리진. 웹의 `lib/seo.ts` SITE_URL과 **같은 값을 유지해야 한다** —
+ * 여기서 만든 링크가 웹으로 열린다. import로 묶지 못하는 건 런타임이 달라서다
+ * (RN은 `EXPO_PUBLIC_*`, 웹은 `NEXT_PUBLIC_*`). 도메인을 바꾸면 양쪽 다 고칠 것.
+ */
+const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://motungi-web.vercel.app";
 
 /** A6 · 기회 상세 */
 export default function OpportunityScreen() {

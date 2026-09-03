@@ -8,7 +8,19 @@
 import type { Metadata } from "next";
 import type { MockOpportunity } from "@/data/opportunities";
 
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://motungi.app";
+/**
+ * 사이트 정식 오리진 — **웹 전역 단일 출처**. canonical·og:url·sitemap·JSON-LD가 전부 이 값을 쓴다.
+ *
+ * fallback이 `motungi.app`이던 시절 프로덕션 env가 비어 있어 이 값이 그대로 새어나갔고,
+ * 그 도메인은 DNS가 없다(2026-09-03 실측 `curl` exit 6). 결과로 sitemap의 모든 `<loc>`,
+ * canonical, og:image가 존재하지 않는 호스트를 가리켰다 — 색인은 물론 카카오·슬랙 공유
+ * 미리보기까지 깨졌다. **fallback은 "설정을 깜빡했을 때의 방어선"이지 정상 경로가 아니므로,
+ * 반드시 실제로 접근 가능한 호스트여야 한다.** 도메인을 붙이면 env와 이 값을 함께 바꾼다.
+ *
+ * 예전엔 layout.tsx·report/page.tsx·opportunity-detail.tsx가 같은 fallback을 각자 복붙했다.
+ * 한 곳만 고치고 나머지를 놓치는 사고를 막으려 여기로 모았다 — 새로 쓸 곳도 여기서 import 한다.
+ */
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://motungi-web.vercel.app";
 const SITE_NAME = "모퉁이 Corner";
 
 /**

@@ -153,6 +153,26 @@ describe("decodeHtmlEntities", () => {
     expect(decodeHtmlEntities("동물의 세계 展")).toBe("동물의 세계 展");
     expect(decodeHtmlEntities("")).toBe("");
   });
+
+  // 실데이터 표본(2026-09-03): culture_info 제목에 &middot;가 3건 남아 화면에 그대로 떴다.
+  it("&middot;를 가운뎃점으로 되돌린다", () => {
+    expect(decodeHtmlEntities("산수&amp;middot;격물")).toBe("산수·격물");
+    expect(decodeHtmlEntities("미디어&middot;아트")).toBe("미디어·아트");
+  });
+
+  // 개별 엔티티를 하나씩 추가하는 대신 수치 참조를 일반 규칙으로 처리한다 —
+  // 다음에 나올 &#8226; 류도 코드 수정 없이 풀린다.
+  it("수치 참조(10진·16진)를 일반 규칙으로 푼다", () => {
+    expect(decodeHtmlEntities("&#39;따옴표&#39;")).toBe("'따옴표'");
+    expect(decodeHtmlEntities("&amp;amp;#39;이중&amp;amp;#39;")).toBe("'이중'");
+    expect(decodeHtmlEntities("&#x27;16진&#x27;")).toBe("'16진'");
+    expect(decodeHtmlEntities("&#8226; 불릿")).toBe("• 불릿");
+  });
+
+  it("제어문자 범위는 풀지 않는다 — 널 문자를 화면에 심지 않는다", () => {
+    expect(decodeHtmlEntities("&#0;")).toBe("&#0;");
+    expect(decodeHtmlEntities("&#31;")).toBe("&#31;");
+  });
 });
 
 describe("rowToOpportunity — 부분 필드", () => {

@@ -51,9 +51,19 @@ export function decodeHtmlEntities(s: string): string {
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">")
       .replace(/&quot;/g, '"')
-      .replace(/&#0*39;/g, "'")
-      .replace(/&#x0*27;/gi, "'")
-      .replace(/&nbsp;/g, " ");
+      .replace(/&nbsp;/g, " ")
+      .replace(/&middot;/g, "·")
+      // 이름 있는 엔티티를 먼저 처리한 뒤 남은 수치 참조를 일반 규칙으로 푼다
+      // (&#39; &#x27; 개별 대응 대신). 제어문자 범위는 건드리지 않는다 — 공공데이터에
+      // 섞여 들어온 &#0; 같은 값이 화면에 널 문자를 심는 걸 막는다.
+      .replace(/&#(\d+);/g, (m, d: string) => {
+        const code = Number(d);
+        return code >= 32 && code <= 0x10ffff ? String.fromCodePoint(code) : m;
+      })
+      .replace(/&#x([0-9a-fA-F]+);/g, (m, h: string) => {
+        const code = Number.parseInt(h, 16);
+        return code >= 32 && code <= 0x10ffff ? String.fromCodePoint(code) : m;
+      });
   return once(once(s));
 }
 

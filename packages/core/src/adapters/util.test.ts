@@ -111,6 +111,30 @@ describe("toIsoDate", () => {
     expect(toIsoDate(undefined)).toBeUndefined();
     expect(toIsoDate("상시")).toBeUndefined();
   });
+
+  /**
+   * 형식만 보고 값을 안 보던 탓에 오타가 그대로 들어왔다 — 실측(2026-09-03)으로
+   * deadline '2626-08-08' 1건이 DB에 있었다(2026의 오타로 보임). 이런 행은 영원히
+   * purge되지 않고 "상시"처럼 남아 목록을 오염시킨다. 마감일은 틀리면 없는 것만 못하다.
+   */
+  it("연도가 범위 밖이면 버린다(2626년 같은 오타)", () => {
+    expect(toIsoDate("2626-08-08")).toBeUndefined();
+    expect(toIsoDate("26260808")).toBeUndefined();
+    expect(toIsoDate("1899-01-01")).toBeUndefined();
+  });
+
+  it("실재하지 않는 날짜는 버린다", () => {
+    expect(toIsoDate("2026-02-30")).toBeUndefined();
+    expect(toIsoDate("2026-13-01")).toBeUndefined();
+    expect(toIsoDate("20260231")).toBeUndefined();
+  });
+
+  it("경계 연도는 통과한다", () => {
+    expect(toIsoDate("2000-01-01")).toBe("2000-01-01");
+    expect(toIsoDate("2100-12-31")).toBe("2100-12-31");
+    // 윤년은 실재하므로 통과.
+    expect(toIsoDate("2028-02-29")).toBe("2028-02-29");
+  });
 });
 
 describe("hashKey", () => {
