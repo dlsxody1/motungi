@@ -492,7 +492,7 @@ describe("EXPLORE_CATEGORY_FILTERS — 탐색 필터 taxonomy 단일 출처(M-08
       { label: "먹거리·마켓", category: "food" },
       { label: "클래스", category: "class" },
       { label: "마켓", category: "market" },
-      { label: "부업", category: "side_job" },
+      { label: "소일거리", category: "side_job" },
     ]);
   });
 

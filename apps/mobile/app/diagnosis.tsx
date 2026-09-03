@@ -19,7 +19,7 @@ const QUESTIONS: Question[] = [
       { value: "culture", title: "문화·공연", desc: "전시 · 공연 · 영화" },
       { value: "active", title: "운동·산책", desc: "러닝 · 걷기길 · 클래스" },
       { value: "food", title: "먹거리·마켓", desc: "맛집 · 야시장 · 플리마켓" },
-      { value: "side_job", title: "가벼운 부업", desc: "퇴근 후 파트 · 단기" },
+      { value: "side_job", title: "동네 소일거리", desc: "짧게 · 부담 없이" },
     ],
   },
   {

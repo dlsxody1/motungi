@@ -45,7 +45,7 @@ describe("DiagnosisPage 키보드 포커스 (모바일, Q1)", () => {
       mobile.getByRole("button", { name: /문화·공연/ }),
       mobile.getByRole("button", { name: /운동·산책/ }),
       mobile.getByRole("button", { name: /먹거리·마켓/ }),
-      mobile.getByRole("button", { name: /가벼운 부업/ }),
+      mobile.getByRole("button", { name: /동네 소일거리/ }),
     ];
     const submitButton = mobile.getByRole("button", { name: "다음" });
 
