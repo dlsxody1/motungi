@@ -120,12 +120,18 @@ export function scoreOpportunity(
 
   // 시간: 진단 timeSlot의 선호 창과 활동 시간대 겹침 비율.
   // 활동 시간 정보가 없거나 flexible(선호 없음)이면 중립.
+  //
+  // 표시용 timeWindow가 아니라 scoringWindow를 쓴다 — seoul_culture는 종료시각을 주지
+  // 않아 timeWindow가 영원히 undefined였고, 그래서 시작시각을 파싱해두고도 229행의
+  // time 축이 0.5로 죽어 있었다(실측 2026-09-03). scoringWindow는 종료가 없으면
+  // 기본 지속시간으로 추정하되 그 추정이 화면에는 새지 않는다(view.ts).
   const prefWindow = TIMESLOT_WINDOW[answers.timeSlot];
+  const scoringWindow = opp.scoringWindow ?? opp.timeWindow;
   const time =
-    prefWindow == null || opp.timeWindow == null
+    prefWindow == null || scoringWindow == null
       ? 0.5
       : clamp01(
-          overlapHours(prefWindow, opp.timeWindow) /
+          overlapHours(prefWindow, scoringWindow) /
             (prefWindow.endHour - prefWindow.startHour),
         );
 

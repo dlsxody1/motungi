@@ -219,6 +219,37 @@ describe("rowToOpportunity — 부분 필드", () => {
     });
   });
 
+  /**
+   * 스코어링 전용 시간창(scoringWindow) — 표시용 timeWindow와 분리한 이유:
+   * seoul_culture는 종료시각을 주지 않아 time_end_hour가 null 고정인데(어댑터가 일부러
+   * 지어내지 않는다), 표시용과 같은 필드를 쓰면 파싱한 시작시각까지 함께 버려진다.
+   * 실측(2026-09-03) 229행이 "시작만 있음"이라 time 축(가중치 0.15)이 통째로 죽어 있었다.
+   * 추정 종료시각이 카드에 새면 안 되므로("14–16시" 같은 사실 아닌 표기) 필드를 나눈다.
+   */
+  it("time_start만 있어도 scoringWindow는 기본 지속시간으로 생성한다", () => {
+    const o = rowToOpportunity(row({ time_start_hour: 19 }));
+    expect(o.scoringWindow).toEqual({ startHour: 19, endHour: 21 });
+    // 표시용은 여전히 없다 — 카드에 추정 시간대가 찍히면 안 된다.
+    expect(o.timeWindow).toBeUndefined();
+  });
+
+  it("time_end가 실제로 있으면 scoringWindow도 그 실측값을 쓴다", () => {
+    const o = rowToOpportunity(row({ time_start_hour: 18, time_end_hour: 22 }));
+    expect(o.scoringWindow).toEqual({ startHour: 18, endHour: 22 });
+  });
+
+  it("time_start가 없으면 scoringWindow도 없다 — 시작시각까지 지어내지는 않는다", () => {
+    expect(rowToOpportunity(row({ time_end_hour: 22 })).scoringWindow).toBeUndefined();
+    expect(rowToOpportunity(row()).scoringWindow).toBeUndefined();
+  });
+
+  it("자정을 넘기는 시작시각은 24시로 자른다(23시 시작 → 23–24시)", () => {
+    expect(rowToOpportunity(row({ time_start_hour: 23 })).scoringWindow).toEqual({
+      startHour: 23,
+      endHour: 24,
+    });
+  });
+
   it("null 필드는 undefined로 정규화한다(cost_krw/difficulty/dong_name)", () => {
     const o = rowToOpportunity(row());
     expect(o.costKrw).toBeUndefined();

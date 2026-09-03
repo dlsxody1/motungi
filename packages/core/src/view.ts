@@ -57,6 +57,29 @@ export function decodeHtmlEntities(s: string): string {
   return once(once(s));
 }
 
+/**
+ * 종료시각 미상일 때 스코어링에 가정하는 지속시간(시간).
+ *
+ * 공연·전시·강좌의 통상 길이. 정확할 필요는 없다 — time 축은 선호 창(예: 퇴근후 18~22시)과의
+ * **겹침 비율**이라, 2시간이든 3시간이든 "저녁에 하는가"라는 판정은 거의 같게 나온다.
+ * 이 값이 화면에 노출되지 않는다는 게 전제다(표시는 timeWindow가 담당).
+ */
+const ASSUMED_DURATION_HOURS = 2;
+
+/**
+ * 스코어링용 시간창 — 종료가 실측이면 그대로, 없으면 기본 지속시간으로 추정한다.
+ * 시작시각이 없으면 undefined(시작까지 지어내지는 않는다 — 그건 근거 없는 추측이다).
+ */
+function toScoringWindow(
+  startHour: number | null,
+  endHour: number | null,
+): TimeWindow | undefined {
+  if (startHour == null) return undefined;
+  if (endHour != null) return { startHour, endHour };
+  // 자정을 넘기면 24로 자른다 — overlapHours가 startHour > endHour인 창을 다루지 않는다.
+  return { startHour, endHour: Math.min(startHour + ASSUMED_DURATION_HOURS, 24) };
+}
+
 /** DB row → core Opportunity (camelCase). 스코어링 입력 형태. */
 export function rowToOpportunity(r: OpportunityRow): Opportunity {
   return {
@@ -75,10 +98,13 @@ export function rowToOpportunity(r: OpportunityRow): Opportunity {
       dongName: r.dong_name ?? undefined,
       point: r.lat != null && r.lng != null ? { lat: r.lat, lng: r.lng } : undefined,
     },
+    // 표시용 — 둘 다 실측일 때만. 추정 시간대를 카드에 찍지 않는다.
     timeWindow:
       r.time_start_hour != null && r.time_end_hour != null
         ? { startHour: r.time_start_hour, endHour: r.time_end_hour }
         : undefined,
+    // 스코어링용 — 시작만 있어도 창을 만든다(types.ts scoringWindow 주석 참조).
+    scoringWindow: toScoringWindow(r.time_start_hour, r.time_end_hour),
     ctaUrl: r.cta_url ?? undefined,
     imageUrl: r.image_url ?? undefined,
     deadline: r.deadline ?? undefined,
