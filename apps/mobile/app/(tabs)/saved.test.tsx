@@ -3,17 +3,17 @@
  *
  * explore.test.tsx와 같은 이유 — FlatList 전환(M-023) 이후 렌더 테스트가 0개였다.
  * savedIds를 카탈로그에서 해소해 행으로 렌더하는지와, 저장이 없을 때 빈 상태가
- * 나오는지만 본다. 카탈로그에 없는 저장 id는 fetchOpportunityById로 단건 조회해
- * 해소되는 분기(M-045)도 함께 고정한다 — 예전엔 여기서 조용히 빠졌다(버그).
+ * 나오는지만 본다. 카탈로그에 없는 저장 id들은 fetchOpportunitiesByIds로 **한 번에**
+ * 벌크 조회해 해소되는 분기(M-045 정합성, M-075 성능)도 함께 고정한다.
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockOpportunity } from "@/data/opportunities";
 
-const { pushMock, toggleSavedMock, fetchOpportunityByIdMock, state } = vi.hoisted(() => ({
+const { pushMock, toggleSavedMock, fetchOpportunitiesByIdsMock, state } = vi.hoisted(() => ({
   pushMock: vi.fn(),
   toggleSavedMock: vi.fn(),
-  fetchOpportunityByIdMock: vi.fn(),
+  fetchOpportunitiesByIdsMock: vi.fn(),
   state: {
     savedIds: [] as string[],
     toggleSaved: (() => {}) as (id: string) => void,
@@ -34,7 +34,7 @@ vi.mock("@/hooks/useEnsureCatalog", () => ({ useEnsureCatalog: vi.fn() }));
 
 vi.mock("@/data/opportunities", async () => {
   const actual = await vi.importActual<typeof import("@/data/opportunities")>("@/data/opportunities");
-  return { ...actual, fetchOpportunityById: fetchOpportunityByIdMock };
+  return { ...actual, fetchOpportunitiesByIds: fetchOpportunitiesByIdsMock };
 });
 
 import SavedScreen from "./saved";
@@ -58,7 +58,7 @@ function makeOpp(overrides: Partial<MockOpportunity> & { id: string; title: stri
 beforeEach(() => {
   pushMock.mockReset();
   toggleSavedMock.mockReset();
-  fetchOpportunityByIdMock.mockReset();
+  fetchOpportunitiesByIdsMock.mockReset();
   state.savedIds = [];
   state.toggleSaved = toggleSavedMock;
   state.catalog = [];
@@ -156,11 +156,11 @@ describe("SavedScreen", () => {
     expect(toggleSavedMock).toHaveBeenCalledWith("op-1");
   });
 
-  it("카탈로그 창 밖의 저장 id는 단건 조회로 해소되어 렌더한다(M-045)", async () => {
+  it("카탈로그 창 밖의 저장 id들은 벌크 조회 1회로 해소되어 렌더한다(M-045/M-075)", async () => {
     state.catalog = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
     state.savedIds = ["op-1", "창밖-id"];
-    fetchOpportunityByIdMock.mockResolvedValueOnce({
-      data: makeOpp({ id: "창밖-id", title: "합정 재즈 라이브" }),
+    fetchOpportunitiesByIdsMock.mockResolvedValueOnce({
+      data: [makeOpp({ id: "창밖-id", title: "합정 재즈 라이브" })],
       status: "ok",
     });
 
@@ -169,9 +169,9 @@ describe("SavedScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("2개")).toBeInTheDocument();
     });
-    expect(fetchOpportunityByIdMock).toHaveBeenCalledWith("창밖-id");
-    // catalog에 이미 있는 id는 재조회하지 않는다.
-    expect(fetchOpportunityByIdMock).not.toHaveBeenCalledWith("op-1");
+    expect(fetchOpportunitiesByIdsMock).toHaveBeenCalledTimes(1);
+    // catalog에 이미 있는 id(op-1)는 요청 대상에 안 들어간다 — 재조회 없음.
+    expect(fetchOpportunitiesByIdsMock).toHaveBeenCalledWith(["창밖-id"]);
     expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
     expect(screen.getByText("합정 재즈 라이브")).toBeInTheDocument();
   });
@@ -186,11 +186,11 @@ describe("SavedScreen", () => {
     expect(screen.getByText("둘러보기")).toBeInTheDocument();
   });
 
-  it("단건 조회가 진행 중이면 로딩 상태를 렌더하고 개수는 보여주지 않는다(M-046)", () => {
+  it("벌크 조회가 진행 중이면 로딩 상태를 렌더하고 개수는 보여주지 않는다(M-046)", () => {
     state.catalog = [];
     state.savedIds = ["창밖-id"];
     // 응답이 오지 않는 pending 프라미스로 고정 — 로딩 상태만 관찰한다.
-    fetchOpportunityByIdMock.mockReturnValueOnce(new Promise(() => {}));
+    fetchOpportunitiesByIdsMock.mockReturnValueOnce(new Promise(() => {}));
 
     render(<SavedScreen />);
 
@@ -224,7 +224,7 @@ describe("SavedScreen", () => {
   it("에러 상태의 다시 시도 버튼이 button role로 노출된다(M-073)", async () => {
     state.catalog = [];
     state.savedIds = ["창밖-id"];
-    fetchOpportunityByIdMock.mockResolvedValueOnce({ data: null, status: "error" });
+    fetchOpportunitiesByIdsMock.mockResolvedValueOnce({ data: [], status: "error" });
 
     render(<SavedScreen />);
 
@@ -234,29 +234,29 @@ describe("SavedScreen", () => {
     expect(screen.getByText("다시 시도").closest('[role="button"]')).not.toBeNull();
   });
 
-  it("단건 조회가 실패하면 에러 상태 + 다시 시도 버튼을 렌더하고, 버튼을 누르면 재조회한다(M-046)", async () => {
+  it("벌크 조회가 실패하면 에러 상태 + 다시 시도 버튼을 렌더하고, 버튼을 누르면 재조회한다(M-046)", async () => {
     state.catalog = [];
     state.savedIds = ["창밖-id"];
-    fetchOpportunityByIdMock.mockResolvedValueOnce({ data: null, status: "error" });
+    fetchOpportunitiesByIdsMock.mockResolvedValueOnce({ data: [], status: "error" });
 
     render(<SavedScreen />);
 
     await waitFor(() => {
       expect(screen.getByText("활동을 불러오지 못했어요")).toBeInTheDocument();
     });
-    expect(fetchOpportunityByIdMock).toHaveBeenCalledTimes(1);
+    expect(fetchOpportunitiesByIdsMock).toHaveBeenCalledTimes(1);
     // 에러 중에도 개수 표시는 렌더하지 않는다.
     expect(screen.queryByText(/개$/)).not.toBeInTheDocument();
 
-    fetchOpportunityByIdMock.mockResolvedValueOnce({
-      data: makeOpp({ id: "창밖-id", title: "합정 재즈 라이브" }),
+    fetchOpportunitiesByIdsMock.mockResolvedValueOnce({
+      data: [makeOpp({ id: "창밖-id", title: "합정 재즈 라이브" })],
       status: "ok",
     });
     fireEvent.click(screen.getByText("다시 시도"));
 
-    // retry()가 실제로 fetchOpportunityById를 다시 호출했는지(장식용 버튼이 아님을) 확인한다.
+    // retry()가 실제로 fetchOpportunitiesByIds를 다시 호출했는지(장식용 버튼이 아님을) 확인한다.
     await waitFor(() => {
-      expect(fetchOpportunityByIdMock).toHaveBeenCalledTimes(2);
+      expect(fetchOpportunitiesByIdsMock).toHaveBeenCalledTimes(2);
     });
     await waitFor(() => {
       expect(screen.getByText("합정 재즈 라이브")).toBeInTheDocument();

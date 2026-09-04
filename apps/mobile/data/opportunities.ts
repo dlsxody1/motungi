@@ -16,6 +16,7 @@ export { POPULAR_NEIGHBORHOODS, DEFAULT_NEIGHBORHOOD, rowToMock } from "@motungi
 import type { CatalogResult, FetchOpportunitiesOptions, OpportunityResult } from "@motungi/core";
 import {
   fetchOpportunities as coreFetchOpportunities,
+  fetchOpportunitiesByIds as coreFetchOpportunitiesByIds,
   fetchOpportunityById as coreFetchOpportunityById,
 } from "@motungi/core";
 import { supabase } from "@/lib/supabase";
@@ -38,4 +39,12 @@ export async function fetchOpportunities(
  */
 export async function fetchOpportunityById(id: string): Promise<OpportunityResult> {
   return coreFetchOpportunityById(supabase, id);
+}
+
+/**
+ * 여러 id를 한 번에 읽어온다(보관함용). core 벌크 조회에 이 앱의 supabase 클라이언트를
+ * 주입하는 얇은 래퍼 — web apps/web/src/data/opportunities.ts와 동등(M-075).
+ */
+export async function fetchOpportunitiesByIds(ids: string[]): Promise<CatalogResult> {
+  return coreFetchOpportunitiesByIds(supabase, ids);
 }
