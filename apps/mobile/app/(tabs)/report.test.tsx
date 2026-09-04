@@ -6,8 +6,9 @@
  * (hooks/useEnsureCatalog.test.ts)로 이미 검증되므로 여기서는 vi.fn()으로 완전히 우회해
  * 이 화면이 results/catalog/catalogStatus에 따라 무엇을 렌더하는지만 본다.
  */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Share as RNShare } from "react-native";
 import type { MockOpportunity } from "@/data/opportunities";
 
 const { pushMock, replaceMock, state } = vi.hoisted(() => ({
@@ -112,5 +113,69 @@ describe("ReportScreen", () => {
     expect(screen.getByText("재진단").closest('[role="button"]')).not.toBeNull();
     expect(screen.getByText("망원 한강 러닝 클래스").closest('[role="button"]')).not.toBeNull();
     expect(screen.getByText("성수 팝업 전시").closest('[role="button"]')).not.toBeNull();
+  });
+
+  // [M-087] 원픽 히어로에 썸네일·마감 배지·공유 버튼 추가.
+  describe("원픽 히어로 — 썸네일·마감 배지·공유(M-087)", () => {
+    it("imageUrl이 있으면 히어로에 이미지를 렌더한다", () => {
+      state.catalogStatus = "ok";
+      state.results = [
+        makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", imageUrl: "https://example.test/a.jpg" }),
+      ];
+
+      const { container } = render(<ReportScreen />);
+
+      const img = container.querySelector("img");
+      expect(img).not.toBeNull();
+      expect(img).toHaveAttribute("src", "https://example.test/a.jpg");
+    });
+
+    it("imageUrl이 없어도 레이아웃이 깨지지 않는다(플레이스홀더만, 이미지 태그 없음)", () => {
+      state.catalogStatus = "ok";
+      state.results = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+
+      const { container } = render(<ReportScreen />);
+
+      expect(container.querySelector("img")).toBeNull();
+      expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
+      expect(screen.getByText("자세히 보기")).toBeInTheDocument();
+    });
+
+    it("onePick.deadline이 있으면 카테고리 Tag 옆에 D-day 마감 배지를 렌더한다", () => {
+      const future = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
+      state.catalogStatus = "ok";
+      state.results = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스", deadline: future })];
+
+      render(<ReportScreen />);
+
+      expect(screen.getByText("D-2")).toBeInTheDocument();
+    });
+
+    it("deadline이 없으면 마감 배지 없이도 레이아웃이 깨지지 않는다", () => {
+      state.catalogStatus = "ok";
+      state.results = [makeOpp({ id: "op-1", title: "망원 한강 러닝 클래스" })];
+
+      render(<ReportScreen />);
+
+      expect(screen.queryByText(/^D-\d+$/)).toBeNull();
+      expect(screen.queryByText("오늘 마감")).toBeNull();
+      expect(screen.getByText("망원 한강 러닝 클래스")).toBeInTheDocument();
+    });
+
+    it("공유 버튼을 누르면 딥링크 URL이 포함된 메시지로 RNShare.share가 호출된다", () => {
+      state.catalogStatus = "ok";
+      state.results = [makeOpp({ id: "op-42", title: "망원 한강 러닝 클래스" })];
+      const shareSpy = vi.spyOn(RNShare, "share").mockResolvedValue({ action: "sharedAction" });
+
+      render(<ReportScreen />);
+      fireEvent.click(screen.getByLabelText("공유"));
+
+      expect(shareSpy).toHaveBeenCalledTimes(1);
+      const arg = shareSpy.mock.calls[0]![0] as { message: string };
+      expect(arg.message).toContain("망원 한강 러닝 클래스");
+      expect(arg.message).toContain("/opportunity?id=op-42");
+
+      shareSpy.mockRestore();
+    });
   });
 });
