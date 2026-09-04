@@ -2028,7 +2028,7 @@ backlog:
   - id: M-075
     title: "모바일 보관함이 카탈로그 창 밖 저장 항목을 여전히 건별 개별 조회(N+1)"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/mobile/hooks/useSavedOpportunities.ts, apps/mobile/data/opportunities.ts]
     done_when:
       - "apps/mobile/data/opportunities.ts에 packages/core의 fetchOpportunitiesByIds를 재사용하는 벌크 조회 래퍼가 추가된다(웹 apps/web/src/data/opportunities.ts:48-50과 동등)"
@@ -2045,6 +2045,18 @@ backlog:
       useSavedOpportunities.test.ts:81-101이 개별 호출을 "의도된 동작"으로 그대로
       검증하고 있어 N+1이 고정돼 있었다. M-045 노트의 실측(507건 중 207건이 창 밖)
       기준 저장 항목 많은 사용자는 보관함 진입마다 수십 개 병렬 요청이 나갈 수 있다.
+      [2026-09-04 야간 파이프라인 완료] apps/mobile/data/opportunities.ts에
+      fetchOpportunitiesByIds 벌크 래퍼 추가(웹 apps/web/src/data/opportunities.ts와
+      동등, core catalog.ts:350 주입). useSavedOpportunities.ts를 id별 fetch map에서
+      missingIds 전체를 1회 벌크 요청하는 단일 bulk state로 재작성 — catalog에 있는
+      id는 여전히 재조회하지 않고, retry()도 missingIds(=catalog로 못 해소된 것)만
+      재요청해 기존 계약을 유지했다. 테스트 8건(전량 재작성, 10건 이상 창 밖 시나리오
+      1회 호출 검증 포함) + saved.test.tsx의 mock을 fetchOpportunityById에서
+      fetchOpportunitiesByIds로 갱신(같은 훅을 쓰는 소비처라 회귀 방지 목적으로 같은
+      커밋에 포함). mobile typecheck 클린, mobile test 21파일 159/159 통과. 커밋
+      67187d7, dev 직접 커밋(트렁크 모델, PR 없음). qa 게이트(bash scripts/gate.sh)
+      PASS(typecheck 4/4·test 전체·lint·secrets). status는 사람의 최종 리뷰 전까지
+      doing으로 둠.
 
   - id: M-076
     title: "/api/geo·/api/why-reasons 공개 프록시에 레이트리밋·좌표 스냅 부재"
@@ -2296,7 +2308,7 @@ backlog:
   - id: M-087
     title: "모바일 리포트 화면에 원픽 히어로 이미지·마감 배지·공유 버튼이 없음"
     priority: medium
-    status: todo
+    status: doing
     scope: ["apps/mobile/app/(tabs)/report.tsx"]
     done_when:
       - "원픽 히어로 카드 상단에 imageUrl 유무에 따라 썸네일 또는 카테고리 톤 플레이스홀더를 렌더한다(apps/mobile/ui/thumbnail.tsx 재사용)"
@@ -2310,6 +2322,17 @@ backlog:
       (report.tsx 전체에 Thumbnail/imageUrl/deadline/Share 참조 0건). 웹은 원픽에
       이미지·마감 임박 칩·공유 버튼을 넣어 신뢰감과 긴급성을 주는데 모바일은 같은
       정보를 못 받는다.
+      [2026-09-04 야간 파이프라인 완료] report.tsx 히어로 카드에 Thumbnail(imageUrl
+      없으면 카테고리 톤 플레이스홀더) 추가, deadlineLabel(core) 기반 로컬 DdayPill로
+      마감 배지를 카테고리 Tag 옆에 렌더(opportunity.tsx 로컬 컴포넌트와 동일 톤 규칙 —
+      scope가 report.tsx로 한정돼 공유 컴포넌트로 승격하지 않음), 공유 버튼을
+      RNShare.share + 딥링크 URL로 추가. 공유 버튼은 상세 이동용 hero Pressable의
+      자식이 아니라 형제(절대위치 오버레이)로 배치해 중첩 인터랙티브 결함(M-014
+      선례)을 피했다. 테스트 5건 추가(이미지 있음/없음, 마감 있음/없음, 공유 클릭 시
+      메시지에 제목+URL 포함) — 없어도 레이아웃이 안 깨지는 회귀 테스트 포함.
+      mobile typecheck 클린, mobile test 21파일 159/159 통과(report.test.tsx 9건).
+      커밋 7b4e8e0, dev 직접 커밋(트렁크 모델, PR 없음). qa 게이트 PASS. status는
+      사람의 최종 리뷰 전까지 doing으로 둠.
 
   - id: M-088
     title: "모바일 리포트 화면이 로딩 중(idle)과 실제 빈 상태를 구분하지 않음"
