@@ -17,18 +17,27 @@ import { ReportSkeleton } from "@/components/report-skeleton";
 import { Thumbnail } from "@/components/thumbnail";
 import { MobileScreen, SafeBottom, SafeTop, Tag } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
-import { diagnosisSummaryChips, displayNameOf } from "@motungi/core";
+import { deadlineLabel, diagnosisSummaryChips, displayNameOf } from "@motungi/core";
 import { useReportFallback } from "@/hooks/useReportFallback";
 import { exploreHref } from "@/lib/explore-filters";
 import { shareContent } from "@/lib/kakao";
 import { SITE_URL } from "@/lib/seo";
 import { useAppStore } from "@/store/useAppStore";
 
-/** ISO 마감일 → "~11/28까지" 라벨. 파싱 실패 시 null(칩 숨김). */
-function formatDeadline(iso: string): string | null {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return `~${d.getMonth() + 1}/${d.getDate()}까지`;
+/**
+ * 마감 임박도 배지. D-day에 따라 톤이 달라진다: 지남=회색, 임박(≤3일)=강조, 여유=은은.
+ * opportunity-detail.tsx의 동명 컴포넌트와 동일 규칙이지만, scope가 이 파일로 한정돼
+ * 공유 컴포넌트로 승격하지 않는다(M-087의 모바일 DdayPill과 동일 선례).
+ */
+function DdayPill({ deadline }: { deadline: { dday: number; past: boolean } }) {
+  const { dday, past } = deadline;
+  const text = past ? "마감" : dday === 0 ? "오늘 마감" : `D-${dday}`;
+  const tone = past
+    ? "bg-gray-100 text-muted"
+    : dday <= 3
+      ? "bg-primary text-white"
+      : "bg-tint text-primary-deep";
+  return <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${tone}`}>{text}</span>;
 }
 
 /** A5 · 동네 리포트 (원픽 히어로) — 반응형 */
@@ -75,7 +84,8 @@ export default function ReportPage() {
   const displayName = displayNameOf(user);
   const summaryChips = diagnosisSummaryChips(answers, onePick);
   const onePickSaved = savedIds.includes(onePick.id);
-  const deadlineLabel = onePick.deadline ? formatDeadline(onePick.deadline) : null;
+  const today = new Date().toISOString().slice(0, 10);
+  const deadline = onePick.deadline ? deadlineLabel(onePick.deadline, today) : null;
 
   const onShare = () => {
     void shareContent({
@@ -137,11 +147,7 @@ export default function ReportPage() {
                 <div className="bg-tint/50 p-5">
                   <div className="flex flex-wrap items-center gap-2">
                     <Tag>{onePick.categoryLabel}</Tag>
-                    {deadlineLabel && (
-                      <span className="rounded-md bg-info-bg px-2 py-0.5 text-[11px] font-semibold text-muted">
-                        {deadlineLabel}
-                      </span>
-                    )}
+                    {deadline && <DdayPill deadline={deadline} />}
                   </div>
                   <h2 className="mt-3 text-[21px] font-extrabold leading-snug tracking-[-0.01em] text-ink">
                     {onePick.title}
@@ -254,11 +260,7 @@ export default function ReportPage() {
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <Tag>{onePick.categoryLabel}</Tag>
-                      {deadlineLabel && (
-                        <span className="rounded-md bg-info-bg px-2 py-1 text-[12px] font-semibold text-muted">
-                          {deadlineLabel}
-                        </span>
-                      )}
+                      {deadline && <DdayPill deadline={deadline} />}
                     </div>
                     <h2 className="mt-3 text-[27px] font-extrabold leading-[1.32] tracking-[-0.01em] text-ink">
                       {onePick.title}
