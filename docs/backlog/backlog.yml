@@ -2186,7 +2186,7 @@ backlog:
   - id: M-081
     title: "웹 리포트 원픽 카드가 core의 deadlineLabel 대신 로컬 formatDeadline을 재구현"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/app/report/page.tsx]
     done_when:
       - "report/page.tsx의 로컬 formatDeadline이 제거되고 deadlineLabel(onePick.deadline, today) + DdayPill(또는 동등 컴포넌트)로 교체된다"
@@ -2226,7 +2226,7 @@ backlog:
   - id: M-083
     title: "로그인 화면 오픈 리다이렉트 방어 로직(next 파라미터 검증) 테스트 0건"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/app/login/page.tsx]
     done_when:
       - "?next=//evil.com과 ?next=https://evil.com이 둘 다 /my로 폴백됨을 테스트로 검증한다"
@@ -2246,7 +2246,7 @@ backlog:
   - id: M-084
     title: "useTrailRoute 훅이 테스트에서 항상 mock되고 실구현이 실행된 적 없음"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/hooks/useTrailRoute.ts]
     done_when:
       - "!res.ok 응답 → 훅이 null을 반환함을 검증하는 테스트가 추가된다(도보 지도가 마커만으로 폴백, 크래시 없음)"
