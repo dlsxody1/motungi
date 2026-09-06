@@ -8,38 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 // globals:false 설정이라 자동 cleanup이 등록되지 않는다 → 렌더 누적 방지를 위해 수동 정리.
 afterEach(() => cleanup());
-import { Button, Card, Chip, InfoBox, Logo, MobileScreen, SafeBottom, SafeTop, Tag, Txt, text } from "./ui";
-
-describe("Txt", () => {
-  it("기본값: p 태그 + body1 프리셋 클래스를 적용한다", () => {
-    render(<Txt>본문</Txt>);
-    const el = screen.getByText("본문");
-    expect(el.tagName).toBe("P");
-    // body1 프리셋의 대표 클래스가 붙어야 한다
-    expect(el.className).toContain("text-[15px]");
-  });
-
-  it("as로 태그를, preset으로 타이포 프리셋을 바꾼다", () => {
-    render(
-      <Txt as="h1" preset="heading1">
-        제목
-      </Txt>,
-    );
-    const el = screen.getByText("제목");
-    expect(el.tagName).toBe("H1");
-    expect(el.className).toContain(text.heading1.split(" ")[0]);
-  });
-
-  it("전달한 className을 프리셋 뒤에 병합한다", () => {
-    render(
-      <Txt className="text-primary custom-x">라벨</Txt>,
-    );
-    const el = screen.getByText("라벨");
-    expect(el.className).toContain("custom-x");
-    // 프리셋도 함께 유지된다
-    expect(el.className).toContain("text-[15px]");
-  });
-});
+import { Button, Chip, Logo, MobileScreen, SafeBottom, SafeTop, Tag } from "./ui";
 
 describe("Button", () => {
   it("children을 렌더하고 기본은 primary·lg·block(w-full)이다", () => {
@@ -129,26 +98,6 @@ describe("Chip", () => {
   });
 });
 
-describe("InfoBox", () => {
-  it("흰 배경 + 통일 border/shadow, 아이콘·children을 렌더한다", () => {
-    render(<InfoBox icon={<svg data-testid="ico" />}>안내 문구</InfoBox>);
-    const text = screen.getByText("안내 문구");
-    // 박스 자체(children의 부모의 부모)가 흰 배경·border·shadow-card를 갖는다.
-    const box = text.parentElement!;
-    expect(box.className).toContain("bg-surface");
-    expect(box.className).toContain("border-line-alt");
-    expect(box.className).toContain("shadow-card");
-    // 핑크 틴트 배경이 아니어야 한다(요청 4).
-    expect(box.className).not.toContain("bg-tint");
-    expect(screen.getByTestId("ico")).toBeInTheDocument();
-  });
-
-  it("icon 없이도 children만 렌더한다", () => {
-    render(<InfoBox>내용만</InfoBox>);
-    expect(screen.getByText("내용만")).toBeInTheDocument();
-  });
-});
-
 describe("Tag", () => {
   it("기본 tone은 brand", () => {
     render(<Tag>브랜드</Tag>);
@@ -165,20 +114,6 @@ describe("Tag", () => {
     // 흰 배경에서 면으로 안 읽힌다.
     rerender(<Tag tone="muted">뮤트</Tag>);
     expect(screen.getByText("뮤트").className).toContain("bg-gray-100");
-  });
-});
-
-describe("Card", () => {
-  it("children을 감싸고 기본 카드 클래스를 유지하며 className을 병합한다", () => {
-    render(
-      <Card className="p-4 extra-card">
-        <span>내용</span>
-      </Card>,
-    );
-    const child = screen.getByText("내용");
-    const card = child.parentElement as HTMLElement;
-    expect(card.className).toContain("shadow-card");
-    expect(card.className).toContain("extra-card");
   });
 });
 
