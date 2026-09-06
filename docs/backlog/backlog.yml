@@ -1949,7 +1949,7 @@ backlog:
   - id: M-096
     title: "AEO 3단계 — 랜딩 답변 블록 + 구 페이지 내부 링크 + /explore ItemList"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/components/web-landing.tsx, apps/web/src/app/explore/page.tsx]
     done_when:
       - "랜딩 하단에 '퇴근하고 뭐하지'에 대한 산문 답변 3~4문단이 서버렌더로 있다"
@@ -1962,6 +1962,23 @@ backlog:
       `/explore` ItemList는 임시방편이다 — 목록이 클라이언트 렌더라 본문은 못 긁힌다.
       근본 해결은 M-094의 구 페이지들이고, 이건 그 사이를 메우는 것.
       랜딩 디자인 변경이므로 `design-taste-frontend` 스킬을 쓴다(제품 UI가 아니라 마케팅 페이지).
+      [2026-09-06 야간 파이프라인 완료] scope의 `apps/web/src/app/explore/page.tsx`는
+      라우트 그룹 재구성으로 이미 존재하지 않아(실제는 `explore/(list)/page.tsx` +
+      `explore/layout.tsx`) 신규 `apps/web/src/app/explore/(list)/layout.tsx`로
+      스코프를 보정했다 — 이 경로를 택한 이유는 `(list)` 라우트 그룹에만 적용돼
+      `/explore/[gu]/*`(이미 자체 itemListJsonLd 보유)에는 영향이 없기 때문(구조로
+      보장, Next.js route-group layout scoping). "24개 구"라는 done_when의 숫자는
+      검증 없이 지어낸 값이라 하드코딩하지 않고 Home(page.tsx)이 summarizeGu로
+      실측한 개수를 씀(M-095가 24가 아니라 22를 실측한 선례를 따름 — done_when
+      문구는 정신만 취하고 리터럴 숫자는 폐기). 웹 랜딩(WebLanding)에 FAQ 섹션 뒤
+      산문 4문단 + 실측 구 링크 목록 신설, packages/core 미변경(summarizeGu는
+      이미 존재). lib/seo.ts에 itemListJsonLd 헬퍼(eventJsonLd/faqJsonLd와 동일
+      이스케이프·빈 목록→null 규율) 추가. 모바일 히어로(page.tsx md:hidden)는
+      diff로 무변경 확인. qa가 독립 재실행한 bash scripts/gate.sh PASS +
+      pnpm --filter web build 성공(27/27 라우트, /explore가 신규 레이아웃의
+      revalidate=6h를 받고 /explore/[gu]는 영향 없음을 빌드 출력으로 확인).
+      커밋 b575fc2, dev 직접 커밋(트렁크 모델, PR 없음). 상세는
+      docs/nightly/nightly-2026-09-06.md.
 
   - id: M-097
     title: "동 단위 좌표 백필 — neighborhoods.coord_level='dong' + dong_name 정규화"
@@ -2385,7 +2402,7 @@ backlog:
   - id: M-091
     title: "웹 ui.tsx의 Txt/InfoBox/Card — 테스트만 있고 실화면 소비처 0(거짓 신뢰 유발)"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/components/ui.tsx, apps/web/src/components/ui.test.tsx]
     done_when:
       - "Txt·InfoBox·Card 각각 제거(및 ui.test.tsx의 해당 describe 블록도 함께 제거)하거나 실사용처에 배선한다(반복되는 로컬 마크업을 이 프리미티브로 교체)"
@@ -2399,6 +2416,15 @@ backlog:
       location/page.tsx·explore/page.tsx·opportunity-detail.tsx 등에서 실사용
       중임을 대조 확인했다(정상 컴포넌트). 테스트가 있다는 사실이 "쓰이고 있다"는
       착각을 주는 유지비 함정이라 medium으로 등재(단순 dead code보다 위험도 높음).
+      [2026-09-06 야간 파이프라인 완료] M-090(모바일 Card) 선례를 따라 배선 대신
+      삭제 방향을 택했다. ui.tsx에서 Txt·InfoBox·Card 세 함수(및 관련 JSDoc/섹션
+      주석)를 제거하고 ui.test.tsx의 해당 describe 블록·import를 함께 정리. 같은
+      파일의 `text` 프리셋 const·Button/Chip/Tag/Logo/Skeleton 등은 done_when
+      범위 밖이라 손대지 않음. 검증: grep -rn -w "Txt"/"InfoBox" apps/web/src
+      매치 0건, "Card"는 poster-ring.tsx의 무관 로컬 타입에서만 매치. qa가 독립
+      재실행한 bash scripts/gate.sh PASS(typecheck 4/4·test core 391+mobile 159+
+      web 381·lint clean·secrets clean). 커밋 19b126e, dev 직접 커밋(트렁크 모델,
+      PR 없음). 상세는 docs/nightly/nightly-2026-09-06.md.
 
   - id: M-092
     title: "packages/tokens의 집계 export tokens/Tokens — 개별 토큰만 쓰이고 통합 객체는 미참조"
