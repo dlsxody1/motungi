@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   applyGuCoordFallback,
   buildGuCentroids,
+  normalizeGu,
   type CoordFallbackRow,
   type GuCentroidRow,
 } from "./gu-fallback";
-import { normalizeGu } from "../view";
+import { normalizeGu as normalizeGuFromView } from "../view";
 
 /** neighborhoods 테이블 형태의 최소 픽스처(같은 구에 여러 동 = 중심 평균 대상). */
 const NEIGHBORHOODS: GuCentroidRow[] = [
@@ -30,8 +31,15 @@ describe("normalizeGu 복제본 (배포 제약으로 view.ts에서 의도적으�
     ];
     for (const raw of cases) {
       const viaClone = [...buildGuCentroids([{ sigungu: raw, lat: 1, lng: 2 }]).keys()][0];
-      expect(viaClone).toBe(normalizeGu(raw));
+      expect(viaClone).toBe(normalizeGuFromView(raw));
     }
+  });
+});
+
+describe("normalizeGu (M-098: 이제 export됨 — 직접 단언)", () => {
+  it("'종로구'와 '서울 종로구'가 같은 값으로 병합된다", () => {
+    expect(normalizeGu("종로구")).toBe(normalizeGu("서울 종로구"));
+    expect(normalizeGu("종로구")).toBe("종로구");
   });
 });
 
