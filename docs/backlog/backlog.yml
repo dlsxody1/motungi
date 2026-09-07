@@ -1981,15 +1981,12 @@ backlog:
       docs/nightly/nightly-2026-09-06.md.
 
   - id: M-097
-    title: "동 단위 좌표 백필 — neighborhoods.coord_level='dong' + dong_name 정규화"
+    title: "동 단위 좌표 백필 — neighborhoods.coord_level='dong'"
     priority: medium
     status: todo
     scope: [supabase/migrations, supabase/functions/ingest/adapters.ts, packages/core/src/catalog.ts]
     done_when:
       - "neighborhoods 426행 중 대다수가 coord_level='dong'이고, 같은 구 안에서 좌표가 서로 다르다"
-      - "opportunities.dong_name이 정규화된다 — '종로구'와 '서울 종로구'가 같은 값으로 합쳐진다"
-      - "적재 시점에 정규화가 적용된다(백필만 하면 다음 적재에 다시 오염된다)"
-      - "마이그레이션은 추가만 — 기존 파일 수정·파괴적 SQL 금지"
     notes: >
       **AEO 동 단위 페이지(진짜 하이퍼로컬)의 선행 조건**이자, 거리 스코어링 정확도 문제이기도 하다.
       현재 418/426이 구 중심좌표를 공유해서 "집에서 가까운 활동"이 사실상 "우리 구 활동"이다.
@@ -1997,6 +1994,23 @@ backlog:
       `normalizeGu`가 코드엔 있는데 데이터엔 적용되지 않았다. 어디서 끊겼는지 먼저 추적할 것.
       실적재 어댑터는 `supabase/functions/ingest/adapters.ts`다(core 어댑터 아님 — 자주 헷갈린다).
       이게 끝나면 M-094을 /explore/[gu]/[dong]으로 확장하는 후속 이슈를 연다.
+      [2026-09-07 야간 파이프라인] **원래 done_when 4개 중 dong_name 정규화 관련 3개
+      (opportunities.dong_name 정규화 · 적재 시점 적용 · 마이그레이션 추가전용)는 M-098로
+      분리해 오늘 밤 shipped 완료**(커밋 0f4c0dc) — planner/architect가 done_when의 두
+      절반이 서로 무관함을 확인: 좌표 백필(neighborhoods 테이블, 지리 데이터 조달 문제)과
+      dong_name 표기 정규화(opportunities 테이블, 순수 문자열 처리 문제)는 스코프도 난이도도
+      다르다. 본 항목(M-097)은 이제 좌표 백필 1건만 남기고, 이건 여전히 **blocked-human**이다
+      (M-052와 동일 등급): 이번 밤 재검증 결과 — 이 sandbox에 `.env`가 없고(`.env.example`만
+      존재, 모든 값 공란), data.go.kr/서울 열린데이터광장 인증키가 없으며, repo 안에 벤더링된
+      지오코딩 데이터셋이 없다. outbound internet도 프록시 정책으로 막혀 있다(`curl`로
+      `https://apis.data.go.kr/`을 호출하면 `connect_rejected` — organization policy).
+      `scripts/gen-neighborhoods.ts` 자신의 헤더 주석(1-29행)이 이미 인정하는 사실:
+      현재 426행 중 418행은 `coord_level='sigungu'`(구청 위치 근사)이고, 실측 좌표를 가진
+      건 `SEED_OVERRIDES`의 8행(마포구 4 + 성동구 4)뿐이다 — `coord_level='dong'`은 이
+      코드베이스 어디에도 아직 한 번도 쓰인 적이 없다. 그럴듯해 보이는 좌표를 지어내는 건
+      현재의 정직한 근사치보다 더 나쁘다고 판단해 명시적으로 기각했다(사람이 데이터 출처
+      또는 API 키를 제공해야 진행 가능). status는 todo로 유지. 상세는
+      docs/nightly/nightly-2026-09-07.md.
 
   - id: M-073
     title: "모바일 accessibilityRole 스윕 2차 — saved.tsx/my.tsx/hero-carousel.tsx가 M-058 범위 밖이었음"
@@ -2458,3 +2472,47 @@ backlog:
       isAfterWorkShift가, TrailGuide는 parseTrailGuide 반환 타입만 참조).
       M-038이 scoring.ts의 동일 패턴(내부 전용인데 export만 걸림)을 이미 고친
       전례가 있어 같은 처리를 어댑터 계층에도 적용.
+
+  - id: M-098
+    title: "적재 시점 dong_name 정규화 (M-097 분리)"
+    priority: medium
+    status: doing
+    scope: [supabase/migrations, supabase/functions/ingest/index.ts, packages/core/src/adapters/gu-fallback.ts]
+    done_when:
+      - "opportunities.dong_name이 정규화된다 — '종로구'와 '서울 종로구'가 같은 값으로 합쳐진다"
+      - "적재 시점에 정규화가 적용된다(백필만 하면 다음 적재에 다시 오염된다)"
+      - "마이그레이션은 추가만 — 기존 파일 수정·파괴적 SQL 금지"
+    notes: >
+      [2026-09-07 야간 파이프라인 완료] M-097의 원래 done_when 4개 중 dong_name 정규화
+      관련 3개를 분리해 별도 이슈로 등재 — planner/architect가 M-097의 두 절반(좌표 백필 vs
+      표기 정규화)이 스코프·난이도 모두 무관함을 확인했고, 이 3개(위 done_when)는 오늘 밤
+      실제로 shippable했지만 나머지 1개(좌표 백필, 지리 데이터 조달)는 blocked-human이라
+      묶어두면 shippable한 부분까지 todo에 갇힌다고 판단했다. M-097 자체는 좌표 백필
+      done_when 1개만 남기고 todo 유지(상세는 M-097 notes 참조).
+      architect가 원래 M-097 scope의 `supabase/functions/ingest/adapters.ts`를
+      실제 투입 전에 다시 확인한 결과 이 파일은 무변경으로 충분했고, 대신 실제 choke
+      point인 `supabase/functions/ingest/index.ts`(원 scope에 없었음)가 필요해 scope를
+      실코드 기준으로 교정했다.
+      **구현**: `gu-fallback.ts`의 기존 private `normalizeGu`를 export(로직 무변경) +
+      `gu-fallback.test.ts`에 "'종로구'==normalizeGu('서울 종로구')" 직접 단언 추가.
+      `ingest/index.ts`의 `upsertRows()` 최종 payload에서만 normalizeGu를 적용 —
+      `applyGuCoordFallback`은 raw(접두어 포함) dong_name으로 neighborhoods.sigungu와
+      매칭해야 하므로 그 호출 **이후**에 정규화한다(순서를 바꾸면 매칭이 깨진다). 신규
+      마이그레이션 `0020_opportunities_dong_name_normalize.sql`(추가만, 기존 행 백필
+      UPDATE)에 서울/인천 중구 명칭 충돌 캐비어트를 SQL 주석으로 명시(아래 참조).
+      `packages/core/src/adapters/index.ts` 배럴에서는 normalizeGu를 **제외**했다 —
+      `view.ts`가 이미 같은 이름을 export해 `export *`로 겹치면 index.ts에서
+      TS2308(모호한 재export)로 typecheck가 깨진다(실제 typecheck 실패로 확인된
+      것, 스타일 선택 아님). 두 실 소비처(ingest/index.ts, gu-fallback.test.ts)는
+      leaf 파일을 상대경로로 직접 import해 barrel 노출이 불필요하고, `@motungi/core`
+      패키지 루트(다른 실 소비처 4곳: apps/web 3 + apps/mobile 1)는 view.ts의
+      normalizeGu만 받으므로 영향 없음(리뷰어가 직접 재확인).
+      **리스크(architect 판정, 신규 아님)**: 접두사 제거만으로는 "인천 중구"와
+      "서울 중구"가 둘 다 "중구"로 합쳐진다(인천·서울 모두 실제 "중구" 자치구를
+      가짐). 이미 0018 백필과 gu-fallback.ts의 applyGuCoordFallback이 매칭용으로
+      같은 위험을 감수하고 있던 것과 동일 등급이라 방어적 재구분 로직 없이 진행,
+      SQL 주석에 캐비어트만 남김.
+      **검증**: qa가 독립 재실행한 `bash scripts/gate.sh` PASS(typecheck·test·lint·
+      secrets 전부 ✅), `git diff cdb2308 0f4c0dc --stat`로 5파일 변경만 확인, 0001-0019
+      마이그레이션 무변경, 파괴적 SQL 없음, 시크릿 없음. 커밋 0f4c0dc, dev 직접 커밋
+      (트렁크 모델, PR 없음). 상세는 docs/nightly/nightly-2026-09-07.md.
