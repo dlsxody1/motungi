@@ -9,7 +9,7 @@
  * 존중해서 그리는지가 핵심이므로, useOpportunity 자체를 얇게 흉내내되 카탈로그 find
  * 로직도 그대로 재현해 검증한다.
  */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Share as RNShare } from "react-native";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockOpportunity } from "@/data/opportunities";
@@ -409,5 +409,45 @@ describe("OpportunityScreen", () => {
     // 마이크로태스크 flush — .catch(() => {})가 실제로 rejection을 삼키는지 확인.
     await Promise.resolve();
     await Promise.resolve();
+  });
+
+  /**
+   * useTrailRoute(M-052)는 이 파일에서 vi.mock으로 우회하지 않는다 — 자체 테스트
+   * (hooks/useTrailRoute.test.ts)가 있고, 여기서는 화면이 그 실패를 삼키고 정상
+   * 렌더되는지만 확인한다(RNShare.share rejected 테스트와 같은 패턴).
+   */
+  it("산책로 경로 조회가 실패해도(rejected) 화면은 정상 렌더된다(M-052)", async () => {
+    const originalOrigin = process.env.EXPO_PUBLIC_WEB_ORIGIN;
+    process.env.EXPO_PUBLIC_WEB_ORIGIN = "http://test.local";
+    const fetchSpy = vi.fn().mockRejectedValue(new Error("network error"));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    useOpportunityState.status = "ok";
+    useOpportunityState.catalog = [
+      makeOpp({
+        id: "op-1",
+        title: "북한산 둘레길",
+        source: "trail",
+        location: { dongName: "우이동", point: { lat: 37.66, lng: 127.01 } },
+      }),
+    ];
+    searchParamsState.id = "op-1";
+
+    try {
+      expect(() => render(<OpportunityScreen />)).not.toThrow();
+      expect(screen.getByText("북한산 둘레길")).toBeInTheDocument();
+
+      await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
+      // 마이크로태스크 flush — 훅의 catch가 rejection을 삼키는지 확인.
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(screen.getByText("북한산 둘레길")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "네이버 지도에서 열기" })).toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+      if (originalOrigin === undefined) delete process.env.EXPO_PUBLIC_WEB_ORIGIN;
+      else process.env.EXPO_PUBLIC_WEB_ORIGIN = originalOrigin;
+    }
   });
 });
