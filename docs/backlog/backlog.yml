@@ -1269,7 +1269,7 @@ backlog:
   - id: M-052
     title: "모바일 상세 화면에 위치 지도·산책로 폴리라인 없음"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/mobile/app/opportunity.tsx]
     done_when:
       - "상세 화면에 활동 위치(o.location.point)를 지도로 보여준다 — 웹 opportunity-detail.tsx의 VenueMap과 동등한 정보(좌표·장소명)를 제공한다"
@@ -1366,6 +1366,30 @@ backlog:
       (apps/mobile/package.json 지도 의존성 없음, .env 부재, DATA_GO_KR_SERVICE_KEY
       공란과 무관하게 지도 3안 모두 미승인). 씨앗에서 사전 제외. 상세는
       docs/nightly/nightly-2026-09-09.md.
+      [2026-09-10 야간 파이프라인 완료] **28일 연속 blocked-human 종료 — 4번째 경로로
+      shipped.** planner가 backlog 노트를 읽다 08-13에 기각된 3개 경로(react-native-maps
+      신규 네이티브 의존성 / NAVER 정적지도 백엔드 프록시 신설 / 키리스 서드파티 정적지도)
+      외에 아무도 평가하지 않은 4번째 경로를 제안: 웹 venue-map.tsx가 이미 자체 열화
+      상태로 쓰는 "네이버 지도에서 열기" 딥링크(https://map.naver.com/p/search/, 키
+      불필요) + 이미 apps/mobile 의존성인 react-native-svg로 그리는 추상 폴리라인
+      미리보기(산책로 한정) + 이미 배포·공개된 apps/web/src/app/api/trail-route/route.ts에서
+      좌표 페칭. architect가 독립 재검증(과거와 동일 grep 재실행, security-policy.md
+      재확인, trail-route 소스 직접 확인) 후 승인 — 신규 네이티브 의존성·신규 시크릿·신규
+      외부 서비스가 전혀 없어 앞선 3개 경로와 범주가 다르다고 판단. planner 초안에서
+      한 가지만 정정: 신규 훅은 SITE_URL이 아니라 EXPO_PUBLIC_WEB_ORIGIN을 쓴다
+      (useWhyReasons.ts와 동일 패턴 — 앱이 자기 자신의 웹 API를 부르는 용도와 외부
+      공유용 딥링크는 다른 상수를 쓴다). frontend-impl이 6개 파일로 구현: 신규
+      apps/mobile/hooks/useTrailRoute.ts(+.test.ts), 신규 apps/mobile/ui/venue-map.tsx(+.test.tsx),
+      apps/mobile/app/opportunity.tsx(+.test.tsx) 수정. 커밋 768cbce, dev 직접 커밋
+      (트렁크 모델, PR 없음). qa가 git diff 검토 + bash scripts/gate.sh 독립 재실행으로
+      검증 — PASS(typecheck 4/4·test mobile 173·web 381 전부 통과·lint clean·secrets
+      clean), done_when 4개 항목 전부 file:line 근거로 확인. **주의:
+      이건 인터랙티브 georeferenced 지도가 아니라 딥링크+추상 SVG 경로 미리보기
+      MVP다** — venue-map.tsx 자체 주석도 "지도가 아니라 코스 모양이 있다는 것만
+      보여주는 추상 미리보기"라고 명시한다. 매일 밤을 막던 응급 상황은 해소됐지만,
+      진짜 인터랙티브 지도(react-native-maps 도입 또는 NAVER 정적지도 프록시)로
+      갈지는 여전히 사람이 여유를 갖고 판단할 사안으로 남아 있다. status는 doing으로
+      전환. 상세는 docs/nightly/nightly-2026-09-10.md.
 
   - id: M-053
     title: "모바일 상세 화면에 마감 D-day·출처 미표시"
