@@ -2720,3 +2720,78 @@ backlog:
       받아 이 고정이 없어서, 앵커가 바뀌면 source→sorted→list 메모가 연쇄로 무너지고
       ActivityItem memo까지 무력화된다. web에만 있는 성능 규율이 mobile에 없는 격차 —
       M-104(검색 통합)와 같은 파일을 만지므로 함께 처리하면 비용이 낮다.
+
+  - id: M-107
+    title: "useNeighborhoodSearch를 TanStack Query로 — web 훅 중 유일하게 AbortController 수동 관리"
+    priority: medium
+    status: todo
+    scope: [apps/web/src/hooks/useNeighborhoodSearch.ts, apps/web/src/lib/query.tsx]
+    done_when:
+      - "queryKeys에 neighborhoodSearch(q)를 추가하고 useQuery로 검색 요청을 옮긴다(queryFn의 signal 사용)"
+      - "results·searching 로컬 상태와 AbortController 수동 관리를 제거한다"
+      - "디바운스와 IME 보류(composing/유예 effect)는 그대로 유지한다 — 서버 상태가 아니라 입력 상태다"
+      - "query와 debouncedQuery를 분리하고 queryKey에는 debouncedQuery만 넣는다"
+      - "기존 useNeighborhoodSearch.test.ts(114줄)가 수정 없이 통과한다"
+      - "같은 검색어 재입력 시 재요청이 없음을 단언하는 테스트를 추가하고, 수정 전 실패(Red)를 확인한다"
+    notes: >
+      [2026-09-11 조사] 상세 근거는 docs/audit/2026-09-11-state-management.md 축 1-A.
+      web 훅 8개 중 6개가 useQuery를 쓰는데 이 훅만 AbortController를 손으로 관리한다.
+      lib/query.tsx:9-12 주석이 이미 같은 문제를 서술해 뒀다("캐시 무효화·요청 취소·재시도를
+      전부 손으로 짜게 됐다 — 전부 queryKey가 하는 일이다") — 그 판단이 이 훅에만 적용되지 않았다.
+      전환 비용은 거의 없다: lib/geo.ts:45의 searchNeighborhoods가 이미 signal?을 받으므로
+      queryFn({signal})을 그대로 넘기면 되고 인터페이스 변경이 0건이다.
+      ⚠️ IME 함정(훅 주석 44-55행)은 TanStack이 풀어주지 않는다 — compositionend가 안 와서
+      결과가 영영 안 뜨던 회귀가 있었으므로 유예 effect를 지우지 마라.
+
+  - id: M-108
+    title: "mobile 서버상태 전략 결정 — TanStack 도입 여부 (훅 5개가 web과 각자 구현)"
+    priority: high
+    status: todo
+    scope: [apps/mobile/hooks/useEnsureCatalog.ts, apps/mobile/hooks/useOpportunity.ts, apps/mobile/hooks/useSavedOpportunities.ts, apps/mobile/hooks/useTrailRoute.ts, apps/mobile/hooks/useWhyReasons.ts]
+    done_when:
+      - "RN 배선 비용(AppState 포커스·NetInfo 온라인)을 실제로 확인하고 도입 여부를 먼저 결정한다 — 조사만으로는 결정할 수 없다"
+      - "도입한다면 useOpportunity 하나로 파일럿한 뒤 나머지 4개로 확대한다"
+      - "도입하지 않는다면 web/mobile 훅의 동작 계약을 테스트로 고정해 M-104 재발을 막는다"
+      - "어느 쪽이든 판단 근거를 docs/audit 문서 또는 이 이슈 notes에 남긴다"
+    notes: >
+      [2026-09-11 조사] 상세 근거는 docs/audit/2026-09-11-state-management.md 축 1-B.
+      web은 훅 5개가 useQuery인데 mobile은 같은 이름 훅 5개가 전부 useEffect 수동 관리이고
+      @tanstack/react-query가 설치조차 안 돼 있다. 이건 이번에 고친 M-104(explore 검색이
+      web·mobile로 갈라진 버그)와 구조가 같다 — 같은 이름 훅이 두 앱에 따로 있으면 조용히 갈라진다.
+      이미 갈라진 증거: web useOpportunity는 initial(서버가 준 1건)을 받아 스켈레톤을 건너뛰는데
+      mobile에는 그 인자가 없다.
+      **이 이슈는 구현이 아니라 결정이 먼저다.** RN에서 TanStack은 동작하지만 포커스·온라인
+      감지를 직접 배선해야 하므로, 그 비용과 "계속 갈라지는 비용"을 재보고 정해야 한다.
+
+  - id: M-109
+    title: "core 스토어의 catalog 슬라이스가 mobile 전용으로 남아 있다 — web은 0곳 구독"
+    priority: medium
+    status: todo
+    scope: [packages/core/src/store.ts]
+    done_when:
+      - "M-108 결정에 종속 — mobile이 TanStack으로 가면 catalog·catalogStatus·setCatalog를 core 스토어에서 제거한다"
+      - "가지 않기로 하면 core 스토어 주석에 '이 슬라이스는 mobile 전용'이라고 명시한다"
+      - "pnpm typecheck·test 통과(web·mobile 양쪽)"
+    notes: >
+      [2026-09-11 조사] 상세 근거는 docs/audit/2026-09-11-state-management.md 축 3-A.
+      packages/core/src/store.ts:62-64,73,169의 catalog/catalogStatus/setCatalog를
+      web은 0곳에서 구독하고(TanStack queryKeys.catalog로 이전 완료, useReportFallback.ts:27
+      주석이 그 이전을 기록) mobile만 4곳에서 쓴다 — 공용 스토어에 한쪽 앱 전용 슬라이스가
+      들어 있는 기형이다. 단독으로 처리하지 말고 M-108 결정 뒤에 따라갈 것.
+
+  - id: M-110
+    title: "동네 폴백 문자열 \"우리 동네\"가 11곳에 복붙 — core로 통합"
+    priority: low
+    status: todo
+    scope: [packages/core/src/view.ts]
+    done_when:
+      - "anchors에서 표시용 동네 이름을 만드는 순수 함수를 core에 추가한다(예: displayDongName)"
+      - "web 6곳·mobile 5곳의 `?? \"우리 동네\"`를 그 함수 호출로 치환한다"
+      - "core에 테스트를 붙인다(check-pure-tests.sh가 강제)"
+    notes: >
+      [2026-09-11 조사] 상세 근거는 docs/audit/2026-09-11-state-management.md 축 3-D.
+      web: explore/(list)/page · loading/page · report/page · saved/page ·
+      opportunity-detail-desktop · opportunity-detail-mobile
+      mobile: (tabs)/explore · (tabs)/report · (tabs)/saved · loading · opportunity
+      작아 보이지만 11곳이면 갈라짐이 시작될 만한 숫자이고, M-104(검색 로직 복붙)와
+      같은 패턴의 씨앗이다. 문구를 바꿀 일이 생기면 그때 11곳을 다 찾아야 한다.
