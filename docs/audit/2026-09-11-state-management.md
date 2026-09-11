@@ -1,4 +1,4 @@
-# 상태관리 전수조사 — TanStack Query · useEffect · 전역상태 결합도
+# 전수조사 — TanStack Query · useEffect · 전역상태 결합도 · 중복 파일
 
 > 조사일 2026-09-11 · 대상 `apps/web`(89 파일) · `apps/mobile`(34 파일) · `packages/core`
 > 다음 세션 작업용. 수치는 전부 실측이고 근거는 `file:line`으로 달았다.
@@ -12,7 +12,12 @@
 mobile만 쓰는 기형이 됐다.** 여기에 web 안에도 표준을 벗어난 훅이 하나 남아 있다
 (`useNeighborhoodSearch` — 코드베이스에서 유일하게 `AbortController`를 손으로 관리).
 
-우선순위: **① mobile catalog(가장 큼) → ② useNeighborhoodSearch(가장 쉬움) → ③ 나머지**
+중복 파일도 같은 뿌리다 — web↔mobile 동명 파일 17쌍은 **바이트 단위로 같은 건 0건**이지만
+같은 이름·같은 export·같은 계약인데 구현이 따로 살고, mobile 코드 5곳이 스스로
+"웹과 같다 / react-query가 없어서 손으로 짠다"고 적어 두었다.
+
+우선순위: **① mobile 서버상태 결정(가장 큼) → ② useNeighborhoodSearch(가장 쉬움)
+→ ③ 중복 정리(독립적, 먼저 해도 됨) → ④ 나머지**
 
 ---
 
@@ -164,6 +169,77 @@ core로 올릴 후보(`displayDongName(anchors)`). 작아 보이지만 **11곳�
 
 ---
 
+## 축 4 — 중복 파일 / 중복 코드
+
+### 4-A. 🔴 web↔mobile 동명 파일 17쌍 — 대부분 "의도된 중복"이지만 계약이 안 묶여 있다
+
+| 파일 | web | mobile | 공통 export |
+|---|---|---|---|
+| `useOpportunity.ts` | 49줄 | 64줄 | `OpportunityLoadStatus`·`OpportunityView`·`useOpportunity` |
+| `useSavedOpportunities.ts` | 69줄 | 81줄 | `SavedLoadStatus`·`SavedView`·`useSavedOpportunities` |
+| `useWhyReasons.ts` | 75줄 | 84줄 | `WhyReasonsView`·`useWhyReasons` |
+| `useTrailRoute.ts` | 36줄 | 59줄 | `useTrailRoute` |
+| `useEnsureCatalog.ts` | 81줄 | 66줄 | `useEnsureCatalog` |
+| `geo.ts` | 63줄 | 64줄 | `NeighborhoodSearchResult`·`ReverseGeoResult` |
+| `auth.ts` | 117줄 | 125줄 | `initAuthListener` |
+
+(그 외 `supabase.ts`·`useAppStore.ts`·`opportunities.ts`·`icons.tsx`·`thumbnail.tsx`·
+`venue-map.tsx`·`hero-carousel.tsx`·`neighborhood-menu.tsx`·`explore-skeleton.tsx`·`loading.tsx`)
+
+**바이트 단위로 같은 파일은 0건**(DOM ≠ RN이라 당연하다). 문제는 **같은 이름·같은 export·같은
+계약인데 구현이 따로 산다**는 것이다. 헌법도 "로직 공유는 복붙이 아니라 core 경유"라고 못박고 있다.
+
+**코드가 스스로 증언한다** — mobile 파일 5곳이 "웹과 같다"고 적어 뒀다:
+
+```
+hooks/useTrailRoute.ts:14   "모바일엔 react-query가 없으므로(useWhyReasons.ts와 동일한 제약)
+                             plain useState/useEffect로 구현한다"
+hooks/useWhyReasons.ts:21   "모바일엔 react-query가 없으므로(M-045 notes와 동일한 …)"
+lib/geo.ts:40               "웹과 동일 엔드포인트를 오리진 경유로 호출"
+ui/neighborhood-menu.tsx:2  "웹 neighborhood-menu.tsx와 같은 의도를 모바일에"
+app/(tabs)/my.tsx:31        "개수를 실제 진입점에 붙인다(웹과 동일)"
+```
+
+즉 **제약을 인지하고 우회한 기록이 코드에 남아 있다.** 축 1-B(mobile TanStack)와 같은 뿌리다.
+
+`geo.ts`의 실제 차이는 **RN 환경 차이뿐**이다(상대경로 `/api/geo` vs `EXPO_PUBLIC_WEB_ORIGIN`,
+`reportError` 유무). 순수 파싱·타입은 동일하므로 **타입과 응답 파싱은 core로 올릴 수 있다**.
+
+### 4-B. 🟡 web 내부 진짜 중복 — `itemListJsonLd` 2개 구현
+
+| 위치 | 형태 |
+|---|---|
+| [lib/seo.ts:234](../../apps/web/src/lib/seo.ts#L234) | `export function itemListJsonLd(items, name)` — `safeJson` 사용, 빈 배열이면 `null` |
+| [app/explore/[gu]/page.tsx:126](../../apps/web/src/app/explore/[gu]/page.tsx#L126) | `function itemListJsonLd(gu, items)` — **로컬 재정의**, `.replace(/</g, "\\u003c")` 직접 |
+
+본문(`@context`·`@type`·`itemListElement` 조립)이 **동일**하고 차이는 `name` 조립과 빈 배열 처리뿐이다.
+문제는 **이스케이프 규칙이 갈라진다는 것** — `safeJson`을 고쳐도 `[gu]` 쪽은 안 따라온다.
+JSON-LD는 크롤러가 읽는 출력이라 조용히 갈라지면 색인에 영향이 간다.
+
+→ `lib/seo.ts` 버전에 `name`을 인자로 넘겨 하나로 합치는 게 맞다(이미 그 시그니처다).
+
+### 4-C. 🟡 미사용 export 3건 — 반복되는 패턴
+
+| 심볼 | 실사용 | 판정 |
+|---|---|---|
+| `lib/explore-filters.ts → filterLabelOf` | 같은 파일의 `exploreHref`만 | export 제거, 모듈 내부로 |
+| `lib/seo.ts → absoluteUrl` | **테스트만** | export 제거 검토 |
+| `lib/supabase.ts → assertSupabase` | 테스트가 mock으로만, 실호출 0 | 제거 또는 실배선 확인 |
+| `lib/rate-limit.ts → __resetRateLimitForTests` | route 테스트 2곳 | ✅ **정당** (이름이 용도를 밝힘) |
+
+**이건 이 레포에서 반복되는 패턴이다** — M-038(scoring 4종) → M-091(아이콘 11개) →
+M-093("M-038 export-과다개방 패턴 재발"). 개별 이슈로 또 잡기보다 **lint 룰로 막는 게 맞다**
+(`eslint-plugin-unused-imports` 또는 `knip`). 그게 이번 규율 도입(M-098)의 연장선이다.
+
+### 4-D. ✅ 중복이 아닌 것 (확인 완료)
+
+- `icons.tsx` ↔ `landing-icons.tsx` — 겹치는 아이콘 **0개**. 제품 UI/랜딩 분리라 정당
+- `error.tsx` ↔ `global-error.tsx` — Next.js 규약(라우트 에러 vs 루트 에러)
+- 여러 `layout.tsx` — App Router 규약
+- 테스트 헬퍼 동명 함수(`seed`·`makePick`·`makeClient`) — 파일 스코프라 정상
+
+---
+
 ## 다음 세션 작업 순서 (제안)
 
 ### 1단계 — `useNeighborhoodSearch` → TanStack (작고 명확)
@@ -182,8 +258,13 @@ core로 올릴 후보(`displayDongName(anchors)`). 작아 보이지만 **11곳�
 - 2단계 결과에 종속. mobile이 TanStack으로 가면 core 스토어에서 슬라이스 삭제
 - 안 가면 최소한 "이건 mobile 전용"이라고 core 스토어에 명시
 
-### 4단계 — 작은 것들
-- `?? "우리 동네"` 5곳 통합
+### 4단계 — 중복 정리 (2단계와 독립, 먼저 해도 된다)
+- `itemListJsonLd` 로컬 재정의 제거 → `lib/seo.ts` 하나로 (축 4-B, 이스케이프 갈라짐 방지)
+- 미사용 export 3건 정리 + **lint 룰로 재발 차단** (축 4-C — M-038·M-091·M-093이 이미 같은 패턴)
+- `geo.ts`의 타입·응답 파싱을 core로 (RN 차이는 오리진뿐)
+
+### 5단계 — 작은 것들
+- `?? "우리 동네"` 11곳 통합 (M-110)
 - `results` 슬라이스가 정말 전역이어야 하는지 재검토
 - prop 12~13개를 뷰모델로 묶을지 검토
 

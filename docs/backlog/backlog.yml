@@ -2795,3 +2795,57 @@ backlog:
       mobile: (tabs)/explore · (tabs)/report · (tabs)/saved · loading · opportunity
       작아 보이지만 11곳이면 갈라짐이 시작될 만한 숫자이고, M-104(검색 로직 복붙)와
       같은 패턴의 씨앗이다. 문구를 바꿀 일이 생기면 그때 11곳을 다 찾아야 한다.
+
+  - id: M-111
+    title: "itemListJsonLd가 두 곳에 각자 구현 — JSON-LD 이스케이프 규칙이 갈라질 수 있다"
+    priority: medium
+    status: todo
+    scope: [apps/web/src/app/explore/[gu]/page.tsx, apps/web/src/lib/seo.ts]
+    done_when:
+      - "[gu]/page.tsx:126의 로컬 itemListJsonLd를 제거하고 lib/seo.ts의 export 버전을 쓴다(이미 name을 인자로 받는 시그니처다)"
+      - "구 페이지의 name 문자열(`${gu} 퇴근 후·주말 활동`)이 그대로 유지된다"
+      - "빈 목록일 때 seo.ts 버전이 null을 반환하므로 구 페이지가 빈 스크립트를 내지 않는지 확인한다"
+      - "기존 seo.test.ts와 구 페이지 테스트가 통과한다"
+    notes: >
+      [2026-09-11 조사] 상세 근거는 docs/audit/2026-09-11-state-management.md 축 4-B.
+      본문(@context·@type·itemListElement 조립)이 두 구현에서 완전히 동일하고, 차이는
+      name 조립 방식과 빈 배열 처리뿐이다. 문제는 이스케이프가 갈라진다는 것 —
+      lib/seo.ts는 safeJson을 쓰는데 [gu]/page.tsx는 .replace(/</g,"\\u003c")를 손으로 한다.
+      safeJson의 규칙을 고쳐도 구 페이지는 따라오지 않는다. JSON-LD는 크롤러가 읽는
+      출력이라 조용히 갈라지면 색인에 영향이 간다.
+
+  - id: M-112
+    title: "미사용 export 재발을 lint로 막는다 — M-038·M-091·M-093이 같은 패턴의 반복"
+    priority: medium
+    status: todo
+    scope: [apps/web/.eslintrc.json, apps/web/src/lib/explore-filters.ts, apps/web/src/lib/seo.ts, apps/web/src/lib/supabase.ts]
+    done_when:
+      - "현재 걸린 3건을 정리한다: filterLabelOf(모듈 내부로), absoluteUrl(테스트만 사용), assertSupabase(실사용 0건 — 제거 또는 실배선)"
+      - "__resetRateLimitForTests는 남긴다 — 이름이 테스트 전용임을 밝히고 route 테스트 2곳이 실제로 쓴다"
+      - "재발 차단 수단을 넣는다(eslint-plugin-unused-imports 또는 knip). 새 의존성이 필요하면 비용을 먼저 따져보고 결정한다"
+      - "bash scripts/gate.sh 통과"
+    notes: >
+      [2026-09-11 조사] 상세 근거는 docs/audit/2026-09-11-state-management.md 축 4-C.
+      **개별 이슈로 또 잡는 게 아니라 기계로 막아야 하는 건이다.** 선례가 이미 셋이다 —
+      M-038(scoring 4종) → M-091(아이콘 11개) → M-093(어댑터 2건, 제목이 아예
+      "M-038 export-과다개방 패턴 재발"). 사람 눈으로 세 번 잡았으면 네 번째도 온다.
+      M-098에서 레이어 경계를 lint로 강제한 것과 같은 판단을 여기에도 적용한다.
+
+  - id: M-113
+    title: "web↔mobile 동명 파일 17쌍 — 같은 계약인데 구현이 따로 산다"
+    priority: medium
+    status: todo
+    scope: [apps/web/src/lib/geo.ts, apps/mobile/lib/geo.ts, packages/core/src]
+    done_when:
+      - "geo.ts의 타입(NeighborhoodSearchResult·ReverseGeoResult)과 응답 파싱을 core로 올린다 — 실제 차이는 오리진뿐(web 상대경로 vs EXPO_PUBLIC_WEB_ORIGIN)"
+      - "core에 테스트를 붙인다(check-pure-tests.sh가 강제)"
+      - "나머지 훅 5쌍(useOpportunity·useSavedOpportunities·useWhyReasons·useTrailRoute·useEnsureCatalog)은 M-108 결정에 종속시킨다 — 여기서 선행 처리하지 말 것"
+    notes: >
+      [2026-09-11 조사] 상세 근거는 docs/audit/2026-09-11-state-management.md 축 4-A.
+      바이트 단위로 같은 파일은 0건이다(DOM ≠ RN이라 당연). 문제는 같은 이름·같은 export·
+      같은 계약인데 구현이 따로 사는 것이고, 헌법이 "로직 공유는 복붙이 아니라 core 경유"라고
+      못박은 지점이다. mobile 코드 5곳이 스스로 증언한다 — useTrailRoute.ts:14
+      "모바일엔 react-query가 없으므로 plain useState/useEffect로 구현한다",
+      geo.ts:40 "웹과 동일 엔드포인트를 오리진 경유로 호출" 등.
+      geo.ts만 먼저 떼는 이유: 순수 타입·파싱이라 M-108(mobile TanStack 결정)과 무관하게
+      지금 올릴 수 있다. 훅 5쌍은 서버상태 전략이 정해져야 형태가 결정된다.
