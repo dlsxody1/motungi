@@ -113,6 +113,36 @@ describe("useSavedOpportunities", () => {
     expect(result.current.status).not.toBe("error");
   });
 
+  // mobile(useSavedOpportunities.test.ts)의 "catalog에 없는 id는 fetchOpportunitiesByIds로
+  // 벌크 조회한다" 테스트는 loading을 mid-flight에 이미 단언하고 있었지만, 이 파일엔
+  // 그 상태만 따로 확인하는 케이스가 없었다.
+  it("벌크 조회가 진행 중인 동안(응답 도착 전) status는 loading이다", async () => {
+    seed(["op-1"]);
+    mockedByIds.mockImplementationOnce(() => new Promise(() => {}));
+
+    const { result } = renderHook(() => useSavedOpportunities());
+
+    expect(result.current.status).toBe("loading");
+    expect(result.current.items).toEqual([]);
+  });
+
+  /**
+   * 파라미터 차이는 의도된 것이다(M-108 결정): web useSavedOpportunities()는 savedIds·catalog를
+   * 둘 다 useAppStore에서 직접 읽는 반면, mobile useSavedOpportunities(savedIds, catalog)는
+   * 그 둘을 명시적 인자로 받는다(react-query가 없어 스토어 구독 계층이 없기 때문) — 버그가
+   * 아니라 의도된 시그니처 차이다.
+   */
+  it("동일 savedIds·동일 벌크 응답이면 {items,status} shape이 고정된다(parity, mobile과 동일 계약, M-108)", async () => {
+    seed(["op-9"]);
+    mockedByIds.mockResolvedValueOnce({ data: [makePick("op-9", "패리티 테스트")], status: "ok" });
+
+    const { result } = renderHook(() => useSavedOpportunities());
+
+    await waitFor(() => expect(result.current.status).toBe("ok"));
+    expect(result.current.items.map((o) => o.id)).toEqual(["op-9"]);
+    expect(typeof result.current.retry).toBe("function");
+  });
+
   it("조회 실패면 error 상태를 노출한다(조용히 감추지 않는다)", async () => {
     seed(["op-1"]);
     mockedByIds.mockResolvedValue({ data: [], status: "error" });

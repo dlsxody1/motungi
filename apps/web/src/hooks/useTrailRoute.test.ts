@@ -26,6 +26,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// M-108 로딩 상태 노트: 이 훅은 `useQuery`의 `data`만 꺼내 `data ?? null`로 반환한다
+// (isPending/isLoading은 destructure하지 않는다) — 그래서 반환 타입 `[[lat,lng],...] | null`은
+// 최초 렌더(요청 진행 중)·!res.ok·points 없음·fetch reject가 전부 동일한 null로 수렴한다.
+// 호출부(지도 카드)가 보기엔 "로딩 중"과 "폴리라인 없음"이 구분되지 않는 것이 의도(우아한
+// 열화, 지도 자체는 마커만으로 항상 뜬다)이므로, 로딩만 독립적으로 assert하는 4번째 상태
+// 테스트는 추가하지 않는다 — mobile(useTrailRoute.test.ts)과 동일한 설계 판단이다.
 describe("useTrailRoute — enabled/id 가드", () => {
   it("enabled=false면 네트워크 호출이 발생하지 않는다", () => {
     const fetchSpy = vi.fn();
@@ -108,6 +114,25 @@ describe("useTrailRoute — 응답 처리(마커만으로 우아한 열화)", ()
     const { result } = renderHook(() => useTrailRoute("op-1", true));
 
     await waitFor(() => expect(result.current).toEqual(points));
+  });
+});
+
+describe("useTrailRoute — parity(M-108)", () => {
+  it("동일 id + 동일 points 응답이면 반환값이 [[lat,lng],...] shape을 그대로 유지한다(parity, mobile과 동일 계약)", async () => {
+    const points: [number, number][] = [
+      [37.55, 126.9],
+      [37.56, 126.91],
+    ];
+    const fetchSpy = vi.fn().mockResolvedValue(new Response(JSON.stringify({ points }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const { result } = renderHook(() => useTrailRoute("op-1", true));
+
+    await waitFor(() => expect(result.current).toEqual(points));
+    // mobile(useTrailRoute.test.ts)과 시그니처가 완전히 같다 — 여기서는 그 반환값이 실제로
+    // 튜플 배열 shape을 지키는지를 고정한다.
+    expect(Array.isArray(result.current)).toBe(true);
+    expect(result.current?.every((p) => Array.isArray(p) && p.length === 2)).toBe(true);
   });
 });
 

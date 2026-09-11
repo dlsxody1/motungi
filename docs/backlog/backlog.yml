@@ -2746,7 +2746,7 @@ backlog:
   - id: M-108
     title: "mobile 서버상태 전략 결정 — TanStack 도입 여부 (훅 5개가 web과 각자 구현)"
     priority: high
-    status: todo
+    status: doing
     scope: [apps/mobile/hooks/useEnsureCatalog.ts, apps/mobile/hooks/useOpportunity.ts, apps/mobile/hooks/useSavedOpportunities.ts, apps/mobile/hooks/useTrailRoute.ts, apps/mobile/hooks/useWhyReasons.ts]
     done_when:
       - "RN 배선 비용(AppState 포커스·NetInfo 온라인)을 실제로 확인하고 도입 여부를 먼저 결정한다 — 조사만으로는 결정할 수 없다"
@@ -2762,6 +2762,31 @@ backlog:
       mobile에는 그 인자가 없다.
       **이 이슈는 구현이 아니라 결정이 먼저다.** RN에서 TanStack은 동작하지만 포커스·온라인
       감지를 직접 배선해야 하므로, 그 비용과 "계속 갈라지는 비용"을 재보고 정해야 한다.
+
+      [2026-09-11 야간 파이프라인] 결정: 오늘 밤은 도입하지 않는다(RN 배선 비용이 무인
+      1회 실행 범위를 넘음). 대신 done_when 3번째 항목대로 web/mobile 훅 5쌍의 동작 계약을
+      테스트로 고정했다 — 각 쌍에 shape parity 테스트 1개씩(총 10개), useEnsureCatalog
+      mobile의 empty passthrough 누락 보강, useSavedOpportunities web의 mid-flight loading
+      단언 누락 보강, 의도된 시그니처 비대칭(useOpportunity의 initial?, useSavedOpportunities의
+      인자 vs 스토어 직접 구독)에 대한 인라인 주석. 상세 결정 기록은
+      docs/audit/2026-09-11-state-management.md의 "1-B-결정" 절. RN 배선 비용 실측·파일럿은
+      여전히 미착수 — M-109(core 스토어 catalog 슬라이스 정리)도 이 결정에 종속돼 다음
+      세션으로 남는다.
+
+      [2026-09-11 QA fix round] 독립 QA가 "5쌍 각각 최소 4개 상태(로딩/성공/에러/빈)가
+      web/mobile 양쪽에 나란히"라는 기준으로 재검증해 실제 공백 2건을 찾았다: (1)
+      useOpportunity가 명시적 "error" 상태(web은 isError 분기, mobile은 mapStatus의
+      status:"error" 분기)를 갖고 있는데도 web/mobile 테스트 어느 쪽에도 error 상태를
+      exercise하는 테스트가 0개였다 — web/mobile useOpportunity.test.ts에 각 1개씩 추가로
+      메꿨다(web은 fetch reject → isError 경로, mobile은 fetchOpportunityById가
+      status:"error"로 resolve하는 경로 — 훅 코드 상 실제 에러 발생 경로가 서로 다르므로
+      테스트 방식도 그에 맞춰 다르다). (2) useTrailRoute·useWhyReasons는 반환 타입 자체가
+      로딩을 별도로 노출하지 않는 설계다 — useTrailRoute는 `T | null` 하나뿐이라 로딩 중·
+      오리진 미설정·에러·points 없음이 전부 null로 수렴하고, useWhyReasons는 로딩 중 렌더와
+      LLM 미도착 최종 렌더가 둘 다 {reasons: fallbackReasons, isLlm:false}로 동일하다.
+      가짜 4번째 테스트를 추가하는 대신 이 설계 사실을 4개 테스트 파일(web/mobile ×
+      useTrailRoute/useWhyReasons)에 인라인 주석으로 남겼다 — 로딩이 관측 불가능한 건
+      의도이지 빠뜨린 테스트가 아니다.
 
   - id: M-109
     title: "core 스토어의 catalog 슬라이스가 mobile 전용으로 남아 있다 — web은 0곳 구독"

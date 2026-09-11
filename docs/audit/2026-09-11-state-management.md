@@ -87,6 +87,45 @@ mobile은 그 인자가 없다.
 도입 여부는 다음 세션에서 **결정부터** 하고 들어가야 한다 — 조사 결과가 "도입해야 한다"까지는
 말하지 않는다.
 
+### 1-B-결정. M-108 결정 기록 — mobile TanStack 도입하지 않음 (2026-09-11 야간 파이프라인)
+
+**결정: 오늘 밤은 mobile에 TanStack Query를 도입하지 않는다.** 위 1-B가 정리한 "조사 결과가
+'도입해야 한다'까지는 말하지 않는다"는 판단을 그대로 따른 것 — RN 배선 비용(`AppState`
+포커스·`NetInfo` 온라인 감지를 새로 붙여야 함)이 무인 야간 파이프라인 1회 실행으로 감당하기엔
+크고, 도입 자체가 `useOpportunity` 파일럿 → 나머지 4개 확대라는 다세션 작업이다.
+
+대신 done_when의 세 번째 항목("도입하지 않는다면 web/mobile 훅의 동작 계약을 테스트로 고정해
+M-104 재발을 막는다")을 오늘의 범위로 택했다. web/mobile 5쌍(`useEnsureCatalog`·`useOpportunity`·
+`useSavedOpportunities`·`useTrailRoute`·`useWhyReasons`) 각각에 아래를 추가했다:
+
+- **shape parity 테스트 1개씩(총 10개)**: 같은 입력·같은 fetch 결과가 주어졌을 때 두 훅이
+  같은 모양의 데이터를 화면에 전달하는지 고정한다. `useEnsureCatalog`는 반환 타입 자체가
+  다르므로(mobile은 `void`+`setCatalog`, web은 `{catalog,status}` 직접 반환) 반환값을
+  직접 비교하지 않고, "같은 payload에 대해 최종적으로 전달되는 데이터"를 양쪽 테스트
+  파일에 동일한 리터럴로 각각 고정하는 방식을 썼다(두 파일은 별도 vitest 프로세스로
+  돌아 서로 import하지 않는다 — 진짜 크로스파일 비교는 아니고, 같은 계약을 각자 증명하는
+  구조다).
+- **`useEnsureCatalog` mobile의 `empty` passthrough 누락 보강**: mobile은 `error` passthrough만
+  테스트돼 있었고 `empty`는 없었다(web엔 있었음) — 추가.
+- **`useSavedOpportunities` web의 mid-flight `loading` 단언 누락 보강**: mobile은 기존
+  테스트 안에 이미 있었고(`waitFor` 전 `status`를 확인), web엔 별도로 없어 추가했다.
+- **시그니처 비대칭에 대한 인라인 주석**: `useOpportunity`(web은 `initial?` 2번째 인자로
+  SSR 선시딩, mobile은 없음)와 `useSavedOpportunities`(mobile은 `(savedIds, catalog)`를
+  인자로 받고 web은 스토어에서 직접 읽음)는 버그가 아니라 의도된 차이라는 걸 두 테스트
+  파일 모두에 남겼다. `useTrailRoute`·`useWhyReasons`는 시그니처가 이미 동일해 주석이
+  필요 없었다.
+
+이 테스트들이 잡으려는 회귀는 M-104와 같은 모양이다 — 같은 이름의 훅이 두 앱에 각자 있고,
+한쪽만 고쳐지면 반환 shape이 조용히 갈라진다. TanStack 도입 여부와 무관하게 유효한 안전망이며,
+나중에 도입을 결정하더라도 이 테스트들은 "무엇이 바뀌면 안 되는가"의 스펙으로 남는다.
+
+**M-108/M-109 상태**: `status: doing`으로 전환한다(위 안전망 작업을 완료했으므로). done_when의
+1번(RN 배선 비용 실측)·2번(파일럿)은 여전히 미착수 — "도입 여부 자체를 결정한다"는 이슈
+목표는 "도입하지 않는다"로 확정됐지만, `M-109`(core 스토어 catalog 슬라이스 정리)가 이 결정에
+종속되어 있으므로 다음 세션에서 "catalog 슬라이스는 mobile 전용"이라고 core 스토어 주석에
+명시하는 작업이 남아 있다 — 오늘 밤은 그 스토어 파일(`packages/core/src/store.ts`)엔 손대지
+않았다(범위 밖).
+
 ### 1-C. 나머지 수동 페칭 🟡
 
 - [web/src/app/loading/page.tsx](../../apps/web/src/app/loading/page.tsx) — `useEffect` 2 + 스코어링 후 `setResults`

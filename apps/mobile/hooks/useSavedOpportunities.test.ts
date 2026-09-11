@@ -134,6 +134,22 @@ describe("useSavedOpportunities", () => {
     expect(result.current.items.map((o) => o.id)).toEqual(["op-1", "op-2"]);
   });
 
+  /**
+   * 파라미터 차이는 의도된 것이다(M-108 결정): mobile useSavedOpportunities는
+   * (savedIds, catalog)를 명시적 인자로 받는 반면, web useSavedOpportunities()는 둘 다
+   * useAppStore에서 직접 읽는다(인자 없음). react-query가 없는 mobile은 캐시 키에 넣을
+   * "스토어 구독" 계층이 없어 값을 인자로 받는 편이 더 단순하다 — 버그가 아니다.
+   */
+  it("동일 savedIds·동일 벌크 응답이면 {items,status} shape이 고정된다(parity, web과 동일 계약, M-108)", async () => {
+    fetchOpportunitiesByIdsMock.mockResolvedValueOnce({ data: [pick("op-9")], status: "ok" });
+
+    const { result } = renderHook(() => useSavedOpportunities(["op-9"], []));
+
+    await waitFor(() => expect(result.current.status).toBe("ok"));
+    expect(result.current.items.map((o) => o.id)).toEqual(["op-9"]);
+    expect(typeof result.current.retry).toBe("function");
+  });
+
   it("catalog로 이미 해소된 id는 실패 후 retry에도 재요청 대상에 들어가지 않는다", async () => {
     const catalog = [pick("op-cached")];
     fetchOpportunitiesByIdsMock.mockResolvedValueOnce({ data: [], status: "error" });
