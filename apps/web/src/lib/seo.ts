@@ -222,3 +222,30 @@ export function faqJsonLd(items: readonly FaqItem[]): string | null {
     })),
   });
 }
+
+/**
+ * 활동 목록 → schema.org ItemList JSON-LD. 빈 목록이면 `null` (M-096).
+ *
+ * `/explore` 목록은 `"use client"` + 가상화라 크롤러가 받는 본문이 거의 없다(`[gu]/page.tsx`
+ * 주석 참조). 이 함수가 만드는 스크립트는 서버에서 나가므로 카드 텍스트를 못 긁어도 최소한
+ * "이런 활동들이 있다"는 구조는 전달된다 — 다만 이건 임시방편이고 근본 해결은 구 페이지들이다
+ * (`docs/AEO.md`). `faqJsonLd`와 같은 이유로 빈 목록엔 `null`을 반환해 빈 스크립트를 막는다.
+ */
+export function itemListJsonLd(
+  items: readonly { id: string; title: string }[],
+  name: string,
+): string | null {
+  if (items.length === 0) return null;
+  return safeJson({
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name,
+    numberOfItems: items.length,
+    itemListElement: items.map((o, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: o.title,
+      url: `${SITE_URL}${opportunityPath(o.id)}`,
+    })),
+  });
+}

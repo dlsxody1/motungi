@@ -41,6 +41,7 @@ import {
 import {
   applyGuCoordFallback,
   buildGuCentroids,
+  normalizeGu,
   type GuCentroidRow,
 } from "../../../packages/core/src/adapters/gu-fallback.ts";
 
@@ -287,10 +288,17 @@ async function upsertRows(rows: OppRow[]): Promise<number> {
    */
   const centroids = await getGuCentroids();
   // venue_name은 kopis 좌표 백필용 임시 필드다 — DB 컬럼이 아니라 실으면 upsert가 죽는다.
-  const payload = rows.map(({ venue_name: _venue, ...r }) => ({
-    ...applyGuCoordFallback(r, centroids),
-    fetched_at: now,
-  }));
+  const payload = rows.map(({ venue_name: _venue, ...r }) => {
+    // applyGuCoordFallback은 raw(시도 접두사 포함) dong_name으로 neighborhoods.sigungu와
+    // 매칭해야 하므로 그 전에는 정규화하지 않는다(M-098). 정규화는 폴백이 끝난 뒤,
+    // DB에 실제로 쓰이는 최종 payload에서만 적용해 "종로구"/"서울 종로구" 분열을 막는다.
+    const withCoordFallback = applyGuCoordFallback(r, centroids);
+    return {
+      ...withCoordFallback,
+      dong_name: normalizeGu(withCoordFallback.dong_name),
+      fetched_at: now,
+    };
+  });
   const { error, count } = await supabase
     .from("opportunities")
     .upsert(payload, { onConflict: "source,external_id", count: "exact" });

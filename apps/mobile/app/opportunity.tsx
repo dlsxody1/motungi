@@ -12,12 +12,14 @@ import {
 import { deadlineLabel, displayNameOf, isWeekendOuting, parseHttpUrl } from "@motungi/core";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useOpportunity } from "@/hooks/useOpportunity";
+import { useTrailRoute } from "@/hooks/useTrailRoute";
 import { useWhyReasons } from "@/hooks/useWhyReasons";
 import { useAppStore } from "@/store/useAppStore";
 import { Button, FlowHeader, Screen, Tag } from "@/ui/components";
 import { Bookmark, CheckCircle, ExternalLink, Location, Share } from "@/ui/icons";
 import { Thumbnail } from "@/ui/thumbnail";
 import { C, R, cardShadow } from "@/ui/theme";
+import { VenueMap } from "@/ui/venue-map";
 
 /**
  * 공유 링크용 오리진. 웹의 `lib/seo.ts` SITE_URL과 **같은 값을 유지해야 한다** —
@@ -42,6 +44,9 @@ export default function OpportunityScreen() {
   // 규칙기반 근거를 즉시 반환하고, 가능하면 LLM 산문으로 교체한다(M-055) — early return보다
   // 앞에서 불러야 하는 훅이라 o가 아직 null(로딩 중)이어도 여기서 호출한다.
   const { reasons: why } = useWhyReasons(o, answers, anchors);
+  // 산책로(source: "trail") 경로 미리보기(M-052) — 같은 이유로 early return 앞에서 호출.
+  // 걷기길이 아닌 활동은 enabled=false라 fetch 자체를 시도하지 않는다.
+  const routePoints = useTrailRoute(o?.id ?? null, o?.source === "trail");
 
   if (!o) {
     // 아직 불러오는 중(idle/loading)이면 "없음"이 아니라 로딩 스피너.
@@ -116,6 +121,24 @@ export default function OpportunityScreen() {
           <Location size={16} color={C.primary} />
           <Text style={styles.locText}>{o.location?.dongName ?? "우리 동네"}</Text>
         </View>
+
+        {/*
+         * 위치 딥링크 카드 + 산책로 경로 미리보기(M-052). react-native-maps(신규 네이티브
+         * 의존성·Expo prebuild/EAS+사람 승인 필요) / NAVER 정적지도 백엔드 프록시(없는
+         * NCP 자격증명 필요) / 키리스 서드파티 정적지도(security-policy.md NAVER-only
+         * 프록시 원칙 위반) 세 경로 모두 08-13~09-09 28일 연속 무인 야간 실행에 부적합
+         * 판정됐다. VenueMap은 그 대신 웹 venue-map.tsx가 이미 자체 열화 상태로 쓰는
+         * 딥링크 UI를 재사용하고, 이미 배포된 /api/trail-route로 받은 좌표를 abstract
+         * SVG 미리보기로 보여준다 — 신규 의존성/시크릿/외부서비스 없음.
+         */}
+        <VenueMap
+          lat={o.location?.point?.lat}
+          lng={o.location?.point?.lng}
+          title={o.title}
+          placeName={o.location?.dongName}
+          routePoints={routePoints ?? undefined}
+        />
+
         {!!o.summary && <Text style={styles.summary}>{o.summary}</Text>}
 
         {/* 비용 카드 */}

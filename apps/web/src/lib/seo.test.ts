@@ -12,7 +12,9 @@ import {
   eventJsonLd,
   faqJsonLd,
   isExpired,
+  itemListJsonLd,
   opportunityMetadata,
+  opportunityPath,
   SITE_URL,
   truncate,
 } from "./seo";
@@ -228,5 +230,46 @@ describe("faqJsonLd", () => {
   it("특수문자·따옴표가 답변에 있어도 유효한 JSON이다", () => {
     const a = '따옴표 "안녕" · 역슬래시 \\ · 줄바꿈\n포함';
     expect(JSON.parse(faqJsonLd([{ q: "q", a }])!).mainEntity[0].acceptedAnswer.text).toBe(a);
+  });
+});
+
+describe("itemListJsonLd", () => {
+  it("빈 목록이면 null — 항목 없는 ItemList를 내보내지 않는다", () => {
+    expect(itemListJsonLd([], "동네 활동 탐색")).toBeNull();
+  });
+
+  it("ItemList 형태로 위치·이름·절대 URL을 싣는다", () => {
+    const json = JSON.parse(
+      itemListJsonLd(
+        [
+          { id: "op-1", title: "망원동 동네 전시" },
+          { id: "op-2", title: "성수동 재즈 공연" },
+        ],
+        "동네 활동 탐색",
+      )!,
+    );
+
+    expect(json["@type"]).toBe("ItemList");
+    expect(json.name).toBe("동네 활동 탐색");
+    expect(json.numberOfItems).toBe(2);
+    expect(json.itemListElement).toHaveLength(2);
+    expect(json.itemListElement[0]).toEqual({
+      "@type": "ListItem",
+      position: 1,
+      name: "망원동 동네 전시",
+      url: `${SITE_URL}${opportunityPath("op-1")}`,
+    });
+    expect(json.itemListElement[1].position).toBe(2);
+  });
+
+  it("`</script>`가 섞여도 스크립트 블록을 조기 종료시키지 않는다", () => {
+    const out = itemListJsonLd(
+      [{ id: "op-1", title: "</script><img src=x onerror=alert(1)>" }],
+      "목록",
+    )!;
+
+    expect(out).not.toContain("</script>");
+    expect(out).toContain("\\u003c");
+    expect(JSON.parse(out).itemListElement[0].name).toContain("</script>");
   });
 });

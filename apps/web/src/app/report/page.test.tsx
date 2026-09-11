@@ -7,7 +7,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as navigation from "next/navigation";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockOpportunity } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -39,6 +39,39 @@ function seedEmpty(status: "idle" | "empty" | "error" | "unconfigured") {
     user: null,
   });
   fallbackRef.current = { items: [], status };
+}
+
+const NOW = "2026-08-15T00:00:00Z";
+
+function pick(overrides: Partial<MockOpportunity> = {}): MockOpportunity {
+  return {
+    id: "op-1",
+    source: "seoul_culture",
+    category: "culture",
+    title: "망원동 정오 재즈 공연",
+    summary: "망원동 · 소극장",
+    costKrw: 0,
+    difficulty: 0.2,
+    categoryLabel: "동네 문화·공연",
+    costLabel: "무료",
+    costUnit: "1인",
+    costHeading: "참가비",
+    matchScore: 88,
+    meta: [],
+    tone: "brand",
+    ...overrides,
+  } as unknown as MockOpportunity;
+}
+
+function seedOnePick(overrides: Partial<MockOpportunity> = {}) {
+  useAppStore.setState({
+    anchors: {},
+    answers: null,
+    results: [pick(overrides)],
+    savedIds: [],
+    user: null,
+  });
+  fallbackRef.current = { items: [], status: "idle" };
 }
 
 function mockRouter() {
@@ -108,5 +141,61 @@ describe("ReportPage", () => {
     await user.click(screen.getAllByText("60초 진단하기")[0]!);
 
     expect(push).toHaveBeenCalledWith("/diagnosis");
+  });
+});
+
+/**
+ * 원픽 히어로의 마감 배지(M-081) — 로컬 formatDeadline(단일 중립 톤)을 core의
+ * deadlineLabel+DdayPill(3톤: 지남/임박/여유)로 교체했다. opportunity-detail.test.tsx의
+ * "DdayPill 톤·텍스트"와 동일 관례로 시스템 시간을 고정해 검증한다.
+ * md:hidden은 CSS라 모바일·데스크톱 트리가 둘 다 마운트되므로 getAllByText로 받는다.
+ */
+describe("ReportPage — 원픽 마감 배지(DdayPill)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(NOW));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("지난 마감이면 '마감'을 은은한 톤으로 표시한다", () => {
+    seedOnePick({ deadline: "2026-08-10" });
+
+    render(<ReportPage />);
+
+    const pills = screen.getAllByText("마감").filter((el) => el.tagName === "SPAN");
+    expect(pills.length).toBeGreaterThan(0);
+    expect(pills[0]).toHaveClass("bg-gray-100");
+  });
+
+  it("D-3 이내면 강조 톤으로 'D-N'을 표시한다", () => {
+    seedOnePick({ deadline: "2026-08-17" });
+
+    render(<ReportPage />);
+
+    const pills = screen.getAllByText("D-2");
+    expect(pills.length).toBeGreaterThan(0);
+    expect(pills[0]).toHaveClass("bg-primary");
+  });
+
+  it("여유 있는 마감이면 은은한 톤으로 'D-N'을 표시한다", () => {
+    seedOnePick({ deadline: "2026-08-31" });
+
+    render(<ReportPage />);
+
+    const pills = screen.getAllByText("D-16");
+    expect(pills.length).toBeGreaterThan(0);
+    expect(pills[0]).toHaveClass("bg-tint");
+  });
+
+  it("마감이 없으면 배지를 렌더하지 않는다(레이아웃 안 깨짐)", () => {
+    seedOnePick({ deadline: undefined });
+
+    render(<ReportPage />);
+
+    expect(screen.queryByText(/^D-\d/)).not.toBeInTheDocument();
+    expect(screen.queryAllByText("마감").filter((el) => el.tagName === "SPAN")).toHaveLength(0);
   });
 });

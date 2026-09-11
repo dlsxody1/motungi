@@ -94,7 +94,19 @@ const LANDING_FAQS: FaqItem[] = [
   },
 ];
 
-export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }) {
+export function WebLanding({
+  heroPicks = [],
+  guNames = [],
+}: {
+  heroPicks?: MockOpportunity[];
+  /**
+   * 실제로 `/explore/[gu]` 페이지가 존재하는 구 이름 목록(M-096).
+   * 활동 많은 순으로 정렬되어 있다고 가정한다(`summarizeGu`가 이미 그렇게 반환 — page.tsx 참조).
+   * 하드코딩 배열이 아니라 항상 호출부가 실측해서 넘긴다 — "24개 구" 같은 수치를
+   * 여기서 지어내지 않는다(docs/AEO.md, M-095 선례).
+   */
+  guNames?: string[];
+}) {
   // 벤토 주인공 셀에 세울 실제 원픽. 없으면(로컬/빈 DB) 톤 그라데이션 폴백으로 내려간다.
   const featured = heroPicks.find((o) => o.imageUrl);
   // 가로 스크롤 열에 세울 실제 활동들. 히어로 링과 겹쳐도 무방 —
@@ -481,6 +493,66 @@ export function WebLanding({ heroPicks = [] }: { heroPicks?: MockOpportunity[] }
           <FaqSection heading="자주 묻는 것" items={LANDING_FAQS} className="max-w-[720px]" />
         </WebContainer>
       </section>
+
+      {/*
+        ══ 7. 랜딩 답변 블록 + 구 페이지 링크 (M-096) ══
+        docs/AEO.md 3단계. FAQ 뒤에 두는 이유: FAQ가 개별 질문에 답한다면 여기는
+        "모퉁이가 무엇이고 어디서 쓰이는가"를 하나로 이어 붙인 산문이라, 질문형이 아닌
+        검색("퇴근하고 뭐하지")에도 통째로 인용될 여지를 만든다. 문장은 평서형이다
+        (위 LANDING_FAQS 주석과 같은 규율 — 인용될 때 UI 카피가 아니라 사실 서술로 읽혀야 한다).
+        새 사실을 지어내지 않는다 — 전부 LANDING_FAQS·STEPS·CATEGORIES에 이미 있는 내용이다.
+
+        아래 링크 목록이 구 페이지들의 발견 경로다(사이트맵만으론 약하다 — `/explore` 자체가
+        클라이언트 렌더라 크롤러가 카드 링크를 못 긁는다). guNames가 비어 있으면
+        (로컬/빈 DB) 섹션째로 렌더하지 않는다 — 근거 없는 "N개 지역" 문장을 내보내느니
+        아예 없는 편이 낫다(FaqSection·faqJsonLd와 같은 "빈 구조를 내보내지 않는다" 규율).
+      */}
+      {guNames.length > 0 && (
+        <section className="border-t border-line bg-bg py-[72px]">
+          <WebContainer>
+            <div className="max-w-[720px]">
+              <h2 className="text-[22px] font-bold leading-[30px] tracking-[-0.015em] text-ink">
+                퇴근하고 뭐하지? — 모퉁이의 답
+              </h2>
+              <div className="mt-5 max-w-[65ch] space-y-4 text-[15px] leading-[24px] text-pretty text-label">
+                <p>
+                  모퉁이는 서울·수도권 직장인이 퇴근 후나 주말에 갈 만한 동네 문화·여가 활동을
+                  찾도록 돕는 서비스다. 관심사·시간대·에너지 3문항 진단을 거쳐 오늘 갈 만한 활동
+                  1~3개로 좁혀준다. 목록을 늘어놓고 고르게 하는 대신 하나를 정해주는 쪽을 택했다.
+                </p>
+                <p>
+                  여기서 말하는 &ldquo;동네&rdquo;는 행정구역으로 활동을 걸러내는 필터가 아니다. 집과 회사 두
+                  좌표를 기준으로 거리를 계산하는 점수다. 그래서 구 경계 바로 건너편에 있는
+                  활동도 걸어서 닿을 만큼 가까우면 추천에 들어온다.
+                </p>
+                <p>
+                  다루는 갈래는 전시·미술, 연극·뮤지컬, 콘서트, 클래식·국악, 교육·체험,
+                  산책·걷기길이다. 서울시 문화행사, 공연예술통합전산망(KOPIS), 한눈에보는문화정보,
+                  공공체육시설, 두루누비 걷기길 같은 공공 데이터에서 하루 한 번 새로 받아 마감이
+                  지난 활동은 걸러낸다.
+                </p>
+                <p>
+                  아래는 활동이 충분히 쌓여 실제 페이지가 열린 지역 {guNames.length}곳이다. 각
+                  페이지엔 그 동네에 지금 올라와 있는 활동과 그 구에 특화된 질문·답변이 함께 있다.
+                </p>
+              </div>
+            </div>
+
+            <ul className="mt-8 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3 md:grid-cols-4">
+              {guNames.map((gu) => (
+                <li key={gu}>
+                  <Link
+                    href={`/explore/${encodeURIComponent(gu)}`}
+                    className="text-[14px] font-medium text-label underline decoration-line-alt underline-offset-4 transition-colors hover:text-primary hover:decoration-primary"
+                  >
+                    {gu}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </WebContainer>
+        </section>
+      )}
     </div>
   );
 }
