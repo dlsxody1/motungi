@@ -138,6 +138,83 @@ describe("ExploreScreen", () => {
     expect(screen.queryByText("성수 팝업 전시")).not.toBeInTheDocument();
   });
 
+  /**
+   * 검색 회귀(M-104) — 이 화면엔 검색 테스트가 **하나도 없어서** web과 갈라진 걸 아무도 몰랐다.
+   *
+   * 예전 구현은 `${title} ${summary} ${genre}`를 조합해 통짜 `includes` 하나였다. 그래서
+   * ① 두 단어를 띄어 치면 연속 부분문자열이 아니라 0건 ② 지역명·카테고리 라벨은 아예 검색 대상
+   * 밖이었다. web은 같은 화면에서 셋 다 됐다 — 계산을 core로 올려(packages/core/src/explore.ts)
+   * 양쪽이 같은 함수를 쓰게 하면서 고쳤다.
+   *
+   * 픽스처는 web page.test.tsx·core explore.test.ts와 같은 JAZZ/TRAIL이다.
+   */
+  describe("검색(M-104) — web과 동일 동작", () => {
+    const seedJazzAndTrail = () => {
+      state.catalogStatus = "ok";
+      state.catalog = [
+        makeOpp({
+          id: "op-jazz",
+          title: "카즈미 타테이시 트리오 내한공연",
+          summary: "마포구 · 마포아트센터 아트홀맥 · 재즈",
+          categoryLabel: "동네 문화·공연",
+          location: { dongName: "마포구" },
+        }),
+        makeOpp({
+          id: "op-trail",
+          category: "active",
+          title: "서해랑길 42코스",
+          summary: "경기 화성시 · 12km · 바다를 따라 걷는 길",
+          categoryLabel: "동네 산책·운동",
+          location: { dongName: "경기 화성시" },
+        }),
+      ];
+    };
+    const searchFor = (text: string) =>
+      fireEvent.change(screen.getByPlaceholderText("활동·키워드 검색"), {
+        target: { value: text },
+      });
+
+    it("공백으로 떨어진 두 단어를 AND로 매칭한다", () => {
+      seedJazzAndTrail();
+      render(<ExploreScreen />);
+
+      searchFor("마포 재즈");
+
+      expect(screen.getByText("카즈미 타테이시 트리오 내한공연")).toBeInTheDocument();
+      expect(screen.queryByText("서해랑길 42코스")).not.toBeInTheDocument();
+    });
+
+    it("구 이름으로 검색된다", () => {
+      seedJazzAndTrail();
+      render(<ExploreScreen />);
+
+      searchFor("마포");
+
+      expect(screen.getByText("카즈미 타테이시 트리오 내한공연")).toBeInTheDocument();
+      expect(screen.queryByText("서해랑길 42코스")).not.toBeInTheDocument();
+    });
+
+    it("categoryLabel로 검색된다 — summary엔 없는 우리 라벨", () => {
+      seedJazzAndTrail();
+      render(<ExploreScreen />);
+
+      searchFor("동네 문화·공연");
+
+      expect(screen.getByText("카즈미 타테이시 트리오 내한공연")).toBeInTheDocument();
+      expect(screen.queryByText("서해랑길 42코스")).not.toBeInTheDocument();
+    });
+
+    it("두 단어가 서로 다른 행에만 있으면 매칭되지 않는다(AND이므로)", () => {
+      seedJazzAndTrail();
+      render(<ExploreScreen />);
+
+      searchFor("마포 서해랑길");
+
+      expect(screen.queryByText("카즈미 타테이시 트리오 내한공연")).not.toBeInTheDocument();
+      expect(screen.queryByText("서해랑길 42코스")).not.toBeInTheDocument();
+    });
+  });
+
   it("낮음만 보기를 켜면 난이도 0.33 초과 활동이 숨는다(M-032)", () => {
     state.catalogStatus = "ok";
     state.catalog = [

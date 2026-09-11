@@ -4,8 +4,13 @@
 # TRUST 5(MoAI-ADK) 중 우리가 실제로 강제하는 것만 검사한다:
 #   T(Tested)    pnpm test           — 이미 게이트였음
 #   R(Readable)  pnpm lint           — 스크립트는 있었지만 게이트 밖이었다 (이번에 편입)
-#   S(Secured)   시크릿 스캔          — reviewer 눈으로만 보던 것 (이번에 자동화)
+#   S(Secured)   시크릿 스캔          — reviewer 눈으로만 보던 것 (자동화됨)
 #   + typecheck  — 이미 게이트였음
+#   + pure-tests — lib/·core의 순수 함수에 테스트가 붙어 있는지 (레이어 규율)
+#
+# 레이어 경계(lib↛components/hooks/app 등)는 별도 검사가 아니라 `pnpm lint`가 본다 —
+# apps/web/.eslintrc.json의 import/no-restricted-paths. 규칙이 조용히 안 걸리는 게 가장
+# 흔한 실패이므로, 룰을 고칠 땐 일부러 위반을 넣어 Error가 나는지 확인하고 되돌려라.
 #
 # 커버리지 85% 같은 수치 게이트는 일부러 넣지 않았다. 밤이 자율로 도는데 숫자를 게이트로
 # 걸면 숫자를 채우는 게 목적이 되고, expect(true).toBe(true) 류가 쌓인다.
@@ -31,10 +36,11 @@ run() {
   fi
 }
 
-run "typecheck" pnpm typecheck
-run "test"      pnpm test
-run "lint"      pnpm lint
-run "secrets"   bash scripts/scan-secrets.sh "$BASE"
+run "typecheck"  pnpm typecheck
+run "test"       pnpm test
+run "lint"       pnpm lint
+run "secrets"    bash scripts/scan-secrets.sh "$BASE"
+run "pure-tests" bash scripts/check-pure-tests.sh
 
 echo
 if [ "$FAIL" -eq 0 ]; then

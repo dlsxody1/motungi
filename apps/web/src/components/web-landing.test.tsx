@@ -184,6 +184,31 @@ describe("WebLanding", () => {
     expect(within(section).queryByText("포스터 없는 러닝크루")).not.toBeInTheDocument();
   });
 
+  it("guNames가 비어 있으면(기본값) 답변 블록·구 링크 섹션을 렌더하지 않는다(M-096)", () => {
+    render(<WebLanding />);
+    expect(screen.queryByText("퇴근하고 뭐하지? — 모퉁이의 답")).not.toBeInTheDocument();
+  });
+
+  it("guNames를 주면 답변 산문 + 실제 구 목록 개수만큼 링크를 렌더한다(M-096)", () => {
+    const guNames = ["종로구", "마포구", "성동구"];
+    render(<WebLanding guNames={guNames} />);
+
+    expect(screen.getByText("퇴근하고 뭐하지? — 모퉁이의 답")).toBeInTheDocument();
+    // 하드코딩 수치가 아니라 실제로 넘긴 목록 길이가 문장에 그대로 반영된다.
+    expect(screen.getByText(/실제 페이지가 열린 지역 3곳이다/)).toBeInTheDocument();
+
+    for (const gu of guNames) {
+      expect(
+        screen.getByRole("link", { name: gu }),
+      ).toHaveAttribute("href", `/explore/${encodeURIComponent(gu)}`);
+    }
+    // 링크 개수가 정확히 목록 길이와 같다(지어낸 구가 섞이지 않는다).
+    const guLinks = screen
+      .getAllByRole("link")
+      .filter((a) => a.getAttribute("href")?.startsWith("/explore/") && a.getAttribute("href") !== "/explore");
+    expect(guLinks).toHaveLength(guNames.length);
+  });
+
   it("옛 '부업·수익' 톤(월 수익/부수입/N만원 벌기 등)이 남아있지 않다", () => {
     const { container } = render(<WebLanding />);
     const text = container.textContent ?? "";

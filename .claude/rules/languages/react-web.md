@@ -25,6 +25,19 @@ paths:
 - 도메인 묶음은 디렉토리가 아니라 **파일명 접두사**로 한다: `explore-*`, `report-*`, `saved-*`, `landing-*`, `web-*`, `hero-*`.
 - 한 파일에 한 컴포넌트. 새 컴포넌트를 만들 때 `features/`류 디렉토리를 새로 파지 마라.
 
+## 레이어는 디렉토리가 아니라 **import 방향**이다 (기계가 강제)
+평면 구조를 유지하되 의존 방향은 단방향이다 — **아래는 위를 모른다**.
+```
+app/ → components/ → hooks/ → lib/ · @motungi/core     (store/는 hooks 이하에서 사용)
+```
+- `lib/`·`core/`는 **순수**하다: react·store·hooks·components·app을 import하지 않는다.
+- `components/ → hooks/`는 **허용**이다(위 "렌더 격리"가 요구하는 방향).
+- 강제 수단: `apps/web/.eslintrc.json`의 `import/no-restricted-paths`(위반 시 Error)
+  + `scripts/check-pure-tests.sh`(lib·core 테스트 누락 시 게이트 실패). 둘 다 `gate.sh` 안.
+- 예외는 `lib/auth.ts` 하나뿐이며 파일 상단에 사유가 적혀 있다 — **선례로 삼지 마라**.
+- 어디에 둘지 판단하는 결정 트리와 안티패턴(`useMemo` 안의 도메인 계산)은
+  **`react-patterns` 스킬의 "레이어 분리 결정 트리"**에 있다.
+
 ## 렌더 격리 (상태는 쓰는 곳이 소유한다)
 `md:hidden`은 **CSS라 모바일·데스크톱 트리가 둘 다 마운트된다** — 같은 목록이 두 번 그려지고,
 페이지가 리렌더되면 비용도 두 배다. 그래서:

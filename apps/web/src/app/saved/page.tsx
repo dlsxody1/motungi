@@ -7,6 +7,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { BookmarkIcon, LocationIcon, UserIcon } from "@/components/icons";
 import { SavedCard } from "@/components/saved-card";
 import { MobileScreen, SafeBottom, SafeTop, Skeleton } from "@/components/ui";
+import { SavedEmptyState } from "@/components/saved-empty-state";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
 import { useSavedOpportunities } from "@/hooks/useSavedOpportunities";
 import { useAppStore } from "@/store/useAppStore";
@@ -93,40 +94,8 @@ export default function SavedPage() {
                 <span className="text-[13px] text-muted">{countLabel}</span>
               </div>
 
-              {failed ? (
-                <div className="py-12" role="alert">
-                  <p className="text-center text-[16px] font-bold text-ink">
-                    저장한 활동을 불러오지 못했어요
-                  </p>
-                  <p className="mt-1 text-center text-[13px] text-muted">
-                    저장한 목록은 그대로예요. 잠시 후 다시 시도해 주세요.
-                  </p>
-                  <div className="mt-4 flex justify-center">
-                    <button
-                      type="button"
-                      onClick={retry}
-                      className="tap-safe flex h-11 items-center justify-center rounded-xl bg-primary px-6 text-[14px] font-bold text-white"
-                    >
-                      다시 시도
-                    </button>
-                  </div>
-                </div>
-              ) : items.length === 0 && pendingCount === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-12 text-center">
-                  <BookmarkIcon size={28} className="text-faint" />
-                  <p className="mt-1 text-[16px] font-bold text-ink">
-                    아직 저장한 활동이 없어요
-                  </p>
-                  <p className="text-[13px] text-muted">
-                    마음에 드는 활동의 북마크를 눌러 담아두세요.
-                  </p>
-                  <Link
-                    href="/explore"
-                    className="mt-3 flex h-11 items-center justify-center rounded-xl bg-primary px-6 text-[14px] font-bold text-white"
-                  >
-                    둘러보기
-                  </Link>
-                </div>
+              {failed || (items.length === 0 && pendingCount === 0) ? (
+                <SavedEmptyState failed={failed} onRetry={retry} variant="mobile" />
               ) : (
                 <div className="divide-y divide-line-alt">
                   {items.map((s) => (
@@ -212,40 +181,8 @@ export default function SavedPage() {
                 <span className="text-[14px] text-muted">{countLabel}</span>
               </div>
 
-              {failed ? (
-                // 상태 박스는 흰 surface — tint/로즈 배경은 경고처럼 읽힌다(DESIGN.md).
-                <div
-                  className="flex flex-col items-center gap-2 rounded-[18px] bg-surface py-16 text-center shadow-web"
-                  role="alert"
-                >
-                  <p className="text-[17px] font-bold text-ink">저장한 활동을 불러오지 못했어요</p>
-                  <p className="text-[14px] text-muted">
-                    저장한 목록은 그대로예요. 잠시 후 다시 시도해 주세요.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={retry}
-                    className="tap-safe mt-3 flex h-11 items-center justify-center rounded-xl bg-primary px-6 text-[14px] font-bold text-white hover:bg-primary-deep"
-                  >
-                    다시 시도
-                  </button>
-                </div>
-              ) : items.length === 0 && pendingCount === 0 ? (
-                <div className="flex flex-col items-center gap-2 rounded-[18px] bg-surface py-16 text-center shadow-web">
-                  <BookmarkIcon size={30} className="text-faint" />
-                  <p className="mt-1 text-[17px] font-bold text-ink">
-                    아직 저장한 활동이 없어요
-                  </p>
-                  <p className="text-[14px] text-muted">
-                    마음에 드는 활동의 북마크를 눌러 담아두세요.
-                  </p>
-                  <Link
-                    href="/explore"
-                    className="mt-3 flex h-11 items-center justify-center rounded-xl bg-primary px-6 text-[14px] font-bold text-white hover:bg-primary-deep"
-                  >
-                    둘러보기
-                  </Link>
-                </div>
+              {failed || (items.length === 0 && pendingCount === 0) ? (
+                <SavedEmptyState failed={failed} onRetry={retry} variant="desktop" />
               ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {items.map((s) => (

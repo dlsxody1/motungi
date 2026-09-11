@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -17,14 +17,13 @@ import {
   SafeTop,
 } from "@/components/ui";
 import { DesktopShell, WebContainer } from "@/components/web-shell";
-import { normalizeDong } from "@motungi/core";
 import {
   DEFAULT_NEIGHBORHOOD,
   type NeighborhoodPick,
   POPULAR_NEIGHBORHOODS,
 } from "@/data/opportunities";
+import { useGeolocationPick } from "@/hooks/useGeolocationPick";
 import { useNeighborhoodSearch } from "@/hooks/useNeighborhoodSearch";
-import { reverseGeocode } from "@/lib/geo";
 import { useAppStore } from "@/store/useAppStore";
 
 /** 검색 결과 → 선택 객체. 좌표를 그대로 실어 앵커에 주입 가능하게. */
@@ -57,18 +56,26 @@ export default function LocationPage() {
   // 디바운스·IME 보류·요청 취소는 훅이 소유한다(NeighborhoodMenu와 같은 구현을 공유).
   const search = useNeighborhoodSearch();
   const { query, results, searching, showDropdown } = search;
-  const [locating, setLocating] = useState(false);
-  const [geoError, setGeoError] = useState<string | null>(null);
   const primeRef = useRef<HTMLDialogElement>(null);
-  const GEO_FAIL = "위치를 가져오지 못했어요. 아래에서 동네를 직접 골라주세요.";
-  // 거부는 페이지에서 되돌릴 수 없다 — "다시 시도"가 아니라 어디서 바꾸는지를 알려준다.
-  const GEO_DENIED =
-    "위치 권한이 꺼져 있어요. 주소창 왼쪽 자물쇠·위치 아이콘에서 허용으로 바꾸거나, 아래에서 동네를 직접 골라주세요.";
+
+  /**
+   * 권한 분기·좌표 조회·역지오코딩은 훅이 소유한다. 이 화면은 **선택 상태**만 들고,
+   * 훅은 잡은 결과를 `onPicked`로 돌려준다(훅이 "동네 선택 UI"를 모르게 하기 위함).
+   * 설명 다이얼로그도 훅이 열지 않고 요청만 한다 — DOM ref는 화면의 책임이다.
+   */
+  const { locating, geoError, requestLocation, runGeolocation, clearError } = useGeolocationPick({
+    onPicked: (pick) => {
+      setSelected(pick);
+      setSource("current");
+      search.reset();
+    },
+    onNeedsPrime: () => primeRef.current?.showModal(),
+  });
 
   const choose = (pick: NeighborhoodPick, from: PickSource) => {
     setSelected(pick);
     setSource(from);
-    setGeoError(null);
+    clearError();
     search.reset();
   };
 
@@ -82,67 +89,6 @@ export default function LocationPage() {
     router.push("/diagnosis");
   };
 
-  /**
-   * 카드 클릭 → 브라우저 권한 프롬프트 사이에 설명 한 단계를 둔다.
-   * 이유는 예쁘라고가 아니라 **거부가 되돌릴 수 없기 때문**이다 — 한 번 "차단"을 누르면
-   * 페이지에서 다시 물어볼 방법이 없고(브라우저 설정에서 직접 바꿔야 함), 그 순간
-   * 이 화면의 자동 설정 기능이 영구히 죽는다.
-   *
-   * 다만 모두에게 단계를 하나 더 물리지는 않는다:
-   *  - granted → 설명 없이 바로 조회(재방문자에게 군더더기 금지)
-   *  - denied  → 프롬프트가 안 뜨므로 조회 자체를 시도하지 않고 복구 안내를 준다
-   *  - prompt / permissions API 미지원 → 그때만 설명 다이얼로그
-   */
-  const requestLocation = async () => {
-    setGeoError(null);
-    if (!navigator.geolocation) {
-      setGeoError(GEO_FAIL);
-      return;
-    }
-    let state: PermissionState | null = null;
-    try {
-      state = (await navigator.permissions?.query({ name: "geolocation" }))?.state ?? null;
-    } catch {
-      state = null; // 미지원 브라우저 — 설명을 보여주는 쪽으로 폴백.
-    }
-    if (state === "granted") {
-      runGeolocation();
-      return;
-    }
-    if (state === "denied") {
-      setGeoError(GEO_DENIED);
-      return;
-    }
-    primeRef.current?.showModal();
-  };
-
-  const runGeolocation = () => {
-    setGeoError(null);
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const point = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        // 좌표 → 행정동 역지오코딩. 성공하면 선택만 갱신하고 유저가 확인 후 시작하도록 둔다
-        // (바로 넘기지 않음 — 위치가 제대로 잡혔는지 유저가 눈으로 확인할 수 있게).
-        const geo = await reverseGeocode(point.lat, point.lng);
-        setSelected({
-          // NAVER는 "역삼1동"처럼 번호가 붙은 행정동명을 준다 — 검색 결과 표기와 맞춘다.
-          dongName: geo?.dongName ? normalizeDong(geo.dongName) : "현재 위치",
-          admCode: geo?.admCode ?? undefined,
-          region: geo ? undefined : "좌표로 설정됨",
-          point,
-        });
-        setSource("current");
-        setLocating(false);
-        search.reset();
-      },
-      (err) => {
-        setLocating(false);
-        // 1 = PERMISSION_DENIED. 프롬프트에서 방금 거부한 경우라 일반 실패와 안내가 달라야 한다.
-        setGeoError(err.code === err.PERMISSION_DENIED ? GEO_DENIED : GEO_FAIL);
-      },
-    );
-  };
 
   // ── 위치 카드: 잡힌 위치를 카드 자체가 흡수해서 상태를 보여준다 ──
   const locatedHere = source === "current";

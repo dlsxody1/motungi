@@ -4,7 +4,7 @@
  * 가운데 정렬해 앱과 동일한 레이아웃을 유지한다.
  */
 import Image from "next/image";
-import type { ButtonHTMLAttributes, ElementType, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 /* ────────────────────────────────────────────────────────────
  * 타이포 스케일 (DESIGN.md · @motungi/tokens 와 1:1)
@@ -24,21 +24,6 @@ export const text = {
   label: "text-[13px] font-medium leading-[18px]",
   caption: "text-[11px] font-medium leading-[16px] tracking-[0.02em]",
 } as const;
-
-/** 타이포 프리셋을 적용하는 텍스트 요소. 기본 색은 상속(부모에서 지정). */
-export function Txt({
-  as: Tag = "p",
-  preset = "body1",
-  className = "",
-  children,
-}: {
-  as?: ElementType;
-  preset?: keyof typeof text;
-  className?: string;
-  children: ReactNode;
-}) {
-  return <Tag className={`${text[preset]} ${className}`}>{children}</Tag>;
-}
 
 /* ────────────────────────────────────────────────────────────
  * 화면 컨테이너 (반응형)
@@ -176,49 +161,6 @@ export function Tag({
     >
       {children}
     </span>
-  );
-}
-
-/* ────────────────────────────────────────────────────────────
- * 카드
- * ──────────────────────────────────────────────────────────── */
-export function Card({
-  children,
-  className = "",
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  /* border는 장식이 아니라 위계다 — 아래 InfoBox와 같은 조합(border-line-alt + shadow-card)을
-     쓴다. 배경(#fafaf9)과 카드(#ffffff) 차이가 1.04:1뿐이라 그림자만으로는 경계가 서지 않는다. */
-  return (
-    <div className={`rounded-xl border border-line-alt bg-surface shadow-card ${className}`}>
-      {children}
-    </div>
-  );
-}
-
-/**
- * 정보/확인 박스 — 흰 배경 + 통일된 border/shadow. 포인트 컬러는 아이콘에만 절제해서 쓴다.
- * 선택 확인·안내처럼 "상태를 알려주는" 한 줄 박스에 사용(핑크 틴트 배경 대신 이걸로 통일).
- * icon의 색은 호출부가 className으로 지정(기본 뉴트럴). 강조가 필요하면 text-mint 권장 — 빨강은 지양.
- */
-export function InfoBox({
-  icon,
-  children,
-  className = "",
-}: {
-  icon?: ReactNode;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`flex items-center gap-2.5 rounded-xl border border-line-alt bg-surface px-4 py-3 shadow-card ${className}`}
-    >
-      {icon != null && <span className="shrink-0 text-mint">{icon}</span>}
-      <span className="min-w-0 flex-1 text-[14px] text-label">{children}</span>
-    </div>
   );
 }
 

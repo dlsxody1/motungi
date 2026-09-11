@@ -49,6 +49,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// M-108 로딩 상태 노트: mobile(useWhyReasons.test.ts)과 동일한 설계 — WhyReasonsView는
+// 별도 로딩 플래그가 없고, useQuery가 진행 중인 렌더와 LLM을 못 받은 최종 렌더가 둘 다
+// {reasons: fallbackReasons, isLlm: false}로 수렴한다(바로 아래 테스트가 그 값을 고정).
+// "로딩 중"이 관측 가능한 제3의 상태로 존재하지 않으므로 로딩만 독립적으로 assert하는
+// 4번째 상태 테스트는 추가하지 않는다(QA M-108 fix round).
 describe("useWhyReasons — 즉시 렌더(블로킹 없음)", () => {
   it("응답이 오기 전에도 규칙기반 근거를 즉시 반환한다", () => {
     // fetch가 영원히 pending이어도 첫 렌더는 규칙기반이어야 한다(페이지 블로킹 금지).
@@ -98,6 +103,25 @@ describe("useWhyReasons — LLM 성공 시 산문으로 교체", () => {
 
     await waitFor(() => expect(result.current.isLlm).toBe(true));
     expect(result.current.reasons).toEqual(["LLM이 만든 근거 1", "LLM이 만든 근거 2"]);
+  });
+});
+
+describe("useWhyReasons — parity(M-108)", () => {
+  it("동일 opp·answers·anchors + 동일 LLM 응답이면 {reasons,isLlm} shape이 고정된다(parity, mobile과 동일 계약)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ fallback: false, reasons: ["근거 A", "근거 B"] }), { status: 200 }),
+      ),
+    );
+
+    const { result } = renderHook(() => useWhyReasons(OPP, ANSWERS, {}));
+
+    await waitFor(() => expect(result.current.isLlm).toBe(true));
+    // mobile(useWhyReasons.test.ts)과 반환 타입(WhyReasonsView)이 완전히 동일하다 — 이
+    // 테스트는 그 shape 자체({reasons, isLlm} 두 키뿐)를 고정한다.
+    expect(Object.keys(result.current).sort()).toEqual(["isLlm", "reasons"]);
+    expect(result.current).toEqual({ reasons: ["근거 A", "근거 B"], isLlm: true });
   });
 });
 
