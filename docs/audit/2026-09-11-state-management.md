@@ -1,4 +1,4 @@
-# 전수조사 — TanStack Query · useEffect · 전역상태 결합도 · 중복 파일
+# 전수조사 — 상태관리 · 중복 · core 경계 · 디자인 간극
 
 > 조사일 2026-09-11 · 대상 `apps/web`(89 파일) · `apps/mobile`(34 파일) · `packages/core`
 > 다음 세션 작업용. 수치는 전부 실측이고 근거는 `file:line`으로 달았다.
@@ -16,8 +16,16 @@ mobile만 쓰는 기형이 됐다.** 여기에 web 안에도 표준을 벗어난
 같은 이름·같은 export·같은 계약인데 구현이 따로 살고, mobile 코드 5곳이 스스로
 "웹과 같다 / react-query가 없어서 손으로 짠다"고 적어 두었다.
 
+**core도 이름값을 못 하고 있다** — export 141개 중 web·mobile이 **둘 다 쓰는 건 44개(31%)**뿐이고,
+`index.ts`가 전량 `export *` 라 내부 구현(어댑터 파서 등)까지 공개 API로 새어 나간다.
+
+**디자인도 갈라져 있다** — 색·간격은 토큰을 공유하는데, **타이포는 mobile이 토큰을 import하지
+않고 손으로 다시 써서 7개 역할 중 6개가 어긋난다.** 그런데 코드 주석은 "웹 스케일과 맞춤"이라고
+적혀 있다. M-104(mobile 검색 주석이 "웹과 동일"이라 적혀 있었지만 사실이 아니었던 것)와
+**완전히 같은 사고 유형**이다.
+
 우선순위: **① mobile 서버상태 결정(가장 큼) → ② useNeighborhoodSearch(가장 쉬움)
-→ ③ 중복 정리(독립적, 먼저 해도 됨) → ④ 나머지**
+→ ③ 중복·core 경계·디자인(독립적, 먼저 해도 됨) → ④ 나머지**
 
 ---
 
@@ -240,6 +248,98 @@ M-093("M-038 export-과다개방 패턴 재발"). 개별 이슈로 또 잡기보
 
 ---
 
+## 축 5 — `packages/core`가 "공통"이 아니다
+
+### 5-A. 🔴 core export 141개 중 **양쪽이 쓰는 건 44개(31%)**
+
+`packages/core/src/index.ts`는 11개 모듈을 **전량 `export *`** 한다. 그 결과:
+
+| 분류 | 개수 | 비율 |
+|---|---|---|
+| **BOTH** (web·mobile 둘 다 사용) | **44** | 31% |
+| WEB_ONLY | 18 | 13% |
+| MOB_ONLY | 4 | 3% |
+| 앱에서 미사용 | 75 | **53%** |
+
+**"공통 로직 패키지"라면서 실제 공통은 3분의 1이다.**
+
+⚠️ 미사용 75개는 **데드코드가 아니다.** 대부분 core 내부에서 쓰인다
+(`stripHtml`·`parseXmlItems`·`parseShiftHours` 등 어댑터 파서, `SourceKind`·`TimeWindow` 등 내부 타입).
+문제는 그것들이 **`export *` 때문에 전부 패키지 공개 API 표면에 올라가 있다**는 것이다.
+내부 구현이 공개 API가 되면 앱이 실수로 의존할 수 있고, 실제로 그게 M-038 → M-091 → M-093
+(export-과다개방 재발)의 뿌리다.
+
+**WEB_ONLY 18개가 특히 문제다** — `nearestAnchorKm`·`normalizeGu`·`searchHaystack`·
+`diagnosisSummaryChips`·`summarizeGu`·`guFaqs`·`parseGpxPoints` 등. 이건 두 가지 중 하나다:
+1. **mobile이 아직 안 쓰는 것**(= 갈라짐의 예고. `searchHaystack`은 이번 M-104로 mobile도 쓰게 됨)
+2. **web 전용인데 core에 있는 것**(= `gu-summary`는 SEO/구 페이지 전용이라 mobile에 영원히 불필요)
+
+**둘을 구분하지 않으면 core가 계속 부풀고, "공통"이라는 이름만 남는다.**
+
+### 5-B. 판단 — core를 없앨 게 아니라 **경계를 명시**해야 한다
+
+지적하신 "core 폴더가 있을 필요가 없다"는 **현상 진단으로는 맞다**. 다만 처방은 삭제가 아니다:
+
+- `scoring`·`diagnosis`·`genre`·`explore`·`view`의 핵심은 **실제로 양쪽이 쓴다**(BOTH 44개의 본체).
+  이건 core가 있어야 할 이유 그 자체다 — 없애면 M-104(검색 갈라짐)가 전 영역에서 재발한다.
+- 진짜 문제는 **공개 API와 내부 구현이 구분되지 않는 것**이다.
+
+제안하는 방향(다음 세션에서 결정):
+1. `index.ts`의 `export *`를 **명시적 재export로 바꾼다** — 공개 API를 의도적으로 고른다.
+   내부 파서·타입은 `./adapters`처럼 서브경로로만 접근하게 두거나 아예 안 뺀다.
+2. **web 전용 로직은 core에서 내린다** — `gu-summary`(SEO 구 페이지 전용)가 1순위 후보.
+3. 남은 것을 "이건 왜 공통인가"로 한 줄씩 설명할 수 있어야 한다.
+
+---
+
+## 축 6 — 디자인 간극 (web ↔ mobile)
+
+### 6-A. ✅ 색·간격·radius는 실제로 공유된다
+
+`apps/mobile/ui/theme.ts`가 `@motungi/tokens`에서 `color`·`radius`·`space`를 import한다.
+주석대로 **"웹과 100% 동일"**이 맞다.
+
+### 6-B. 🔴 타이포는 "맞췄다"고 적혀 있지만 **7개 중 6개가 어긋난다**
+
+`packages/tokens`는 `typography`를 export하는데 **mobile은 그걸 import하지 않고 손으로 다시 썼다**.
+[apps/mobile/ui/theme.ts:47](../../apps/mobile/ui/theme.ts#L47)의 주석은
+*"타이포 프리셋 — 웹 typography 스케일과 맞춤"*이라고 주장한다. 실측:
+
+| 역할 | tokens(=web이 쓰는 값) | mobile 실제 | 간극 |
+|---|---|---|---|
+| display | 30 / 39 / tracking −0.02em | **32 / 40** / −0.6 | 크기 +2, 행간 +1 |
+| heading1 | 22 / 30 / bold(700) | **24 / 31** / 800 | 크기 +2, weight +100 |
+| heading2 | 19 / 27 / bold(700) | **21 / 28** / 800 | 크기 +2, weight +100 |
+| headline | 17 / 24 / semibold(600) | 17 / 24 / **700** | weight +100 |
+| body | 15 / 23 / regular | 15 / 23 / 400 | ✅ 일치 |
+| label | 13 / 18 / medium(500) | 13 / 18 / **600** | weight +100 |
+| caption | 11 / 16 / medium | **12** / 16 / 500 | 크기 +1 |
+
+**주석이 사실과 다르다.** 이게 가장 위험한 형태다 — 코드를 읽는 사람은 "맞춰져 있다"고 믿고
+넘어가므로 아무도 검증하지 않는다(M-104의 mobile explore 주석 *"웹 explore와 동일"*이
+사실이 아니었던 것과 **완전히 같은 사고**다).
+
+### 6-C. 🟡 그림자도 토큰 밖
+
+`tokens`가 `shadow`를 export하는데 mobile은 `shadowColor: "#1c1a17"`·`shadowRadius: 16`을
+하드코딩했다([theme.ts:65-69](../../apps/mobile/ui/theme.ts#L65)). RN은 `boxShadow`가 아니라
+`shadowOffset`/`elevation`을 쓰므로 **형태 변환은 불가피**하지만, **값의 출처는 토큰이어야 한다**.
+
+### 6-D. 판단 — 간극을 없앨지, 의도된 차이로 인정할지 먼저 정해야 한다
+
+모바일 타이포가 큰 것 자체는 **정당할 수 있다**(작은 화면·먼 시청 거리·터치 타깃).
+실제로 iOS HIG와 Material은 웹보다 큰 기본 크기를 권한다.
+
+그래서 이건 "무조건 맞춰라"가 아니라 **둘 중 하나를 고르는 결정**이다:
+1. **의도된 차이라면** → tokens에 `typography.mobile` 스케일을 추가하고 mobile이 그걸 import한다.
+   주석의 "웹과 맞춤"을 "웹 대비 +2px 스케일"로 고친다. **값의 출처가 토큰이 된다.**
+2. **의도가 아니었다면** → tokens의 `typography`를 그대로 import해 간극을 없앤다.
+
+**어느 쪽이든 지금처럼 "맞췄다고 적어두고 실제로는 손으로 다시 쓴" 상태는 안 된다.**
+`DESIGN.md`가 단일 출처라고 선언한 것과 실제 코드가 어긋나 있다.
+
+---
+
 ## 다음 세션 작업 순서 (제안)
 
 ### 1단계 — `useNeighborhoodSearch` → TanStack (작고 명확)
@@ -263,7 +363,18 @@ M-093("M-038 export-과다개방 패턴 재발"). 개별 이슈로 또 잡기보
 - 미사용 export 3건 정리 + **lint 룰로 재발 차단** (축 4-C — M-038·M-091·M-093이 이미 같은 패턴)
 - `geo.ts`의 타입·응답 파싱을 core로 (RN 차이는 오리진뿐)
 
-### 5단계 — 작은 것들
+### 5단계 — core 경계 명시 (축 5)
+- `index.ts`의 `export *` → 명시적 재export. 공개 API를 의도적으로 고른다
+- web 전용 로직을 core에서 내린다 (`gu-summary`가 1순위 — SEO 구 페이지 전용)
+- WEB_ONLY 18개를 "mobile이 아직 안 쓰는 것" vs "web 전용" 으로 분류한다
+
+### 6단계 — 디자인 간극 **결정** (축 6, 구현 전에 판단 필요)
+- 모바일 타이포가 큰 게 **의도인지 아닌지**부터 정한다(작은 화면이라 정당할 수 있다)
+- 의도라면 tokens에 `typography.mobile`을 추가하고 주석을 사실대로 고친다
+- 아니라면 tokens의 `typography`를 그대로 import해 간극을 없앤다
+- 어느 쪽이든 `shadow`도 값의 출처를 토큰으로 (RN 형태 변환은 불가피하되 값은 토큰에서)
+
+### 7단계 — 작은 것들
 - `?? "우리 동네"` 11곳 통합 (M-110)
 - `results` 슬라이스가 정말 전역이어야 하는지 재검토
 - prop 12~13개를 뷰모델로 묶을지 검토

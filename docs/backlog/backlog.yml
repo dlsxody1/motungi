@@ -2849,3 +2849,47 @@ backlog:
       geo.ts:40 "웹과 동일 엔드포인트를 오리진 경유로 호출" 등.
       geo.ts만 먼저 떼는 이유: 순수 타입·파싱이라 M-108(mobile TanStack 결정)과 무관하게
       지금 올릴 수 있다. 훅 5쌍은 서버상태 전략이 정해져야 형태가 결정된다.
+
+  - id: M-114
+    title: "packages/core 공개 API 경계 명시 — export 141개 중 양쪽이 쓰는 건 44개(31%)뿐"
+    priority: medium
+    status: todo
+    scope: [packages/core/src/index.ts, packages/core/src/gu-summary.ts]
+    done_when:
+      - "index.ts의 export * 11줄을 명시적 재export로 바꿔 공개 API를 의도적으로 고른다(어댑터 파서·내부 타입은 표면에서 내린다)"
+      - "WEB_ONLY 18개를 'mobile이 아직 안 쓰는 것' vs 'web 전용이라 core에 있을 이유가 없는 것'으로 분류해 문서에 남긴다"
+      - "web 전용으로 판정된 것(gu-summary가 1순위 — SEO 구 페이지 전용)을 apps/web으로 내린다"
+      - "pnpm typecheck·test가 web·mobile 양쪽에서 통과한다"
+    notes: >
+      [2026-09-11 조사] 상세 근거는 docs/audit/2026-09-11-state-management.md 축 5.
+      실측: BOTH 44 · WEB_ONLY 18 · MOB_ONLY 4 · 앱미사용 75(총 141).
+      "공통 로직 패키지"라면서 실제 공통은 31%다.
+      ⚠️ 미사용 75개는 데드코드가 아니다 — 대부분 core 내부에서 쓰는 어댑터 파서·타입이다
+      (stripHtml·parseXmlItems·SourceKind 등). 문제는 index.ts의 export *가 그것들을
+      전부 패키지 공개 API 표면에 올려놓는다는 것이고, 그게 M-038→M-091→M-093
+      (export-과다개방 재발)의 뿌리다. M-112(미사용 export lint)와 같은 뿌리를 공유한다.
+      **core를 없애자는 게 아니다** — scoring·diagnosis·genre·explore·view의 본체는 실제로
+      양쪽이 쓰고, 없애면 M-104(검색 갈라짐)가 전 영역에서 재발한다. 경계를 명시하는 일이다.
+
+  - id: M-115
+    title: "mobile 타이포가 tokens를 import하지 않고 손으로 재작성 — 7개 역할 중 6개가 웹과 어긋남"
+    priority: medium
+    status: todo
+    scope: [apps/mobile/ui/theme.ts, packages/tokens/src/index.ts]
+    done_when:
+      - "모바일 타이포가 웹보다 큰 것이 의도된 차이인지 먼저 결정한다(작은 화면·터치 거리상 정당할 수 있다 — HIG/Material도 더 큰 기본값을 권한다)"
+      - "의도라면 tokens에 typography.mobile 스케일을 추가하고 theme.ts가 그것을 import한다. theme.ts:47 주석을 사실대로 고친다('웹과 맞춤' → '웹 대비 +2px 스케일')"
+      - "의도가 아니라면 tokens의 typography를 그대로 import해 간극을 없앤다"
+      - "어느 쪽이든 shadow도 값의 출처를 tokens로 옮긴다(RN은 shadowOffset/elevation이라 형태 변환은 불가피하되 값은 토큰에서 온다)"
+      - "DESIGN.md와 실제 코드가 일치하는지 확인한다"
+    notes: >
+      [2026-09-11 조사] 상세 근거는 docs/audit/2026-09-11-state-management.md 축 6.
+      색·간격·radius는 실제로 @motungi/tokens를 공유한다(theme.ts가 import). 문제는 타이포다 —
+      tokens가 typography를 export하는데 mobile은 import하지 않고 손으로 다시 썼고 실측 결과:
+      display 30/39 → 32/40, heading1 22/30 → 24/31, heading2 19/27 → 21/28,
+      headline weight 600 → 700, label weight 500 → 600, caption 11 → 12.
+      body만 일치한다.
+      **가장 위험한 건 theme.ts:47 주석이 "웹 typography 스케일과 맞춤"이라고 적혀 있다는 점이다.**
+      읽는 사람은 맞춰져 있다고 믿고 검증하지 않는다 — M-104에서 mobile explore 주석이
+      "웹 explore와 동일"이라 적혀 있었지만 사실이 아니었던 것과 완전히 같은 사고 유형이다.
+      **이 이슈는 구현이 아니라 결정이 먼저다** — 간극을 없앨지 의도된 차이로 인정할지.
