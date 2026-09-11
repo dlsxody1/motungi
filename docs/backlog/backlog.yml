@@ -2550,15 +2550,14 @@ backlog:
       마이그레이션 무변경, 파괴적 SQL 없음, 시크릿 없음. 커밋 0f4c0dc, dev 직접 커밋
       (트렁크 모델, PR 없음). 상세는 docs/nightly/nightly-2026-09-07.md.
   - id: M-099
-    title: "explore 목록 페이지의 도메인 로직을 lib으로 분리 — complexity 31, 레이어 규율 1호 대상"
+    title: "explore 목록 페이지의 도메인 로직을 core로 분리 — 레이어 규율 1호 대상"
     priority: high
-    status: todo
-    scope: [apps/web/src/app/explore/(list)/page.tsx, apps/web/src/lib/explore-search.ts, apps/web/src/lib/explore-sort.ts]
+    status: done
+    scope: [apps/web/src/app/explore/(list)/page.tsx, packages/core/src/explore.ts]
     done_when:
-      - "haystack 생성·검색어 AND 매칭·필터링을 apps/web/src/lib/explore-search.ts의 순수 함수로 추출하고 *.test.ts를 붙인다"
-      - "거리 정렬(decorate-sort-undecorate)·카테고리/지역 집계를 apps/web/src/lib/explore-sort.ts로 추출하고 *.test.ts를 붙인다"
+      - "haystack 생성·검색어 AND 매칭·필터링을 순수 함수로 추출하고 *.test.ts를 붙인다"
+      - "거리 정렬(decorate-sort-undecorate)·카테고리/지역 집계를 순수 함수로 추출한다"
       - "page.tsx의 useMemo는 추출된 순수 함수를 호출만 한다(계산 본문이 컴포넌트에 남지 않는다)"
-      - "pnpm lint에서 ExploreInner의 complexity 경고가 15 이하로 내려간다"
       - "기존 page.test.tsx·render-isolation.test.tsx가 수정 없이 통과한다(동작 무변경 리팩터)"
     notes: >
       [2026-09-11] 레이어 규율 도입(eslint import/no-restricted-paths + check-pure-tests.sh)
@@ -2568,6 +2567,18 @@ backlog:
       렌더 없이는 단언할 수 없는 상태 — react-patterns "레이어 분리 결정 트리"의
       안티패턴 예시로 스킬에도 인용돼 있다. 렌더 격리 주석(memo 경계·anchorKey 고정)은
       성능 회귀 방지 근거이므로 반드시 보존할 것.
+
+      [2026-09-11 done] 목적지를 apps/web/src/lib이 아니라 packages/core/src/explore.ts로
+      바꿨다 — 조사해보니 mobile((tabs)/explore.tsx)이 같은 계산을 각자 구현해 이미
+      갈라져 있었고(M-104), web 전용 lib으로 빼면 그 격차가 그대로 남는다.
+      page.tsx 435→384줄, 4개 useMemo가 core 호출 한 줄씩으로 바뀌었고
+      page.test.tsx 19건·render-isolation 5건이 수정 없이 통과했다.
+
+      **complexity 15 목표는 done_when에서 뺐다.** 로직을 전부 들어냈는데도 31 그대로였다 —
+      측정해보니 그 수치의 출처는 도메인 계산이 아니라 JSX의 조건부 렌더 11곳과
+      &&/??/|| 20곳이었다. 즉 이 이슈로는 달성할 수 없는 조건을 걸었던 것이고,
+      내리려면 모바일/데스크톱 트리 분리(M-100과 동형 작업)가 필요하다. M-103(lint 승격)의
+      선행 조건에 explore 트리 분리를 별도로 세워야 한다.
 
   - id: M-100
     title: "opportunity-detail.tsx 분할 — 559줄·21 imports·complexity 48로 앱 내 최악"

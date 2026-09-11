@@ -1,6 +1,14 @@
 "use client";
 
-import { nearestAnchorKm, normalizeGenre, normalizeGu, scoreAll } from "@motungi/core";
+import {
+  buildSearchHaystacks,
+  exploreCategoryCounts,
+  exploreRegionCounts,
+  filterExplore,
+  scoreAll,
+  searchTerms,
+  sortByDistance,
+} from "@motungi/core";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BottomNav } from "@/components/bottom-nav";
@@ -93,20 +101,10 @@ function ExploreInner() {
 
   // 정렬 적용. recommend는 scored 순서 유지(scoreAll이 이미 내림차순).
   // distance는 앵커 최소거리 오름차순 — 좌표 없는 행은 뒤로. deadline은 서버 순서(마감임박).
-  const source = useMemo(() => {
-    if (sort === "distance" && hasAnchor) {
-      /**
-       * 거리를 **한 번만** 계산해 붙인 뒤 정렬한다(decorate-sort-undecorate).
-       * comparator 안에서 부르면 비교마다 하버사인이 돌아 n log n번이다 —
-       * 500건이면 약 4500회. 미리 뽑으면 500회로 끝난다.
-       */
-      return scored
-        .map((o) => ({ o, km: nearestAnchorKm(anchors, o.location) ?? Infinity }))
-        .sort((a, b) => a.km - b.km)
-        .map((x) => x.o);
-    }
-    return scored;
-  }, [scored, sort, hasAnchor, anchors]);
+  const source = useMemo(
+    () => (sort === "distance" && hasAnchor ? sortByDistance(scored, anchors) : scored),
+    [scored, sort, hasAnchor, anchors],
+  );
 
   /**
    * 확정된 값만 URL에 되쓴다(디바운스된 q + cat). replace라 히스토리를 더럽히지 않고,
@@ -121,61 +119,29 @@ function ExploreInner() {
   }, [debouncedQuery, filter, router]);
 
   /**
-   * 행별 검색 하이스택. source가 바뀔 때만 만든다 —
-   * list 안에서 만들면 키 입력마다 (행 × 필드) join이 다시 돈다.
+   * 행별 검색 하이스택. **source가 바뀔 때만** 만든다 — list 안에서 만들면 키 입력마다
+   * (행 × 필드) join이 다시 돈다. 무엇을 넣는지는 core `searchHaystack`의 주석 참고.
    *
-   * summary는 산문이 아니라 "구 · 장소 · 장르" 조인 문자열이라 지역·장소·장르가 이미 들어있다.
-   * 반면 categoryLabel("동네 문화·공연")은 우리가 붙인 라벨이라 어디에도 없어서
-   * 그대로 치면 0건이 나왔다 — 그래서 라벨과 정규화한 구 이름을 함께 넣는다.
+   * 캐싱을 core가 아니라 여기서 하는 이유: core는 순수 함수만 두고 모듈 스코프 가변 상태를
+   * 갖지 않는다. 목록 identity가 곧 캐시 키인데 그건 호출부만 안다.
    *
    * ponytail: 457행 클라 substring 필터. 코퍼스 5k+ 또는 반경 밖 검색 요구 시
    * /api/opportunities/search 신설 + title/summary trgm GIN. 기존 catalog 캐시 키에 q를 넣지 말 것.
    */
-  const haystacks = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const o of source) {
-      m.set(
-        o.id,
-        [
-          o.title,
-          o.summary,
-          o.categoryLabel,
-          o.location?.dongName,
-          normalizeGu(o.location?.dongName),
-          /**
-           * genre는 0017이 컬럼·백필·인덱스까지 만들었는데 읽는 코드가 0곳이었다.
-           * summary에 우연히 섞여 들어가 부분적으로만 검색됐다.
-           *
-           * 원문과 통합 라벨을 **둘 다** 넣는다 — 소스마다 어휘가 갈려서
-           * (전시/미술 55 vs 전시 44, 콘서트 17 vs 음악/콘서트 17) 원문만으로는
-           * "미술"로 검색했을 때 culture_info 44건이 통째로 빠진다.
-           */
-          o.genre,
-          normalizeGenre(o.genre),
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase(),
-      );
-    }
-    return m;
-  }, [source]);
+  const haystacks = useMemo(() => buildSearchHaystacks(source), [source]);
 
-  const list = useMemo(() => {
-    const cat = FILTERS.find((f) => f.label === filter)?.category ?? null;
-    // 공백으로 쪼개 AND 매칭 — "망원 재즈"처럼 떨어진 두 단어도 잡는다(연속 부분문자열이 아니라서).
-    const terms = debouncedQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    return source.filter((o) => {
-      if (cat && o.category !== cat) return false;
-      if (region && normalizeGu(o.location?.dongName) !== region) return false;
-      if (terms.length) {
-        const hay = haystacks.get(o.id) ?? "";
-        if (!terms.every((t) => hay.includes(t))) return false;
-      }
-      if (easyOnly && !(o.difficulty != null && o.difficulty <= 0.33)) return false;
-      return true;
-    });
-  }, [filter, region, debouncedQuery, source, easyOnly, haystacks]);
+  const list = useMemo(
+    () =>
+      filterExplore(source, {
+        // 라벨→카테고리 해석은 web의 UI 상태(URL ?cat=이 라벨이다)라 여기 남는다.
+        category: FILTERS.find((f) => f.label === filter)?.category ?? null,
+        region,
+        terms: searchTerms(debouncedQuery),
+        easyOnly,
+        haystacks,
+      }),
+    [filter, region, debouncedQuery, source, easyOnly, haystacks],
+  );
 
   // 활성 필터 칩(실제 상태 파생). 선택 없으면 미표시. 전부 해제 가능(죽은 칩 없음).
   const activeChips: { key: string; label: string; clear: () => void }[] = [];
@@ -185,29 +151,12 @@ function ExploreInner() {
 
   // 데이터 있는 카테고리만 노출("전체"는 항상). count===0 카테고리는 숨김.
   const CATEGORIES = useMemo(
-    () =>
-      FILTERS.map((f) => ({
-        label: f.label,
-        count: f.category
-          ? source.filter((o) => o.category === f.category).length
-          : source.length,
-      })).filter((c) => c.label === "전체" || c.count > 0),
+    () => exploreCategoryCounts(source).filter((c) => c.label === "전체" || c.count > 0),
     [source],
   );
 
-  // 지역(구) 옵션 — 정규화한 dong_name distinct + 건수. 건수순 상위 8개만 노출.
-  const REGIONS = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const o of source) {
-      const gu = normalizeGu(o.location?.dongName);
-      if (gu) counts.set(gu, (counts.get(gu) ?? 0) + 1);
-    }
-    // 상위 8개 제한은 300건 무필터 시절의 우회책이었다. 이제 목록이 앵커 반경이라
-    // 구 종류가 애초에 적고, 자르면 오히려 선택 못 하는 구가 생긴다.
-    return [...counts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([label, count]) => ({ label, count }));
-  }, [source]);
+  // 지역(구) 옵션 — 정규화한 dong_name distinct + 건수, 많은 순.
+  const REGIONS = useMemo(() => exploreRegionCounts(source), [source]);
 
   /**
    * memo된 카드가 실제로 걸리려면 이 콜백이 **영원히** 같은 참조여야 한다.
