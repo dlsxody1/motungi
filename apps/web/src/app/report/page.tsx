@@ -48,9 +48,26 @@ export default function ReportPage() {
   const results = useAppStore((s) => s.results);
   const answers = useAppStore((s) => s.answers);
   const user = useAppStore((s) => s.user);
-  const savedIds = useAppStore((s) => s.savedIds);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
+
+  /**
+   * 원픽 id를 훅보다 **위에서** 구한다. 아래 early return이 있어서 여기서 못 구하면
+   * 저장 여부 구독이 return 뒤로 밀리고 훅 순서가 깨진다.
+   */
+  const list = results.length > 0 ? results : fallbackItems;
+  const onePick = list[0];
+
+  /**
+   * `s.savedIds`(배열)를 통째로 구독하지 마라. `toggleSaved`는 매번 새 배열을 만들므로
+   * **아무 활동이나** 저장하는 순간 참조가 바뀌어 리포트 전체가 다시 렌더됐다 —
+   * `md:hidden`은 CSS라 모바일·데스크톱 트리가 둘 다 마운트돼 있어 비용도 두 배였다.
+   * 실제로 쓰는 건 아래 두 값뿐이고, 둘 다 원시값이라 내용이 같으면 리렌더가 없다.
+   * (선례: components/opportunity-detail.tsx가 처음부터 boolean만 구독한다.)
+   * 회귀는 `render-isolation.test.tsx`가 Thumbnail 렌더 수로 실측한다.
+   */
+  const savedCount = useAppStore((s) => s.savedIds.length);
+  const onePickSaved = useAppStore((s) => (onePick ? s.savedIds.includes(onePick.id) : false));
 
   /**
    * memo된 카드가 실제로 걸리려면 이 콜백이 영원히 같은 참조여야 한다.
@@ -61,10 +78,6 @@ export default function ReportPage() {
   const routerRef = useRef(router);
   routerRef.current = router;
   const openDetail = useCallback((id: string) => routerRef.current.push(`/opportunity/${id}`), []);
-
-  // 스코어링 결과 우선, 없으면 fallback 6건(진단 전 직접 진입). 원픽1 + 함께 최대5.
-  const list = results.length > 0 ? results : fallbackItems;
-  const onePick = list[0];
 
   // 데이터가 없으면 원픽을 그릴 수 없다. 다만 "아직 안 불러옴"과 "없음"은 다른 사실이다 —
   // idle(=fallback 조회 중)에 "추천할 활동이 없어요"를 띄우는 건 거짓말이었다.
@@ -83,7 +96,6 @@ export default function ReportPage() {
   const related = list.slice(1);
   const displayName = displayNameOf(user);
   const summaryChips = diagnosisSummaryChips(answers, onePick);
-  const onePickSaved = savedIds.includes(onePick.id);
   const today = new Date().toISOString().slice(0, 10);
   const deadline = onePick.deadline ? deadlineLabel(onePick.deadline, today) : null;
 
@@ -350,7 +362,7 @@ export default function ReportPage() {
                   </div>
                   <div className="flex items-center justify-between rounded-xl bg-black/10 px-3.5 py-2.5">
                     <span className="text-[13px] text-white">저장한 활동</span>
-                    <span className="text-[14px] font-bold">{savedIds.length}개</span>
+                    <span className="text-[14px] font-bold">{savedCount}개</span>
                   </div>
                 </div>
               </div>

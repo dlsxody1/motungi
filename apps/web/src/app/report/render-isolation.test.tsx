@@ -17,8 +17,26 @@ vi.mock("@/hooks/useReportFallback", () => ({
   useReportFallback: () => ({ items: [], status: "ok" as const }),
 }));
 
-/** 관련 카드가 실제로 렌더된 횟수. memo가 걸리면 북마크를 눌러도 늘지 않는다. */
-const renderCounts = { related: 0 };
+/**
+ * 관련 카드가 실제로 렌더된 횟수. memo가 걸리면 북마크를 눌러도 늘지 않는다.
+ *
+ * `thumbnail`은 **페이지 본체가 다시 렌더됐는지**의 대리 지표다. Thumbnail은 memo가 아니고
+ * 모바일·데스크톱 트리 양쪽에 있어서, 페이지가 한 번 돌면 반드시 따라 돈다.
+ * related만 세면 memo된 자식이 막아준 것만 보이고 **페이지 자신의 리렌더는 안 보인다**.
+ */
+const renderCounts = { related: 0, thumbnail: 0 };
+
+vi.mock("@/components/thumbnail", async () => {
+  const actual = await vi.importActual<typeof import("@/components/thumbnail")>(
+    "@/components/thumbnail",
+  );
+  return {
+    Thumbnail: (props: Parameters<typeof actual.Thumbnail>[0]) => {
+      renderCounts.thumbnail++;
+      return <actual.Thumbnail {...props} />;
+    },
+  };
+});
 
 vi.mock("@/components/report-related-card", async () => {
   const actual = await vi.importActual<typeof import("@/components/report-related-card")>(
@@ -69,6 +87,7 @@ beforeEach(() => {
     user: null,
   });
   renderCounts.related = 0;
+  renderCounts.thumbnail = 0;
 });
 
 afterEach(() => cleanup());
@@ -85,6 +104,63 @@ describe("리포트 렌더 격리", () => {
     expect(useAppStore.getState().savedIds).toContain("op-1");
     // 그런데 관련 카드는 한 번도 다시 렌더되지 않아야 한다.
     expect(renderCounts.related).toBe(baseline);
+  });
+
+  /**
+   * 저장 목록의 **순서만** 바뀌어도 페이지가 통째로 다시 렌더되던 회귀.
+   *
+   * 원인은 `s.savedIds`(배열) 통째 구독이었다. 배열은 내용이 같아도 참조가 바뀌면
+   * 리렌더를 부른다. 실제로 쓰는 건 `.length`(사이드바 "N개")와
+   * `includes(원픽id)`(저장 버튼) 둘뿐이고, 둘 다 원시값이라 값이 같으면 리렌더가 없다.
+   *
+   * 왜 "무관한 id 저장"이 아니라 "순서 바꾸기"로 재는가 — 무관한 id라도 저장하면
+   * `.length`가 실제로 변하고 사이드바 숫자가 바뀌어야 하므로 그 리렌더는 정당하다.
+   * 배열 구독이 낭비였다는 걸 보려면 **두 파생값이 모두 그대로인** 변화를 줘야 한다.
+   *
+   * 위의 related 테스트가 이걸 못 잡은 이유: related는 memo라 부모가 돌아도 자신은
+   * 안 그려진다. memo 자식만 세면 페이지 자신이 헛도는 건 보이지 않는다.
+   */
+  it("저장 목록의 순서만 바뀌면 페이지는 다시 렌더되지 않는다", () => {
+    useAppStore.setState({ savedIds: ["x", "y"] });
+    render(<ReportPage />);
+    const baseline = renderCounts.thumbnail;
+    expect(baseline).toBeGreaterThan(0); // 최초 렌더는 됐다
+
+    act(() => {
+      // 길이도 같고 원픽 포함 여부도 그대로 — 화면에 보이는 값은 하나도 안 변한다.
+      useAppStore.setState({ savedIds: ["y", "x"] });
+    });
+
+    // 참조가 실제로 바뀌었는지 먼저 확인 — 아무 일도 안 났으면 이 테스트는 무의미하다.
+    expect(useAppStore.getState().savedIds).toEqual(["y", "x"]);
+    expect(renderCounts.thumbnail).toBe(baseline);
+  });
+
+  /**
+   * 반대 방향 — 저장 개수가 실제로 바뀌면 사이드바 숫자는 따라와야 한다.
+   * 위 테스트만 있으면 "영영 안 그림"으로 만들어도 통과해버린다.
+   */
+  it("다른 활동을 저장하면 사이드바 개수는 갱신된다", () => {
+    render(<ReportPage />);
+
+    act(() => {
+      useAppStore.getState().toggleSaved("완전히-다른-활동");
+    });
+
+    expect(screen.getAllByText("1개").length).toBeGreaterThan(0);
+  });
+
+  /**
+   * 격리가 "영영 안 그림"이 되면 그것도 버그다 — 원픽을 저장하면 그 버튼은 실제로 바뀌어야 한다.
+   */
+  it("원픽을 저장하면 저장 버튼 상태는 실제로 바뀐다", () => {
+    render(<ReportPage />);
+    expect(screen.getAllByRole("button", { name: "저장하기" }).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "저장하기" })[0]!);
+
+    expect(useAppStore.getState().savedIds).toContain("op-1");
+    expect(screen.getAllByRole("button", { name: "저장 취소" }).length).toBeGreaterThan(0);
   });
 
   /**

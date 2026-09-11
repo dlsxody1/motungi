@@ -36,7 +36,13 @@ export default function OpportunityScreen() {
   // 상세는 카탈로그 전량을 받지 않는다 — id로 1건만(이미 스토어에 있으면 재사용).
   const { opportunity: o, status } = useOpportunity(id ?? null);
 
-  const savedIds = useAppStore((s) => s.savedIds);
+  /**
+   * `s.savedIds`(배열)를 통째로 구독하지 마라. `toggleSaved`는 매번 새 배열을 만들므로
+   * **다른 활동**을 저장해도 참조가 바뀌어 이 화면이 통째로 다시 렌더됐다.
+   * 여기서 필요한 건 "이 활동이 저장됐나"라는 boolean 하나뿐이고,
+   * 원시값이라 값이 같으면 리렌더가 없다. (web report/page.tsx와 동일 처방.)
+   */
+  const saved = useAppStore((s) => (o ? s.savedIds.includes(o.id) : false));
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const answers = useAppStore((s) => s.answers);
   const user = useAppStore((s) => s.user);
@@ -75,8 +81,6 @@ export default function OpportunityScreen() {
       </Screen>
     );
   }
-
-  const saved = savedIds.includes(o.id);
 
   const displayName = displayNameOf(user);
   // 방어 심층화(M-077) — 적재가 이미 http(s)만 저장하지만(adapters.ts parseHttpUrl),
