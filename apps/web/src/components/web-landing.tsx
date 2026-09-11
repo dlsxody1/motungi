@@ -25,6 +25,8 @@ import { ArrowMiniIcon, CheckMiniIcon } from "./landing-icons";
 import { LandingLocationLink } from "./landing-location-link";
 import { LandingPhoto } from "./landing-photo";
 import { PaintEdge } from "./paint-edge";
+import { LandingClosing } from "./landing-closing";
+import { LandingWhy } from "./landing-why";
 import { ScrollRowNav } from "./scroll-row-nav";
 import { PreviewDiagnosis, PreviewLocation, PreviewReport } from "./step-previews";
 import { WebContainer } from "./web-shell";
@@ -48,15 +50,6 @@ const STEPS = [
  * "공연·연주"는 라벨이지만 summary에 실제로 박히는 문자열은 "연주회"·"콘서트" 쪽이다).
  * 각 항목은 /explore?q=로 들어가는 링크 — 죽은 라벨 6개가 아니라 실제 진입점이 된다.
  */
-const CATEGORIES: { label: string; q: string }[] = [
-  { label: "교육·체험", q: "교육/체험" },
-  { label: "전시·미술", q: "전시" },
-  { label: "연극·뮤지컬", q: "연극" },
-  { label: "콘서트", q: "콘서트" },
-  { label: "클래식·국악", q: "클래식" },
-  { label: "산책·걷기길", q: "코스" },
-];
-
 /**
  * 제품 FAQ — 화면과 FAQPage JSON-LD가 이 배열 하나를 공유한다 (M-095).
  *
@@ -202,92 +195,7 @@ export function WebLanding({
         <PaintEdge color="var(--color-surface)" direction="up" grain className="absolute inset-x-0 bottom-0" />
       </section>
 
-      {/* ══ 2. 왜 모퉁이 — 물감 벤토 ══
-          이전: 큰 사진 1 + 흰 카드 2(큰 숫자 + 문단). 흰 배경 위 흰 카드라 죽어 있었다.
-          지금: 각 칸이 서로 다른 물감 면을 갖는다(사진 / 3D 덩어리 / 로즈 워시).
-          칸 수 = 콘텐츠 수 = 3. 빈 칸 없음. */}
-      <section className="paint-paper bg-surface pt-[52px] pb-[76px]">
-        <WebContainer>
-          <div className="reveal max-w-[640px]">
-            <h2 className="break-keep text-[30px] font-extrabold leading-[1.2] tracking-[-0.02em] text-ink text-balance">
-              찾아보지 않아도 되고,{" "}
-              <span className="paint-underline">찾고 싶으면</span> 찾을 수 있어요.
-            </h2>
-            <p className="mt-3 text-[16px] leading-[1.65] text-label">
-              흩어진 동네 정보를 모아 하나로 좁혀드려요. 오늘은 정해주는 대로, 다음엔 직접 골라도 되게.
-            </p>
-          </div>
-
-          <div className="reveal-depth mt-10 grid grid-cols-1 gap-5 lg:grid-cols-[1.35fr_1fr]">
-            {/* 주인공 — 실제 활동 포스터. 물감 카드 형태로 잘라 다른 칸과 형태를 맞춘다.
-                featured가 있으면 진짜 데이터, 없으면 톤 그라데이션 폴백. */}
-            <LandingPhoto
-              src={featured?.imageUrl}
-              alt={featured ? `오늘의 원픽 — ${featured.title}` : "오늘의 원픽 활동"}
-              tone="dusk"
-              sizes="(min-width: 1024px) 56vw, 100vw"
-              // 이 셀이 LCP 후보다(첫 화면 바로 아래 큰 이미지) → priority로 미리 받는다.
-              priority
-              // 포스터 위에 카피를 얹으므로 살짝만 눌러 대비를 확보한다. 블러는 걸지 않는다 —
-              // 포스터는 작품이라 흐리면 고장난 것처럼 보인다(가독성은 scrim이 담당).
-              imgClassName="opacity-80"
-              className="paint-card wcard-hover flex min-h-[430px] flex-col justify-end p-9 lg:row-span-2"
-              scrim
-            >
-              <div className="relative max-w-[30rem]">
-                <h3 className="text-[30px] font-extrabold leading-[1.2] tracking-[-0.015em] text-white text-balance">
-                  오늘 딱 하나.
-                  <br />
-                  원픽으로 끝냅니다.
-                </h3>
-                <p className="mt-3 text-[15px] leading-[1.6] text-white/90">
-                  관심사·동네·시간에 규칙 기반으로 맞춘 활동 1~3개. 왜 이걸 골랐는지 근거까지 함께 보여드려요.
-                </p>
-              </div>
-            </LandingPhoto>
-
-            {/* 아래 민트 칸과 형태를 맞춘다 — 물감 얼룩은 모서리에, 텍스트는 왼쪽 정렬.
-                3D를 걷어낸 자리: 덩어리 하나 보여주자고 WebGL 청크를 받을 이유가 없었다. */}
-            <article className="paint-card paint-wash wcard-hover relative flex min-h-[205px] flex-col justify-center overflow-hidden p-7">
-              <span
-                aria-hidden
-                className="paint-blob-a paint-drift pointer-events-none absolute -top-8 -right-10 h-[150px] w-[150px] opacity-30"
-                style={{ background: "radial-gradient(circle at 38% 34%, var(--color-sun), var(--color-primary))" }}
-              />
-              <div className="relative">
-                <p className="text-[15px] font-bold text-primary-deep">고민하는 시간</p>
-                <p className="mt-1.5 text-[38px] font-extrabold leading-none tracking-[-0.02em] text-ink">
-                  60<span className="text-[21px] font-bold text-muted">초</span>
-                </p>
-                <p className="mt-2.5 text-[14px] leading-[1.6] text-label">
-                  검색하고 고민할 필요 없이, 3문항 진단으로 오늘 할 것만 골라드려요.
-                </p>
-              </div>
-            </article>
-
-            {/* 하이퍼로컬 — 민트 워시. 위 칸과 다른 색면이라 "같은 카드 반복"이 아니다.
-                실적재된 활동 수는 heroPicks로 증명되지 않으므로 숫자를 지어내지 않는다. */}
-            <article
-              className="paint-card paint-wash wcard-hover relative flex min-h-[205px] flex-col justify-center overflow-hidden p-7"
-              style={{ ["--wash" as string]: "var(--color-mint-tint)", ["--wash-2" as string]: "#cfe8e0" }}
-            >
-              {/* 걸어서 닿는 거리 = 반경. 물감 원 두 개가 겹친 자국으로 집·회사 2축을 암시한다. */}
-              <span
-                aria-hidden
-                className="paint-blob-b pointer-events-none absolute -top-8 -right-10 h-[150px] w-[150px] opacity-30"
-                style={{ background: "radial-gradient(circle at 38% 34%, #7fc9b8, #1e6e64)" }}
-              />
-              <p className="relative text-[15px] font-bold text-mint">하이퍼로컬</p>
-              <p className="relative mt-1.5 text-[34px] font-extrabold leading-none tracking-[-0.02em] text-ink">
-                걸어서<span className="ml-1.5 text-[21px] font-bold text-muted">닿는 거리</span>
-              </p>
-              <p className="relative mt-2.5 max-w-[22rem] text-[14px] leading-[1.6] text-label">
-                집과 회사 두 곳을 기준으로 거리를 재요. 퇴근길에 들를 수 있는 것만 남겨드려요.
-              </p>
-            </article>
-          </div>
-        </WebContainer>
-      </section>
+      <LandingWhy featured={featured} />
 
       {/* ══ 3. 이렇게 찾아드려요 — 세 화면의 미니어처 ══
           이전 1차: 카드 3개 + 01/02/03. 이전 2차: 손그림 경로(형태가 내용을 이김).
@@ -414,71 +322,7 @@ export function WebLanding({
         </section>
       )}
 
-      {/* ══ 5. 마무리 — 밝게 내려놓는 클로징 ══
-          앞 섹션이 다크라 여기까지 어두우면 어두운 블록이 두 번 연달아 오고,
-          히어로 그라데이션을 그대로 되받으면 페이지가 "닫히는" 게 아니라 "되풀이"된다.
-          그래서 웜 아이보리로 내려놓아 해소한다 — 톤을 낮추는 게 마무리다.
-          물감 워시를 CTA 쪽에만 옅게 깔아 마지막 시선을 고정한다.
-
-          갈래는 죽은 라벨 6개가 아니라 /explore?q=로 들어가는 실제 진입점이다.
-          (검색어는 DB 실측으로 골랐다: 교육/체험 131 · 전시 105 · 연극 65 · 콘서트 53 ·
-           클래식 42 · 코스 30. "걷기길"은 0건이라 "코스"로 바꿨다 — 죽은 링크 방지.) */}
-      {/* 위 다크 섹션과의 경계는 그 섹션이 직접 그린다(노이즈가 물결까지 덮어야 이음매가 없다).
-          여기서 다시 칠하면 flat 색이 겹쳐 선이 생긴다 — 그래서 PaintEdge 없음. */}
-      <section className="paint-paper relative bg-bg pt-[74px] pb-[96px]">
-        <WebContainer className="relative grid grid-cols-1 items-start gap-14 lg:grid-cols-[1fr_0.85fr] lg:gap-24">
-          {/* 좌 — 결론과 행동 */}
-          <div className="reveal relative">
-            {/* 물감 자국이 헤드라인 뒤에 깔린다 — 마지막 CTA로 시선을 모으는 색면. */}
-            <span
-              aria-hidden
-              className="paint-blob-b paint-drift pointer-events-none absolute -top-12 -left-14 -z-10 h-[220px] w-[260px] opacity-[0.5]"
-              style={{ background: "radial-gradient(circle at 40% 36%, var(--color-tint), transparent 68%)" }}
-            />
-            {/* break-keep 필수 — 한국어는 어절 안에 공백이 없어서 없으면
-                "뭐 할 / 지"처럼 낱말 가운데가 잘린다(실제로 밟았다). */}
-            <h2 className="max-w-[18ch] break-keep text-[34px] font-extrabold leading-[1.18] tracking-[-0.025em] text-ink text-balance">
-              오늘 저녁, 뭐 할지 아직 안 정했다면.
-            </h2>
-            <p className="mt-4 max-w-[32rem] break-keep text-[16px] leading-[1.65] text-label">
-              동네만 정해주면 오늘 갈 만한 곳으로 좁혀드려요.
-            </p>
-            <Link
-              href="/location"
-              className="mt-8 inline-flex h-[54px] items-center gap-2 rounded-pill bg-primary px-8 text-[16px] font-bold whitespace-nowrap text-white transition-[background-color,transform] hover:bg-primary-deep active:scale-[0.98]"
-            >
-              내 동네에서 찾기
-              <ArrowMiniIcon size={18} />
-            </Link>
-            <p className="mt-4 flex items-center gap-1.5 text-[14px] text-muted">
-              <CheckMiniIcon size={16} className="text-mint" />
-              로그인 없이 바로 시작 · 저장할 때만 가입
-            </p>
-          </div>
-
-          {/* 우 — 갈래. 각 줄이 실제 링크라 hover에서 화살표가 나오고 라벨이 브랜드색으로 간다.
-              카드 6칸(= 같은 크기 상자 반복)은 피한다 — hairline 목록이 더 조용하고 스캔이 빠르다. */}
-          <div className="reveal">
-            <p className="text-[13px] font-semibold text-muted">이런 것들이 들어와요</p>
-            <ul className="mt-3 border-t border-line-alt">
-              {CATEGORIES.map(({ label, q }) => (
-                <li key={label}>
-                  <Link
-                    href={`/explore?q=${encodeURIComponent(q)}`}
-                    className="group flex items-center justify-between gap-3 border-b border-line-alt py-3.5 text-[15px] font-semibold text-ink transition-colors hover:text-primary"
-                  >
-                    {label}
-                    <ArrowMiniIcon
-                      size={16}
-                      className="shrink-0 text-faint transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-primary"
-                    />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </WebContainer>
-      </section>
+      <LandingClosing />
 
       {/*
         ══ 6. FAQ — 답변 엔진이 인용할 자리 (M-095) ══

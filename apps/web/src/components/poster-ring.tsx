@@ -1,5 +1,20 @@
 "use client";
 
+/* eslint-disable max-lines, max-lines-per-function --
+ * 이 파일은 **일부러 쪼개지 않는다.** 아래 useEffect 하나가 three.js 씬의 전 생애를
+ * 소유한다 — renderer·disposables[]·rAF 핸들·이벤트 리스너 6종의 수명이 전부 같은
+ * 클로저에 묶여 있고, cleanup 한 곳이 그것들을 통째로 해제한다.
+ *
+ * 함수를 밖으로 빼면 이 자원들을 ref나 인자로 실어 날라야 하고, cleanup에서 **하나라도
+ * 놓치면 WebGL 컨텍스트가 샌다**. 브라우저당 컨텍스트는 16개 남짓이라 넘으면 가장 오래된
+ * 것이 강제로 죽는다 — 실수의 대가가 "렌더가 한 번 더 돈다"가 아니라 화면이 검게 죽는 것이다.
+ *
+ * 또한 이 파일은 complexity 경고 대상이 아니다(걸린 건 줄 수뿐). 안에 있는 분기는 도메인
+ * 로직이 아니라 Math.tan/clamp 연쇄인 3D 좌표 계산이라 core로 뺄 것도 없고,
+ * onFail/onSelect를 ref로 고정하고 deps가 둘뿐이라 렌더 격리 관점에선 이미 모범이다.
+ * 줄 수는 증상이지 병이 아니다.
+ */
+
 /**
  * 히어로 3D — 실제 활동 포스터가 원통형으로 늘어서 천천히 도는 WebGL 씬.
  *
