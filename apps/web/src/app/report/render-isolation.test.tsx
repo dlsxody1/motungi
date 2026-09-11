@@ -164,6 +164,33 @@ describe("리포트 렌더 격리", () => {
   });
 
   /**
+   * 두 트리를 파일로 나눈 것만으로는 아무것도 보장되지 않는다 — `memo`를 빼먹어도 화면은
+   * 똑같이 동작한다. 경계가 진짜 걸렸는지 보려면 **한쪽 트리에만 영향이 있는 변화**를 줘야 한다.
+   *
+   * 지렛대는 저장 개수다(데스크톱 사이드바의 "N개"에만 쓰이고 모바일 트리는 받지도 않는다).
+   * 목록에 없는 활동을 저장하면 데스크톱은 갱신돼야 하고 **모바일은 그대로여야** 한다.
+   *
+   * (원픽 저장 토글로는 측정할 수 없다 — onePickSaved가 실제로 바뀌어 양쪽 다 갱신되는 게
+   *  정상이라 memo 유무와 무관하게 통과한다. 상세 분할 때 같은 함정을 겪었다.)
+   */
+  it("저장 개수만 바뀌면 모바일 트리는 다시 그리지 않는다", () => {
+    render(<ReportPage />);
+    const before = renderCounts.thumbnail;
+    expect(before).toBeGreaterThan(0);
+
+    act(() => {
+      // 목록(op-1~4)에 없는 id — 원픽 저장 여부는 그대로고 사이드바 개수만 바뀐다.
+      useAppStore.getState().toggleSaved("완전히-다른-활동");
+    });
+
+    expect(useAppStore.getState().savedIds).toContain("완전히-다른-활동");
+    // 데스크톱은 갱신돼야 한다.
+    expect(screen.getAllByText("1개").length).toBeGreaterThan(0);
+    // 모바일 트리의 Thumbnail은 그대로 — memo 경계가 여기서 막아야 한다.
+    expect(renderCounts.thumbnail).toBe(before + 1);
+  });
+
+  /**
    * 격리가 "영영 안 그림"이 되면 그것도 버그다 — 데이터가 바뀌면 반드시 따라와야 한다.
    */
   it("추천 목록이 바뀌면 관련 카드는 갱신된다", () => {
