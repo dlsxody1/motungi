@@ -1,3 +1,58 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "import/no-restricted-paths": [
+      "error",
+      {
+        "zones": [
+          { "target": "./src/lib", "from": "./src/components", "message": "lib은 순수해야 한다 — UI를 참조하지 마라. 계산은 lib에 두고 컴포넌트가 부른다." },
+          { "target": "./src/lib", "from": "./src/hooks", "message": "lib은 순수해야 한다 — 훅을 참조하지 마라. 훅이 lib을 부르는 방향이다." },
+          { "target": "./src/lib", "from": "./src/app", "message": "lib은 라우트를 모른다." },
+          { "target": "./src/hooks", "from": "./src/components", "message": "훅이 UI를 참조하면 역방향이다. 값을 돌려주고 그리는 건 컴포넌트에 맡겨라." },
+          { "target": "./src/hooks", "from": "./src/app", "message": "훅은 라우트를 모른다." },
+          { "target": "./src/components", "from": "./src/app", "message": "컴포넌트는 라우트를 모른다. 페이지가 컴포넌트를 쓰는 방향이다." }
+        ]
+      }
+    ],
+    "max-lines": ["warn", { "max": 300, "skipBlankLines": true, "skipComments": true }],
+    "max-lines-per-function": ["warn", { "max": 150, "skipComments": true }],
+    "complexity": ["warn", 15]
+  },
+  "overrides": [
+    {
+      "files": ["src/lib/**/*.ts"],
+      "excludedFiles": ["src/lib/**/*.test.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react",
+                "message": "lib/ 은 순수 레이어다 — React를 쓰지 마라. 순수 함수로 두고 hooks/ 에서 감싸라."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@/store", "@/store/*"],
+                "message": "lib/ 은 전역 상태를 모른다 — 값을 인자로 받아라."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/lib/auth.ts"],
+      "rules": { "no-restricted-imports": "off" }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx"],
+      "rules": {
+        "import/no-restricted-paths": "off",
+        "max-lines": "off",
+        "max-lines-per-function": "off"
+      }
+    }
+  ]
 }

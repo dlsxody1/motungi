@@ -2409,3 +2409,85 @@ backlog:
       isAfterWorkShift가, TrailGuide는 parseTrailGuide 반환 타입만 참조).
       M-038이 scoring.ts의 동일 패턴(내부 전용인데 export만 걸림)을 이미 고친
       전례가 있어 같은 처리를 어댑터 계층에도 적용.
+  - id: M-098
+    title: "explore 목록 페이지의 도메인 로직을 lib으로 분리 — complexity 31, 레이어 규율 1호 대상"
+    priority: high
+    status: todo
+    scope: [apps/web/src/app/explore/(list)/page.tsx, apps/web/src/lib/explore-search.ts, apps/web/src/lib/explore-sort.ts]
+    done_when:
+      - "haystack 생성·검색어 AND 매칭·필터링을 apps/web/src/lib/explore-search.ts의 순수 함수로 추출하고 *.test.ts를 붙인다"
+      - "거리 정렬(decorate-sort-undecorate)·카테고리/지역 집계를 apps/web/src/lib/explore-sort.ts로 추출하고 *.test.ts를 붙인다"
+      - "page.tsx의 useMemo는 추출된 순수 함수를 호출만 한다(계산 본문이 컴포넌트에 남지 않는다)"
+      - "pnpm lint에서 ExploreInner의 complexity 경고가 15 이하로 내려간다"
+      - "기존 page.test.tsx·render-isolation.test.tsx가 수정 없이 통과한다(동작 무변경 리팩터)"
+    notes: >
+      [2026-09-11] 레이어 규율 도입(eslint import/no-restricted-paths + check-pure-tests.sh)
+      직후 등재. 현재 page.tsx:83-210에 scoreAll 재스코어링·nearestAnchorKm 거리정렬·
+      haystack Map 생성·terms AND 필터·CATEGORIES/REGIONS 집계가 JSX와 한 파일에 있어
+      lint가 complexity 31 / 336줄 함수를 경고한다. 도메인 계산이 컴포넌트에 살아서
+      렌더 없이는 단언할 수 없는 상태 — react-patterns "레이어 분리 결정 트리"의
+      안티패턴 예시로 스킬에도 인용돼 있다. 렌더 격리 주석(memo 경계·anchorKey 고정)은
+      성능 회귀 방지 근거이므로 반드시 보존할 것.
+
+  - id: M-099
+    title: "opportunity-detail.tsx 분할 — 559줄·21 imports·complexity 48로 앱 내 최악"
+    priority: high
+    status: todo
+    scope: [apps/web/src/components/opportunity-detail.tsx]
+    done_when:
+      - "날짜·비용·D-day 등 표시 파생값 계산을 packages/core/src/view.ts 또는 apps/web/src/lib으로 내리고 테스트를 붙인다"
+      - "하위 블록(지도·코스가이드·why 섹션 등)을 별도 컴포넌트 파일로 분리한다(평면 구조 유지, opportunity-* 접두사)"
+      - "pnpm lint에서 complexity 경고가 15 이하, 파일이 300줄 이하로 내려간다"
+      - "기존 opportunity-detail.test.tsx·render-isolation 테스트가 통과한다"
+    notes: >
+      [2026-09-11] 레이어 규율 도입 시 측정. imports 21개로 앱 내 1위(2위는 18),
+      complexity 48은 lint 임계 15의 3배가 넘는다. 모바일/데스크톱 두 트리를
+      한 함수에서 그리는 구조라 분기가 누적된 것 — 분할 시 md:hidden 이중 마운트
+      특성(react-web.md 렌더 격리)을 깨지 않도록 주의.
+
+  - id: M-100
+    title: "lib/auth.ts의 store 역참조 해소 — 레이어 규칙의 유일한 예외"
+    priority: medium
+    status: todo
+    scope: [apps/web/src/lib/auth.ts, apps/web/.eslintrc.json]
+    done_when:
+      - "auth.ts가 useAppStore를 직접 import하지 않고 필요한 값·세터를 인자로 받거나 hooks 계층에서 주입받는 형태로 바꾼다"
+      - ".eslintrc.json의 src/lib/auth.ts 예외 override를 제거한다"
+      - "auth.ts 상단의 레이어 예외 주석을 제거한다"
+      - "로그인→저장목록 승격 플로우가 회귀하지 않는다(lib/auth.test.ts 통과)"
+    notes: >
+      [2026-09-11] lib/→store/ 금지 룰을 켰을 때 걸린 유일한 기존 위반이라
+      eslintrc override로 예외 처리하고 남겼다. 세션 부트스트랩 경로(onAuthStateChange·
+      /auth/callback)를 함께 손봐야 해서 규율 도입 작업의 범위 밖으로 뺀 것.
+      예외가 오래 남으면 새 코드가 선례로 삼으므로 해소 전까지 auth.ts 주석의
+      "선례로 삼지 마라" 문구를 유지할 것.
+
+  - id: M-101
+    title: "300줄 초과 잔여 5파일 분할 — poster-ring·web-landing·report·location·diagnosis"
+    priority: low
+    status: todo
+    scope: [apps/web/src/components/poster-ring.tsx, apps/web/src/components/web-landing.tsx, apps/web/src/app/report/page.tsx, apps/web/src/app/location/page.tsx, apps/web/src/app/diagnosis/page.tsx]
+    done_when:
+      - "각 파일이 300줄(주석·공백 제외) 이하로 내려가거나, 내려갈 수 없는 이유를 파일 상단 주석으로 남긴다"
+      - "pnpm lint의 max-lines 경고가 해당 파일에서 사라진다"
+      - "각 파일의 기존 테스트가 통과한다"
+    notes: >
+      [2026-09-11] 레이어 규율 도입 시 max-lines(warn) 켜면서 측정된 잔여분.
+      M-098(explore)·M-099(opportunity-detail)가 우선이고 이건 그 다음이다.
+      poster-ring은 three.js 씬 구성이 한 useEffect에 들어간 구조라 성격이 다르다 —
+      쪼개기보다 셋업 단계별 순수 헬퍼 추출이 맞을 수 있다(무리하게 나누지 말 것).
+
+  - id: M-102
+    title: "max-lines·complexity lint를 warn → error로 승격"
+    priority: low
+    status: todo
+    scope: [apps/web/.eslintrc.json]
+    done_when:
+      - "M-098·M-099·M-101이 모두 done이고 pnpm lint에 복잡도 경고가 0건이다"
+      - "max-lines·max-lines-per-function·complexity를 error로 바꾼다"
+      - "bash scripts/gate.sh가 통과한다"
+    notes: >
+      [2026-09-11] 규율 도입 시 일부러 warn으로 시작했다. 기존 7개 파일이 걸린
+      상태에서 error로 걸면 gate.sh가 즉시 빨개지고, 그러면 다음 밤이 룰을 끄는
+      쪽으로 움직인다(경고를 못 견뎌 규칙을 죽이는 전형적 실패). 잔여 경고가
+      0이 된 뒤에 승격해야 규칙이 살아남는다. 선행 이슈가 끝나기 전엔 착수 금지.
