@@ -17,4 +17,13 @@ export * from "./util";
 export * from "./seoul-jobs";
 export * from "./ingest-fetch";
 export * from "./culture-info-detail";
-export * from "./gu-fallback";
+// normalizeGu는 barrel로 내지 않는다(M-098) — view.ts가 이미 같은 이름으로 export하고
+// 있어 `export *`로 겹치면 index.ts에서 TS2308(모호한 재export)로 typecheck가 깨진다.
+// 두 실제 소비처(ingest/index.ts, gu-fallback.test.ts) 모두 이 leaf 파일을 상대경로로
+// 직접 import하므로 barrel 노출이 필요 없다.
+export {
+  applyGuCoordFallback,
+  buildGuCentroids,
+  type CoordFallbackRow,
+  type GuCentroidRow,
+} from "./gu-fallback";

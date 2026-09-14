@@ -5,6 +5,12 @@
  * onAuthStateChange가 발화한다.
  *
  * 로그인 성공 시 로컬 저장(savedIds)·위치를 서버(profiles/saved_opportunities)로 승격.
+ *
+ * ⚠️ 레이어 예외 — 이 파일만 `lib/ → store/` 금지 룰에서 빠져 있다(`.eslintrc.json` overrides).
+ * lib은 원래 전역 상태를 모르고 값을 인자로 받아야 하는데, 여기는 로그인 직후 세션
+ * 부트스트랩이라 스토어를 직접 rehydrate한다. 값을 넘겨받는 형태로 뒤집으려면 호출부인
+ * 콜백·onAuthStateChange 경로를 함께 손봐야 해서 별건으로 남겼다.
+ * **새 코드에서 이 예외를 선례로 삼지 마라** — 순수 함수는 인자로 받는다.
  */
 import { supabase } from "@/lib/supabase";
 import { useAppStore } from "@/store/useAppStore";

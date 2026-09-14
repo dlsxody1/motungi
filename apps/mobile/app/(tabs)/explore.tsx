@@ -1,10 +1,13 @@
 import type { Opportunity, OpportunityCategory } from "@motungi/core";
 import {
+  buildSearchHaystacks,
   EXPLORE_CATEGORY_FILTERS,
-  nearestAnchorKm,
-  normalizeGenre,
-  normalizeGu,
+  exploreCategoryCounts,
+  exploreRegionCounts,
+  filterExplore,
   scoreAll,
+  searchTerms,
+  sortByDistance,
 } from "@motungi/core";
 import { useRouter } from "expo-router";
 import { memo, useCallback, useMemo, useState } from "react";
@@ -84,7 +87,17 @@ export default function ExploreScreen() {
   const catalog = useAppStore((s) => s.catalog);
   const catalogStatus = useAppStore((s) => s.catalogStatus);
   const answers = useAppStore((s) => s.answers);
-  const anchors = useAppStore((s) => s.anchors);
+  /**
+   * `setAnchor`는 매번 `{...s.anchors}`로 **새 객체**를 만든다(core/store.ts).
+   * 그대로 쓰면 앵커를 바꿀 때마다 source → sorted → haystacks → list 4단 메모가
+   * 연쇄로 무너지고, list는 FlatList의 data라 ActivityItem memo까지 함께 뚫린다.
+   * scoreAll/sortByDistance가 객체를 요구하므로 필드 추출 대신 **좌표 값이 같으면
+   * 같은 참조**를 유지하는 쪽으로 고정한다. (web explore/page.tsx와 동일 처방 — M-106)
+   */
+  const rawAnchors = useAppStore((s) => s.anchors);
+  const anchorKey = JSON.stringify([rawAnchors.home?.point, rawAnchors.work?.point]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- 좌표 값(anchorKey)으로 비교한다
+  const anchors = useMemo(() => rawAnchors, [anchorKey]);
   const matchActive = answers != null;
   const hasAnchor = anchors.home?.point != null || anchors.work?.point != null;
   const [sort, setSort] = useState<"recommend" | "distance" | "deadline">(
@@ -103,53 +116,35 @@ export default function ExploreScreen() {
     [catalog, answers, anchors],
   );
 
-  // 웹(explore/page.tsx)과 동일한 decorate-sort-undecorate — 거리는 한 번만 계산해 붙인다.
-  const sorted = useMemo(() => {
-    if (sort === "distance" && hasAnchor) {
-      return source
-        .map((o) => ({ o, km: nearestAnchorKm(anchors, o.location) ?? Infinity }))
-        .sort((a, b) => a.km - b.km)
-        .map((x) => x.o);
-    }
-    return source;
-  }, [source, sort, hasAnchor, anchors]);
+  const sorted = useMemo(
+    () => (sort === "distance" && hasAnchor ? sortByDistance(source, anchors) : source),
+    [source, sort, hasAnchor, anchors],
+  );
 
   // 지역(구) 옵션 — 정규화한 dong_name distinct + 건수, 건수순.
-  const REGIONS = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const o of source) {
-      const gu = normalizeGu(o.location?.dongName);
-      if (gu) counts.set(gu, (counts.get(gu) ?? 0) + 1);
-    }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([label, count]) => ({ label, count }));
-  }, [source]);
+  const REGIONS = useMemo(() => exploreRegionCounts(source), [source]);
 
-  const list = useMemo(() => {
-    const cat = FILTERS.find((f) => f.label === filter)?.category ?? null;
-    const q = query.trim();
-    return sorted.filter((o) => {
-      if (cat && o.category !== cat) return false;
-      if (region && normalizeGu(o.location?.dongName) !== region) return false;
-      if (easyOnly && !(o.difficulty != null && o.difficulty <= 0.33)) return false;
-      /**
-       * genre 원문 + 통합 라벨을 검색 대상에 넣는다(웹 explore와 동일).
-       * 소스마다 어휘가 갈려(전시/미술 55 vs 전시 44) 원문만으로는 "미술" 검색에
-       * culture_info 44건이 통째로 빠진다.
-       */
-      if (
-        q &&
-        !`${o.title} ${o.summary} ${o.genre ?? ""} ${normalizeGenre(o.genre) ?? ""}`
-          .toLowerCase()
-          .includes(q.toLowerCase())
-      )
-        return false;
-      return true;
-    });
-  }, [filter, region, easyOnly, query, sorted]);
+  /**
+   * 행별 검색 하이스택. **sorted가 바뀔 때만** 만든다 — 예전엔 필터 안에서 매 행마다
+   * 문자열을 조합해서 키 입력 한 번에 (행 × 필드) join이 통째로 다시 돌았다.
+   */
+  const haystacks = useMemo(() => buildSearchHaystacks(sorted), [sorted]);
+
+  const list = useMemo(
+    () =>
+      filterExplore(sorted, {
+        category: FILTERS.find((f) => f.label === filter)?.category ?? null,
+        region,
+        terms: searchTerms(query),
+        easyOnly,
+        haystacks,
+      }),
+    [filter, region, easyOnly, query, sorted, haystacks],
+  );
 
   // 데이터 있는 카테고리만 필터 칩으로 노출("전체"는 항상).
   const visibleFilters = useMemo(
-    () => FILTERS.filter((f) => !f.category || source.some((o) => o.category === f.category)),
+    () => exploreCategoryCounts(source).filter((c) => !c.category || c.count > 0),
     [source],
   );
 

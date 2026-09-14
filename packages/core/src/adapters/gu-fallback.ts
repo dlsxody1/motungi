@@ -24,7 +24,7 @@
  * 4줄짜리 순수 문자열 처리라 복제 비용이 배포를 깨뜨리는 비용보다 싸다.
  * view.ts 쪽을 고치면 여기도 함께 고칠 것(양쪽 다 테스트가 잡는다).
  */
-function normalizeGu(dong: string | null | undefined): string | null {
+export function normalizeGu(dong: string | null | undefined): string | null {
   const s = dong?.trim();
   if (!s) return null;
   return s.replace(/^(서울특별시|서울|경기도|경기|인천광역시|인천)\s+/, "").trim() || null;

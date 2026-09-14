@@ -169,6 +169,23 @@ describe("useEnsureCatalog", () => {
     unmount();
   });
 
+  /**
+   * parity(M-108): web 훅은 {catalog, status}를 직접 반환하고, mobile 훅은 반환값이 void다
+   * (카탈로그를 스토어의 setCatalog로 직접 반영한다) — 그래서 반환값끼리 직접 비교할 수
+   * 없다. 이 테스트는 web이 반환하는 {catalog,status}를, mobile 쪽 parity 테스트가
+   * setCatalog 인자로 기대하는 것과 같은 데이터 형태로 고정한다(두 파일은 각자
+   * 실행되므로 직접 import해 비교하지는 않는다).
+   */
+  it("동일 payload에 대해 반환하는 {catalog,status}는 mobile이 setCatalog에 넘기는 값과 형태가 같다(parity, M-108)", async () => {
+    const items = [PICK];
+    mockFetch.mockResolvedValueOnce(jsonOk(items, "ok"));
+
+    const { result } = renderHook(() => useEnsureCatalog());
+
+    await waitFor(() => expect(result.current.status).toBe("ok"));
+    expect(result.current).toEqual({ catalog: items, status: "ok" });
+  });
+
   it("동네를 바꾸면(좌표 변경) 이미 로드됐어도 다시 조회한다", async () => {
     const home = { dongName: "역삼1동", point: { lat: 37.5006, lng: 127.0364 } };
     useAppStore.setState({ anchors: { home } });

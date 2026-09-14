@@ -52,6 +52,13 @@ afterEach(() => {
   else process.env.EXPO_PUBLIC_WEB_ORIGIN = originalOrigin;
 });
 
+// M-108 로딩 상태 노트: 이 훅엔 별도 로딩 플래그가 없다. 반환 타입 WhyReasonsView는
+// 항상 {reasons, isLlm} 값을 갖고 있고, LLM fetch가 진행 중인 렌더와 LLM을 아예 못 받은
+// (오리진 미설정·네트워크 실패·opp 없음) 최종 렌더가 **동일한 값**
+// {reasons: fallbackReasons, isLlm: false}으로 수렴한다 — 바로 아래 "즉시 렌더" 테스트가
+// 고정하는 그 값이다. isLlm이 true로 바뀌는 것만 관측 가능하고 "로딩 중"이라는 제3의
+// 상태는 애초에 존재하지 않으므로(설계 자체가 블로킹 없는 즉시 폴백), 로딩만 독립적으로
+// assert하는 4번째 상태 테스트는 추가하지 않는다(QA M-108 fix round).
 describe("useWhyReasons", () => {
   it("항상 규칙기반 whyReasons()를 즉시 반환한다(블로킹 없음)", () => {
     const { result } = renderHook(() => useWhyReasons(opp, answers, anchors));
@@ -88,6 +95,22 @@ describe("useWhyReasons", () => {
       "http://test.local/api/why-reasons",
       expect.objectContaining({ method: "POST" }),
     );
+  });
+
+  it("동일 opp·answers·anchors + 동일 LLM 응답이면 {reasons,isLlm} shape이 고정된다(parity, web과 동일 계약, M-108)", async () => {
+    process.env.EXPO_PUBLIC_WEB_ORIGIN = "http://test.local";
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({ fallback: false, reasons: ["근거 A", "근거 B"] }),
+    } as Response);
+
+    const { result } = renderHook(() => useWhyReasons(opp, answers, anchors));
+
+    await waitFor(() => expect(result.current.isLlm).toBe(true));
+    // web(useWhyReasons.test.ts)과 반환 타입(WhyReasonsView)이 완전히 동일하다 — 이 테스트는
+    // 그 shape 자체({reasons, isLlm} 두 키뿐)를 고정한다.
+    expect(Object.keys(result.current).sort()).toEqual(["isLlm", "reasons"]);
+    expect(result.current).toEqual({ reasons: ["근거 A", "근거 B"], isLlm: true });
   });
 
   it("서버가 fallback:true를 주면 규칙기반을 유지한다", async () => {

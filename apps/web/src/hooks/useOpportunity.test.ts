@@ -75,6 +75,20 @@ describe("useOpportunity", () => {
     expect(result.current.opportunity).toBeNull();
   });
 
+  // 훅 코드의 `if (isError) return { opportunity: null, status: "error" }`을 직접
+  // 겨냥한다 — react-query의 queryFn이 reject하면 isError가 서고, 이 훅은 그걸 status:"error"로
+  // 노출한다(mapStatus를 거치는 "resolve인데 status:'error'"인 아래 empty 테스트와는 다른 경로).
+  it("fetch가 reject되면 error로 노출한다(useQuery의 isError 경로)", async () => {
+    mockedFetch.mockRejectedValueOnce(new Error("network error"));
+
+    const { result } = renderHook(() => useOpportunity("op-err"));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("error");
+    });
+    expect(result.current.opportunity).toBeNull();
+  });
+
   it("id가 없으면 조회하지 않고 empty", async () => {
     const { result } = renderHook(() => useOpportunity(null));
 
@@ -82,6 +96,25 @@ describe("useOpportunity", () => {
     expect(mockedFetch).not.toHaveBeenCalled();
     expect(result.current.status).toBe("empty");
     expect(result.current.opportunity).toBeNull();
+  });
+
+  // 시그니처 차이는 의도된 것이다(M-108 결정, backlog 참조): 이 훅(useOpportunity(id, initial?))은
+  // SSR이 이미 조회해둔 1건을 initial로 받아 initialData 선시딩에 쓰지만, mobile
+  // useOpportunity(id)에는 그 두 번째 인자가 없다(react-query 캐시가 없어 선시딩할 대상도
+  // 없다). 버그가 아니라 파라미터 목록이 의도적으로 갈라진 것 — 반환 shape({opportunity,
+  // status})은 아래 parity 테스트가 고정하는 대로 mobile과 동일하다.
+  it("동일 id·동일 fetch 결과면 {opportunity, status} shape이 고정된다(parity, mobile과 동일 계약, M-108)", async () => {
+    const expected = pick("op-9");
+    mockedFetch.mockResolvedValueOnce({ data: expected, status: "ok" });
+
+    const { result } = renderHook(() => useOpportunity("op-9"));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("ok");
+    });
+    // 반환 객체의 키 자체가 mobile(useOpportunity.test.ts)의 반환값과 동일해야 한다.
+    expect(Object.keys(result.current).sort()).toEqual(["opportunity", "status"]);
+    expect(result.current).toEqual({ opportunity: expected, status: "ok" });
   });
 
   it("initial이 있으면 같은 id를 재조회하지 않는다(SSR 선시딩, M-074)", async () => {

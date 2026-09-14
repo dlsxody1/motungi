@@ -85,6 +85,74 @@ Derived from a server?
 
 Most pages do not need context or a global store. Resist abstraction until duplicated lifting becomes painful.
 
+## 레이어 분리 결정 트리 (모퉁이 고유 · 기계가 강제함)
+
+위 트리가 **상태를 어디 둘지**라면, 이건 **코드를 어느 파일에 둘지**다. 새 코드 한 덩어리를
+쓰기 전에 반드시 통과시킨다.
+
+```
+이 덩어리가 React를 쓰나? (훅·JSX·컴포넌트 API)
+├─ 아니오 → 순수 함수다
+│   ├─ web·mobile이 함께 쓸 도메인 로직? → packages/core/src/
+│   └─ web 전용?                        → apps/web/src/lib/
+│       (둘 다 *.test.ts 필수 — gate.sh가 검사한다)
+│
+└─ 예
+    ├─ JSX를 반환하지 않는다 (상태·효과·구독만) → apps/web/src/hooks/
+    └─ JSX를 반환한다                          → apps/web/src/components/
+```
+
+### import 방향은 단방향이다 — 아래는 위를 모른다
+
+```
+app/         라우트          (무엇이든 import 가능)
+components/  UI              ↛ app/
+hooks/       상태·효과        ↛ components/ · app/
+store/       전역 상태
+lib/ · core/ 순수 함수        ↛ react · store/ · hooks/ · components/ · app/
+```
+
+`apps/web/.eslintrc.json`의 `import/no-restricted-paths`가 이걸 **Error로 막는다**.
+`components/ → hooks/`는 **허용**이다 — "상태는 쓰는 컴포넌트가 소유한다"(헌법)가
+바로 그 방향을 요구한다.
+
+### 컴포넌트 안에 두면 안 되는 것
+
+정렬 · 필터링 · 집계(그룹·카운트) · 문자열 정규화 · 거리/점수 계산 · 포맷팅.
+
+**`useMemo`로 감쌌다고 컴포넌트 소유가 되는 게 아니다.** `useMemo`는 *언제* 다시
+계산할지를 정할 뿐, *무엇을* 계산하는지는 여전히 도메인 로직이다. 계산은 `lib/`에 두고
+컴포넌트는 호출만 한다:
+
+```tsx
+// ✗ 계산이 컴포넌트에 산다 — 테스트하려면 렌더해야 한다
+const list = useMemo(() => {
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return source.filter((o) => terms.every((t) => haystack(o).includes(t)));
+}, [source, query]);
+
+// ✓ 계산은 순수 함수, 컴포넌트는 언제 부를지만 정한다
+const list = useMemo(() => filterByTerms(source, query), [source, query]);
+```
+
+오른쪽은 `filterByTerms`를 렌더 없이 단언할 수 있고, mobile도 같은 함수를 쓴다.
+
+선례 — [`app/explore/(list)/page.tsx`](apps/web/src/app/explore/(list)/page.tsx)는 이
+규율이 없던 시절의 결과다: 스코어링·거리정렬·haystack·필터·집계가 JSX와 한 파일에 있어
+`complexity 31`이 나온다. 반대 예는 [`hooks/useNeighborhoodSearch.ts`](apps/web/src/hooks/useNeighborhoodSearch.ts)
+— 디바운스·IME 보류라는 **효과만** 들고 실제 검색은 `lib/geo`에 위임한다.
+
+### 제출 전 자가 체크리스트
+
+기계가 잡아주는 것 (`pnpm lint` · `bash scripts/gate.sh`):
+1. 레이어 역방향 import → `import/no-restricted-paths` Error
+2. `lib/`에서 React·store 사용 → `no-restricted-imports` Error
+3. `lib/`·`core/`에 테스트 누락 → `check-pure-tests.sh` 실패
+4. 300줄/150줄/복잡도 15 초과 → warn (신규 코드에서 나오면 쪼개라)
+
+기계가 **못** 잡는 것 — 직접 확인한다:
+5. 컴포넌트 안의 `useMemo`가 도메인 계산을 품고 있지 않은가? 있으면 `lib/`로 내린다.
+
 ## Server / Client Components (RSC)
 
 ```tsx

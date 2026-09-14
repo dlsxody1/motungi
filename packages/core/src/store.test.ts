@@ -267,6 +267,30 @@ describe("createAppStore", () => {
       );
     }
 
+    /**
+     * seedPersistedAnswers의 일반화 버전(M-079) — answers뿐 아니라 savedIds/anchors도
+     * 임의의(변조·구버전 스키마 포함) 값으로 심어 실제 rehydrate() 경로를 그대로 태운다.
+     * 각 필드는 기본값(answers=null, savedIds=[], anchors={})을 가지므로 검증하려는
+     * 필드만 override하면 된다.
+     */
+    function seedPersistedState(
+      storage: StateStorage,
+      overrides: { answers?: unknown; savedIds?: unknown; anchors?: unknown },
+    ) {
+      storage.setItem(
+        "motungi-app",
+        JSON.stringify({
+          state: {
+            anchors: {},
+            answers: null,
+            savedIds: [],
+            ...overrides,
+          },
+          version: 0,
+        }),
+      );
+    }
+
     it("유효한 저장값은 rehydrate 후 그대로 유지된다", async () => {
       const storage = createSyncStorage();
       const validAnswers = {
@@ -330,6 +354,107 @@ describe("createAppStore", () => {
       await store.persist.rehydrate();
 
       expect(store.getState().answers).toBeNull();
+    });
+
+    it("savedIds가 null이면(M-079) rehydrate 시 크래시 없이 빈 배열로 되돌린다", async () => {
+      const storage = createSyncStorage();
+      seedPersistedState(storage, { savedIds: null });
+
+      const store = createAppStore<TestOpportunity, TestCatalogStatus>({
+        storage,
+        supabase: null,
+      });
+
+      await expect(store.persist.rehydrate()).resolves.not.toThrow();
+      expect(store.getState().savedIds).toEqual([]);
+    });
+
+    it("savedIds가 배열이 아니면(M-079) rehydrate 시 빈 배열로 되돌린다", async () => {
+      const storage = createSyncStorage();
+      seedPersistedState(storage, { savedIds: "not-array" });
+
+      const store = createAppStore<TestOpportunity, TestCatalogStatus>({
+        storage,
+        supabase: null,
+      });
+
+      await expect(store.persist.rehydrate()).resolves.not.toThrow();
+      expect(store.getState().savedIds).toEqual([]);
+    });
+
+    it("savedIds 원소가 string이 아니면(M-079) rehydrate 시 빈 배열로 되돌린다", async () => {
+      const storage = createSyncStorage();
+      seedPersistedState(storage, { savedIds: [1, 2] });
+
+      const store = createAppStore<TestOpportunity, TestCatalogStatus>({
+        storage,
+        supabase: null,
+      });
+
+      await expect(store.persist.rehydrate()).resolves.not.toThrow();
+      expect(store.getState().savedIds).toEqual([]);
+    });
+
+    it("anchors가 null이면(M-079) rehydrate 시 크래시 없이 빈 객체로 되돌린다", async () => {
+      const storage = createSyncStorage();
+      seedPersistedState(storage, { anchors: null });
+
+      const store = createAppStore<TestOpportunity, TestCatalogStatus>({
+        storage,
+        supabase: null,
+      });
+
+      await expect(store.persist.rehydrate()).resolves.not.toThrow();
+      expect(store.getState().anchors).toEqual({});
+    });
+
+    it("anchors.home이 객체가 아니면(M-079) rehydrate 시 빈 객체로 되돌린다", async () => {
+      const storage = createSyncStorage();
+      seedPersistedState(storage, { anchors: { home: "not-an-object" } });
+
+      const store = createAppStore<TestOpportunity, TestCatalogStatus>({
+        storage,
+        supabase: null,
+      });
+
+      await expect(store.persist.rehydrate()).resolves.not.toThrow();
+      expect(store.getState().anchors).toEqual({});
+    });
+
+    it("anchors.home.point의 중첩 필드 타입이 틀리면(M-079) rehydrate 시 빈 객체로 되돌린다", async () => {
+      const storage = createSyncStorage();
+      seedPersistedState(storage, {
+        anchors: { home: { point: { lat: "x" } } },
+      });
+
+      const store = createAppStore<TestOpportunity, TestCatalogStatus>({
+        storage,
+        supabase: null,
+      });
+
+      await expect(store.persist.rehydrate()).resolves.not.toThrow();
+      expect(store.getState().anchors).toEqual({});
+    });
+
+    it("유효한 savedIds/anchors 조합은(M-079) rehydrate 후 그대로 유지된다(오탐 방지)", async () => {
+      const storage = createSyncStorage();
+      const validSavedIds = ["a", "b"];
+      const validAnchors = {
+        home: { dongName: "망원동", point: { lat: 37.5, lng: 126.9 } },
+      };
+      seedPersistedState(storage, {
+        savedIds: validSavedIds,
+        anchors: validAnchors,
+      });
+
+      const store = createAppStore<TestOpportunity, TestCatalogStatus>({
+        storage,
+        supabase: null,
+      });
+
+      await expect(store.persist.rehydrate()).resolves.not.toThrow();
+      expect(store.getState().savedIds).toEqual(validSavedIds);
+      expect(store.getState().anchors).toEqual(validAnchors);
     });
   });
 

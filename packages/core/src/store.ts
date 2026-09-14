@@ -13,7 +13,7 @@ import type { StateStorage } from "zustand/middleware";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
 import { isValidDiagnosisAnswers, type DiagnosisAnswers } from "./diagnosis";
-import type { Location, UserAnchors } from "./types";
+import type { GeoPoint, Location, UserAnchors } from "./types";
 
 export type AnchorSlot = "home" | "work";
 
@@ -85,6 +85,64 @@ export interface CreateAppStoreDeps {
 }
 
 /**
+ * 임의의 값(예: persist storage에서 읽어온 rehydrate 시점 JSON)이 유효한
+ * `string[]`인지 런타임으로 검증한다. 구조가 다르면 예외 없이 false를 반환한다
+ * (크래시 대신 무효 판정) — diagnosis.ts의 isValidDiagnosisAnswers와 같은 스타일.
+ */
+function isValidSavedIds(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((v) => typeof v === "string");
+}
+
+/** value가 GeoPoint 형태({lat:number; lng:number})인지 검증한다. */
+function isValidGeoPoint(value: unknown): value is GeoPoint {
+  if (value == null || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.lat === "number" && typeof candidate.lng === "number";
+}
+
+/**
+ * value가 Location 형태인지 검증한다. 모든 필드가 선택(optional)이므로 존재하는
+ * 필드만 타입을 확인한다 — 구조적으로 잘못된 필드가 하나라도 있으면 false.
+ */
+function isValidLocation(value: unknown): value is Location {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+
+  if ("admCode" in candidate && candidate.admCode !== undefined && typeof candidate.admCode !== "string") {
+    return false;
+  }
+  if ("dongName" in candidate && candidate.dongName !== undefined && typeof candidate.dongName !== "string") {
+    return false;
+  }
+  if ("region" in candidate && candidate.region !== undefined && typeof candidate.region !== "string") {
+    return false;
+  }
+  if ("point" in candidate && candidate.point !== undefined && !isValidGeoPoint(candidate.point)) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * 임의의 값(예: persist storage에서 읽어온 rehydrate 시점 JSON)이 유효한
+ * UserAnchors인지 런타임으로 검증한다. home/work가 존재하면 각각 Location 형태여야
+ * 하며, 구조가 다르거나 중첩 필드 타입이 틀리면 전체를 무효로 판정한다
+ * (all-or-nothing — diagnosis.ts의 isValidDiagnosisAnswers와 같은 스타일).
+ */
+function isValidUserAnchors(value: unknown): value is UserAnchors {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+
+  if ("home" in candidate && candidate.home !== undefined && !isValidLocation(candidate.home)) {
+    return false;
+  }
+  if ("work" in candidate && candidate.work !== undefined && !isValidLocation(candidate.work)) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * 앱 전역 상태 스토어 팩토리.
  * `TOpportunity`/`TCatalogStatus`는 앱별 도메인 타입(MockOpportunity/CatalogStatus)을
  * core가 알 필요 없게 하기 위한 제네릭.
@@ -150,9 +208,12 @@ export function createAppStore<
           answers: s.answers,
           savedIds: s.savedIds,
         }),
-        // M-070: rehydrate 시 answers를 재검증한다. 쓰기 경로(draftToAnswers)는 이미
-        // 검증하지만 읽기(storage에서 되돌아오는 JSON)는 무방비였다 — 구버전 스키마나
-        // 수동 변조로 유효하지 않은 값이 들어와도 크래시 대신 안전하게 null로 되돌린다.
+        // M-070/M-079: rehydrate 시 answers/savedIds/anchors를 재검증한다. 쓰기 경로
+        // (draftToAnswers·setSavedIds·setAnchor)는 이미 검증하지만 읽기(storage에서
+        // 되돌아오는 JSON)는 무방비였다 — 구버전 스키마나 수동 변조로 유효하지 않은
+        // 값이 들어와도 크래시 대신 안전하게 기본값(null/[]/{})으로 되돌린다.
+        // savedIds/anchors는 answers와 달리 `!= null` 가드를 두지 않는다 — []/{}
+        // 자체가 유효한 기본값이라 undefined뿐 아니라 그 값 자체도 구조 검증 대상이다.
         merge: (persistedState, currentState) => {
           const merged = {
             ...currentState,
@@ -161,6 +222,8 @@ export function createAppStore<
           if (merged.answers != null && !isValidDiagnosisAnswers(merged.answers)) {
             merged.answers = null;
           }
+          if (!isValidSavedIds(merged.savedIds)) merged.savedIds = [];
+          if (!isValidUserAnchors(merged.anchors)) merged.anchors = {};
           return merged;
         },
       },

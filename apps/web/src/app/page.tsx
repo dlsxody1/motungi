@@ -1,10 +1,14 @@
 import Link from "next/link";
+import { summarizeGu } from "@motungi/core";
 import { Logo, SafeBottom, SafeTop } from "@/components/ui";
 import { HeroPosterStage } from "@/components/hero-poster-stage";
 import { DesktopShell } from "@/components/web-shell";
 import { SunsetSplash } from "@/components/sunset-splash";
 import { WebLanding } from "@/components/web-landing";
 import { fetchOpportunities } from "@/data/opportunities";
+
+/** 적재가 하루 1회라 다른 AEO 표면(sitemap·[gu])과 같은 주기로 캐시한다 (M-096). */
+export const revalidate = 21_600;
 
 /**
  * A1 · 홈 / 온보딩 — 반응형.
@@ -14,6 +18,17 @@ import { fetchOpportunities } from "@/data/opportunities";
 export default async function Home() {
   // 히어로 캐러셀용 실제 활동(썸네일 있는 것) — 서버에서 소량만 당겨 온다. 실패/빈결과는 빈 배열.
   const { data: heroPicks } = await fetchOpportunities({ withImageOnly: true, limit: 12 });
+
+  /**
+   * 랜딩 하단 "구 페이지 링크" 목록용 — 실제로 `/explore/[gu]` 페이지가 존재하는 구만
+   * (M-096). `[gu]/page.tsx`의 `generateStaticParams`·`sitemap.ts`와 동일 패턴: 전량을
+   * 받아 `summarizeGu`로 임계(GU_MIN_ACTIVITIES) 미달 구를 걸러낸다. 개수를 "24개"처럼
+   * 하드코딩하지 않는다 — 실측은 드리프트한다(M-095가 24 아닌 22를 실측한 선례).
+   */
+  const { data: catalogForGu, status: catalogStatus } = await fetchOpportunities({
+    limit: 1_000,
+  });
+  const guNames = catalogStatus === "ok" ? summarizeGu(catalogForGu).map((s) => s.gu) : [];
 
   return (
     <>
@@ -83,7 +98,7 @@ export default async function Home() {
       </div>
       {/* 데스크탑 랜딩 */}
       <DesktopShell active="home" variant="marketing">
-        <WebLanding heroPicks={heroPicks} />
+        <WebLanding heroPicks={heroPicks} guNames={guNames} />
       </DesktopShell>
     </>
   );

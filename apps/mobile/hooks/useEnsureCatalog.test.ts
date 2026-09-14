@@ -102,6 +102,35 @@ describe("useEnsureCatalog", () => {
     await waitFor(() => expect(setCatalogMock).toHaveBeenCalledTimes(1));
     expect(setCatalogMock).toHaveBeenCalledWith([], "error");
   });
+
+  // web(useEnsureCatalog.test.ts)의 "빈 결과(empty)도 상태 그대로 전달한다"와 짝을 이룬다 —
+  // 이 파일은 그동안 error passthrough만 있고 empty passthrough가 빠져 있었다.
+  it('fetch가 empty 상태를 반환해도 그 값을 그대로 setCatalog에 전달한다', async () => {
+    fetchOpportunitiesMock.mockResolvedValue({ data: [], status: "empty" });
+
+    renderHook(() => useEnsureCatalog());
+
+    await waitFor(() => expect(setCatalogMock).toHaveBeenCalledTimes(1));
+    expect(setCatalogMock).toHaveBeenCalledWith([], "empty");
+  });
+
+  /**
+   * parity(M-108): mobile 훅은 반환값이 void다 — 카탈로그를 스토어(setCatalog)에 직접
+   * 반영하기 때문이다. web 훅은 {catalog, status}를 직접 반환한다. 그래서 반환값끼리
+   * 직접 비교할 수 없다(타입 자체가 다르다) — 비교해야 하는 건 "같은 fetch 결과가
+   * 주어졌을 때 화면에 최종적으로 전달되는 데이터"다. 이 테스트는 mobile이 setCatalog에
+   * 넘기는 {data,status}를, web 쪽 parity 테스트가 반환값으로 기대하는 것과 같은
+   * 리터럴로 고정한다(두 파일은 각자 실행되므로 직접 import해 비교하지는 않는다).
+   */
+  it('동일 payload에 대해 setCatalog가 받는 {data,status}는 web이 반환하는 {catalog,status}와 형태가 같다(parity, M-108)', async () => {
+    const payload = { data: [{ id: "op-parity" }], status: "ok" as const };
+    fetchOpportunitiesMock.mockResolvedValue(payload);
+
+    renderHook(() => useEnsureCatalog());
+
+    await waitFor(() => expect(setCatalogMock).toHaveBeenCalledTimes(1));
+    expect(setCatalogMock).toHaveBeenCalledWith(payload.data, payload.status);
+  });
 });
 
 /** n건짜리 ok 응답 — 개수만 쓰는 테스트용. */

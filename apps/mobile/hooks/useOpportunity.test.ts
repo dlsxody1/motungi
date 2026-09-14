@@ -89,6 +89,24 @@ describe("useOpportunity", () => {
     expect(result.current.opportunity).toBeNull();
   });
 
+  // web(useOpportunity.test.ts)과 달리 여기서 promise를 reject시켜 테스트하지 않는다 —
+  // 이 훅의 fetch effect엔 catch가 없어서, fetchOpportunityById가 실제로 reject하면
+  // unhandled rejection이 될 뿐 상태가 절대 갱신되지 않는다("loading"에 영원히 멈춤, 실버그
+  // 아님 — 실제로 이 앱의 fetchOpportunityById는 core catalog.ts에서 에러를 내부적으로 잡아
+  // {data:null, status:"error"}로 resolve하는 계약이라 reject 자체가 일어나지 않는다).
+  // 그래서 "error"는 이 훅의 mapStatus가 처리하는 resolve-with-status:"error" 경로로 검증한다.
+  it("fetchOpportunityById가 status:'error'로 응답하면 error로 노출한다", async () => {
+    state.catalog = [];
+    fetchOpportunityByIdMock.mockResolvedValueOnce({ data: null, status: "error" });
+
+    const { result } = renderHook(() => useOpportunity("op-err"));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("error");
+    });
+    expect(result.current.opportunity).toBeNull();
+  });
+
   it("id가 없으면 조회하지 않고 empty", async () => {
     state.catalog = [];
 
@@ -98,6 +116,27 @@ describe("useOpportunity", () => {
     expect(fetchOpportunityByIdMock).not.toHaveBeenCalled();
     expect(result.current.status).toBe("empty");
     expect(result.current.opportunity).toBeNull();
+  });
+
+  // 시그니처 차이는 의도된 것이다(M-108 결정, backlog 참조): web의 useOpportunity(id, initial?)는
+  // SSR이 이미 조회해둔 1건을 initialData로 캐시에 선시딩해 같은 id 재조회를 건너뛰지만,
+  // mobile useOpportunity(id)에는 그 두 번째 인자가 없다(react-query 캐시 자체가 없어
+  // 선시딩할 대상도 없다). 버그가 아니라 파라미터 목록이 의도적으로 갈라진 것이며,
+  // 반환 shape({opportunity, status})은 아래 parity 테스트가 고정하는 대로 web과 동일하다.
+  it("동일 id·동일 fetch 결과면 {opportunity, status} shape이 고정된다(parity, web과 동일 계약, M-108)", async () => {
+    state.catalog = [];
+    const expected = pick("op-9");
+    fetchOpportunityByIdMock.mockResolvedValueOnce({ data: expected, status: "ok" });
+
+    const { result } = renderHook(() => useOpportunity("op-9"));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("ok");
+    });
+    // 반환 객체의 키 자체가 web(useOpportunity.test.ts)의 반환값과 동일해야 한다 —
+    // 여기서 지키는 건 "이 훅이 뭘 반환하는가"이지 "인자를 몇 개 받는가"가 아니다.
+    expect(Object.keys(result.current).sort()).toEqual(["opportunity", "status"]);
+    expect(result.current).toEqual({ opportunity: expected, status: "ok" });
   });
 
   it("응답 도착 전 언마운트되면 상태를 갱신하지 않는다(cancelled)", async () => {

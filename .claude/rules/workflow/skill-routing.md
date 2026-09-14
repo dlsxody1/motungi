@@ -6,6 +6,7 @@
 | 작업 영역 | 필수/권장 스킬 |
 |---|---|
 | `apps/web` 컴포넌트·훅·서버/클라 경계 | **react-patterns** |
+| 새 코드를 `lib`/`hooks`/`components` 중 어디 둘지 · 레이어 경계 | **react-patterns**("레이어 분리 결정 트리") |
 | `apps/web`·`apps/mobile` 화면·상태·성능·카드 UI·토큰 | **frontend-patterns** |
 | `apps/web` 빌드/dev/Turbopack | **nextjs-turbopack** |
 | 컴포넌트·훅·페이지 테스트(RTL+Vitest+MSW+axe) | **react-testing** |

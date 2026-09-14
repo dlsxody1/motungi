@@ -1,10 +1,19 @@
 import { useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Share as RNShare, StyleSheet, Text, View } from "react-native";
+import { deadlineLabel } from "@motungi/core";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
 import { Button, Tag, Txt } from "@/ui/components";
-import { Location, Refresh } from "@/ui/icons";
+import { Location, Refresh, Share } from "@/ui/icons";
+import { Thumbnail } from "@/ui/thumbnail";
 import { C, R, cardShadow } from "@/ui/theme";
+
+/**
+ * 공유 링크용 오리진 — apps/mobile/app/opportunity.tsx의 SITE_URL과 **같은 값을 유지해야 한다**
+ * (도메인을 바꾸면 양쪽 다 고칠 것. import로 못 묶는 이유도 opportunity.tsx 주석과 동일 — RN은
+ * EXPO_PUBLIC_*, 웹은 NEXT_PUBLIC_*로 런타임이 갈린다).
+ */
+const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://motungi-web.vercel.app";
 
 /** A5 · 동네 리포트 (원픽 히어로) */
 export default function ReportScreen() {
@@ -21,6 +30,17 @@ export default function ReportScreen() {
   const related = list.slice(1);
 
   const openDetail = (id: string) => router.push({ pathname: "/opportunity", params: { id } });
+
+  // 마감(D-day) — 웹 상세와 동일하게 순수 deadlineLabel로 계산(M-053 선례). onePick 없으면 스킵.
+  const today = new Date().toISOString().slice(0, 10);
+  const deadline = onePick ? deadlineLabel(onePick.deadline, today) : null;
+
+  const onShare = () => {
+    if (!onePick) return;
+    RNShare.share({
+      message: `${onePick.title}\n모퉁이에서 발견한 우리 동네 원픽\n${SITE_URL}/opportunity?id=${onePick.id}`,
+    }).catch(() => {});
+  };
 
   // 데이터 없으면 상태 화면.
   if (!onePick) {
@@ -70,30 +90,45 @@ export default function ReportScreen() {
         오늘의 원픽
       </Txt>
 
-      <Pressable style={styles.hero} accessibilityRole="button" onPress={() => openDetail(onePick.id)}>
-        <View style={styles.heroBody}>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Tag label={onePick.categoryLabel} />
-          </View>
-          <Text style={styles.heroTitle}>{onePick.title}</Text>
-          <Text style={styles.heroSummary}>{onePick.summary}</Text>
-
-          <View style={styles.costBox}>
-            <View>
-              <Text style={styles.costCap}>{onePick.costHeading}</Text>
-              <Text style={styles.costVal}>{onePick.costLabel}</Text>
+      <View style={styles.heroWrap}>
+        <Pressable style={styles.hero} accessibilityRole="button" onPress={() => openDetail(onePick.id)}>
+          {/* 이미지가 없어도 Thumbnail이 카테고리 톤 플레이스홀더로 채운다(M-087). */}
+          <Thumbnail imageUrl={onePick.imageUrl} tone={onePick.tone} style={styles.heroImage} />
+          <View style={styles.heroBody}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Tag label={onePick.categoryLabel} />
+              {deadline && <DdayPill deadline={deadline} />}
             </View>
-            {!!onePick.costNote && (
-              <Text style={styles.costNote}>{onePick.costNote}</Text>
-            )}
+            <Text style={styles.heroTitle}>{onePick.title}</Text>
+            <Text style={styles.heroSummary}>{onePick.summary}</Text>
+
+            <View style={styles.costBox}>
+              <View>
+                <Text style={styles.costCap}>{onePick.costHeading}</Text>
+                <Text style={styles.costVal}>{onePick.costLabel}</Text>
+              </View>
+              {!!onePick.costNote && (
+                <Text style={styles.costNote}>{onePick.costNote}</Text>
+              )}
+            </View>
           </View>
-        </View>
-        <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
-          <View style={styles.heroCta}>
-            <Text style={styles.heroCtaLabel}>자세히 보기</Text>
+          <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+            <View style={styles.heroCta}>
+              <Text style={styles.heroCtaLabel}>자세히 보기</Text>
+            </View>
           </View>
-        </View>
-      </Pressable>
+        </Pressable>
+        {/* 공유 버튼 — hero Pressable과 형제로 분리(중첩 인터랙티브 방지, M-014 선례) */}
+        <Pressable
+          style={styles.heroShareBtn}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="공유"
+          onPress={onShare}
+        >
+          <Share size={18} color={C.white} />
+        </Pressable>
+      </View>
 
       {/* 함께 보면 좋아요 */}
       {related.length > 0 && (
@@ -143,6 +178,23 @@ export default function ReportScreen() {
   );
 }
 
+/**
+ * 마감 임박도 배지 — apps/mobile/app/opportunity.tsx의 동명 로컬 컴포넌트와 동일 톤 규칙
+ * (지남=회색, 임박≤3일=강조, 여유=은은). 공유 컴포넌트로 승격하지 않고 각 화면이 로컬로
+ * 두는 기존 패턴을 그대로 따른다(M-087 scope가 report.tsx로 한정돼 opportunity.tsx는 건드리지 않음).
+ */
+function DdayPill({ deadline }: { deadline: { dday: number; past: boolean } }) {
+  const { dday, past } = deadline;
+  const text = past ? "마감" : dday === 0 ? "오늘 마감" : `D-${dday}`;
+  const pillTone = past ? styles.pillPast : dday <= 3 ? styles.pillImminent : styles.pillComfortable;
+  const textTone = past ? styles.pillTextPast : dday <= 3 ? styles.pillTextImminent : styles.pillTextComfortable;
+  return (
+    <View style={[styles.pill, pillTone]}>
+      <Text style={[styles.pillText, textTone]}>{text}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24 },
   emptyWrap: { flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
@@ -162,6 +214,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   redoLabel: { fontSize: 13, fontWeight: "600", color: C.label },
+  heroWrap: { position: "relative" },
   hero: {
     borderRadius: R["2xl"],
     borderWidth: 1,
@@ -170,6 +223,27 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     ...cardShadow,
   },
+  heroImage: { width: "100%", aspectRatio: 16 / 9 },
+  // hero Pressable과 형제(자식 아님) — 중첩 인터랙티브를 피해 카드 우상단에 절대배치로 겹친다.
+  heroShareBtn: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  pill: { borderRadius: R.pill, paddingHorizontal: 8, paddingVertical: 2 },
+  pillText: { fontSize: 11, fontWeight: "700" },
+  pillPast: { backgroundColor: C.gray100 },
+  pillTextPast: { color: C.muted },
+  pillImminent: { backgroundColor: C.primary },
+  pillTextImminent: { color: C.white },
+  pillComfortable: { backgroundColor: C.tint },
+  pillTextComfortable: { color: C.primaryDeep },
   heroBody: { backgroundColor: "rgba(251,232,236,0.5)", padding: 20 },
   heroTitle: { marginTop: 12, fontSize: 21, lineHeight: 28, fontWeight: "800", color: C.ink },
   heroSummary: { marginTop: 10, fontSize: 14, lineHeight: 22, color: C.label },
