@@ -14,7 +14,7 @@ interface Bucket {
 
 const buckets = new Map<string, Bucket>();
 
-export interface RateLimitResult {
+interface RateLimitResult {
   allowed: boolean;
   /** 초과 시 재시도까지 남은 초. 허용된 요청이면 0. */
   retryAfterSec: number;

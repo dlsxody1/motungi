@@ -21,12 +21,3 @@ export const supabase =
         },
       })
     : null;
-
-export function assertSupabase() {
-  if (!supabase) {
-    throw new Error(
-      "Supabase 환경변수 미설정: .env 에 NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY 를 채우세요.",
-    );
-  }
-  return supabase;
-}

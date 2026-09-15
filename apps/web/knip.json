@@ -1,0 +1,5 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["src/app/**/{page,layout,route,error,loading,not-found,global-error}.tsx", "src/app/**/route.ts", "instrumentation*.ts", "sentry.*.config.ts"],
+  "project": ["src/**/*.{ts,tsx}"]
+}

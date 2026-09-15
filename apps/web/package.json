@@ -9,6 +9,7 @@
     "lint": "next lint --dir src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "check:unused": "knip",
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
@@ -38,6 +39,7 @@
     "eslint": "^9.18.0",
     "eslint-config-next": "^15.1.4",
     "jsdom": "^25.0.1",
+    "knip": "^6.35.1",
     "postcss": "^8",
     "tailwindcss": "^4",
     "typescript": "^5.7.3",

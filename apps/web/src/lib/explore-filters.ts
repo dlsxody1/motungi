@@ -10,7 +10,8 @@ import { EXPLORE_CATEGORY_FILTERS, type OpportunityCategory } from "@motungi/cor
  * "전체"는 category=null이고 URL엔 쓰지 않는다(파라미터 없음 = 전체).
  *
  * taxonomy 자체는 core 단일 출처(`EXPLORE_CATEGORY_FILTERS`, M-080) — mobile(explore.tsx)과
- * 동일 배열을 공유한다. web 전용 헬퍼(filterLabelOf/exploreHref)만 이 파일에 남긴다.
+ * 동일 배열을 공유한다. web 전용 헬퍼(exploreHref)만 이 파일에서 export한다.
+ * filterLabelOf는 exploreHref 내부에서만 쓰여 모듈 밖으로 열지 않는다(M-112).
  */
 export const FILTERS = EXPLORE_CATEGORY_FILTERS;
 
@@ -18,7 +19,7 @@ export const FILTERS = EXPLORE_CATEGORY_FILTERS;
  * 카테고리 → 탐색 필터 라벨. 매칭되는 라벨이 없으면 null
  * (URL에 넣지 않는다 — 존재하지 않는 필터로 목록이 비면 안 된다).
  */
-export function filterLabelOf(category: OpportunityCategory | undefined): string | null {
+function filterLabelOf(category: OpportunityCategory | undefined): string | null {
   if (!category) return null;
   return FILTERS.find((f) => f.category === category)?.label ?? null;
 }

@@ -14,7 +14,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/supabase", () => ({
   supabase: { from: vi.fn() },
-  assertSupabase: () => ({ from: vi.fn() }),
 }));
 
 import { useAppStore } from "./useAppStore";
