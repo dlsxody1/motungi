@@ -40,7 +40,7 @@ const store = createAppStore<MockOpportunity, CatalogStatus>({
 /**
  * useAppStore(selector) 훅. 반환값은 vanilla StoreApi라 React 컴포넌트에서
  * 바로 쓸 수 없으므로 useStore로 감싼다.
- * getState/setState/subscribe는 apps/web/src/lib/auth.ts가 컴포넌트 밖에서
+ * getState/setState/subscribe는 apps/web/src/hooks/useAuthBoot.ts가 컴포넌트 밖에서
  * 직접 호출하므로, 표준 zustand vanilla+React 결합 관례대로 정적 메서드를
  * 훅 함수에 재부착한다.
  */

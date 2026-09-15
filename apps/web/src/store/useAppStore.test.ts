@@ -5,7 +5,7 @@
  * packages/core/src/store.test.ts가 이미 검증하므로 여기서 다시 다루지 않는다.
  * 이 파일은 web 전용 결선만 검증한다:
  *   1) createAppStore에 localStorage/supabase 어댑터가 실제로 주입되는지
- *   2) apps/web/src/lib/auth.ts가 의존하는 getState/setState/subscribe 정적
+ *   2) apps/web/src/hooks/useAuthBoot.ts가 의존하는 getState/setState/subscribe 정적
  *      메서드 패리티가 유지되는지 (Object.assign 결합 확인)
  *   3) 셀렉터 훅으로 렌더링했을 때 기본값을 정상적으로 읽어오는지(스모크)
  */

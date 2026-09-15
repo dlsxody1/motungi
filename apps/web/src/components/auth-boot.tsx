@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { initAuthListener } from "@/lib/auth";
+import { initAuthListener } from "@/hooks/useAuthBoot";
 
 /**
  * 세션 부트스트랩 — 루트 layout에 삽입.

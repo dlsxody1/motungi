@@ -5,15 +5,11 @@
  * onAuthStateChange가 발화한다.
  *
  * 로그인 성공 시 로컬 저장(savedIds)·위치를 서버(profiles/saved_opportunities)로 승격.
- *
- * ⚠️ 레이어 예외 — 이 파일만 `lib/ → store/` 금지 룰에서 빠져 있다(`.eslintrc.json` overrides).
- * lib은 원래 전역 상태를 모르고 값을 인자로 받아야 하는데, 여기는 로그인 직후 세션
- * 부트스트랩이라 스토어를 직접 rehydrate한다. 값을 넘겨받는 형태로 뒤집으려면 호출부인
- * 콜백·onAuthStateChange 경로를 함께 손봐야 해서 별건으로 남겼다.
- * **새 코드에서 이 예외를 선례로 삼지 마라** — 순수 함수는 인자로 받는다.
+ * 이 파일은 순수하다 — 전역 상태를 모르고 필요한 값(anchors/savedIds)을 인자로 받는다.
+ * 세션 부트스트랩(store 구독·rehydrate)은 @/hooks/useAuthBoot가 맡는다.
  */
+import type { UserAnchors } from "@motungi/core";
 import { supabase } from "@/lib/supabase";
-import { useAppStore } from "@/store/useAppStore";
 
 /** 카카오 로그인. 브라우저가 카카오로 리다이렉트된 뒤 /auth/callback 으로 복귀한다. */
 export async function signInWithKakao(): Promise<{ error?: string }> {
@@ -37,11 +33,14 @@ export async function signOut(): Promise<void> {
  * 로컬 상태를 로그인 사용자 계정으로 승격.
  * - profiles: 위치(집 앵커) upsert
  * - saved_opportunities: 로컬 savedIds를 서버에 병합(중복 무시)
- * 로그인 직후 1회 호출.
+ * 로그인 직후 1회 호출. anchors/savedIds는 호출부(훅 계층)가 store에서 읽어 넘긴다.
  */
-export async function promoteLocalToAccount(userId: string): Promise<void> {
+export async function promoteLocalToAccount(
+  userId: string,
+  anchors: UserAnchors,
+  savedIds: string[],
+): Promise<void> {
   if (!supabase) return;
-  const { anchors, savedIds } = useAppStore.getState();
 
   // 프로필(위치) 저장.
   await supabase.from("profiles").upsert(
@@ -74,44 +73,4 @@ export async function pullSavedFromServer(userId: string): Promise<string[]> {
     .select("opportunity_id")
     .eq("user_id", userId);
   return (data ?? []).map((r) => r.opportunity_id);
-}
-
-/**
- * 세션 부트스트랩 — 앱 시작 시 1회. 현재 세션을 store에 반영하고
- * 로그인/로그아웃 이벤트를 구독한다. 정리 함수를 반환.
- */
-export function initAuthListener(): () => void {
-  if (!supabase) return () => {};
-  const { setUser, setSavedIds } = useAppStore.getState();
-
-  const applySession = async (userId: string | null, displayName?: string) => {
-    if (!userId) {
-      setUser(null);
-      return;
-    }
-    setUser({ id: userId, displayName });
-    // 로컬 저장을 서버로 승격 후, 서버 목록을 로컬로 재동기화(양방향 병합).
-    await promoteLocalToAccount(userId);
-    const serverSaved = await pullSavedFromServer(userId);
-    const merged = Array.from(
-      new Set([...useAppStore.getState().savedIds, ...serverSaved]),
-    );
-    setSavedIds(merged);
-  };
-
-  // 초기 세션.
-  void supabase.auth.getSession().then(({ data }) => {
-    const u = data.session?.user;
-    // user_metadata는 GoTrue의 Record<string, any> — DB 스키마 제네릭이 커버하지 못하므로 런타임 체크.
-    const name = u?.user_metadata?.name;
-    void applySession(u?.id ?? null, typeof name === "string" ? name : undefined);
-  });
-
-  const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-    const u = session?.user;
-    const name = u?.user_metadata?.name;
-    void applySession(u?.id ?? null, typeof name === "string" ? name : undefined);
-  });
-
-  return () => sub.subscription.unsubscribe();
 }

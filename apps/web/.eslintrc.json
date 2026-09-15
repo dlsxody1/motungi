@@ -43,10 +43,6 @@
       }
     },
     {
-      "files": ["src/lib/auth.ts"],
-      "rules": { "no-restricted-imports": "off" }
-    },
-    {
       "files": ["**/*.test.ts", "**/*.test.tsx"],
       "rules": {
         "import/no-restricted-paths": "off",
