@@ -2599,7 +2599,7 @@ backlog:
   - id: M-101
     title: "lib/auth.ts의 store 역참조 해소 — 레이어 규칙의 유일한 예외"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/lib/auth.ts, apps/web/.eslintrc.json]
     done_when:
       - "auth.ts가 useAppStore를 직접 import하지 않고 필요한 값·세터를 인자로 받거나 hooks 계층에서 주입받는 형태로 바꾼다"
@@ -2612,6 +2612,15 @@ backlog:
       /auth/callback)를 함께 손봐야 해서 규율 도입 작업의 범위 밖으로 뺀 것.
       예외가 오래 남으면 새 코드가 선례로 삼으므로 해소 전까지 auth.ts 주석의
       "선례로 삼지 마라" 문구를 유지할 것.
+      [2026-09-15 야간 파이프라인 완료] promoteLocalToAccount가 anchors/savedIds를
+      인자로 받는 순수 함수로 바뀌고, 세션 부트스트랩(store 구독·rehydrate)은 신설
+      apps/web/src/hooks/useAuthBoot.ts로 이관했다. .eslintrc.json의 auth.ts
+      no-restricted-imports 예외 override 제거, auth.ts 상단 "레이어 예외" 주석
+      제거. lib/auth.test.ts는 anchors/savedIds를 인자로 넘기도록 갱신(useAppStore
+      모킹 제거), 4/4 통과. useAppStore.ts·useAppStore.test.ts의 stale 주석
+      (auth.ts가 getState 직접 호출한다는 서술)도 hooks/useAuthBoot.ts 기준으로
+      정정. done_when 4개 전부 충족. bash scripts/gate.sh 최종 PASS(web 394/394,
+      전체 typecheck·lint·secrets·pure-tests 클린). 커밋 a04e88e, dev 직접 커밋.
 
   - id: M-102
     title: "300줄 초과 잔여 2파일 분할 — diagnosis·location (poster-ring·web-landing·report는 완료)"
@@ -2842,7 +2851,7 @@ backlog:
   - id: M-112
     title: "미사용 export 재발을 lint로 막는다 — M-038·M-091·M-093이 같은 패턴의 반복"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/.eslintrc.json, apps/web/src/lib/explore-filters.ts, apps/web/src/lib/seo.ts, apps/web/src/lib/supabase.ts]
     done_when:
       - "현재 걸린 3건을 정리한다: filterLabelOf(모듈 내부로), absoluteUrl(테스트만 사용), assertSupabase(실사용 0건 — 제거 또는 실배선)"
@@ -2850,6 +2859,31 @@ backlog:
       - "재발 차단 수단을 넣는다(eslint-plugin-unused-imports 또는 knip). 새 의존성이 필요하면 비용을 먼저 따져보고 결정한다"
       - "bash scripts/gate.sh 통과"
     notes: >
+      [2026-09-15 야간 파이프라인 완료] filterLabelOf는 export 제거(모듈 내부
+      전용, exploreHref만 호출), assertSupabase는 실사용 0건 확인 후 제거
+      (useAppStore.test.ts의 대응 mock도 함께 정리). absoluteUrl은 seo.ts 내부
+      2곳에서 실사용 중이라 변경 없음(그 경우엔 테스트만 임포트하는 게 아니라
+      실코드도 쓰고 있었다 — 이슈 notes의 "테스트만 사용" 서술은 부정확했음을
+      기록해 둔다).
+
+      재발 차단 수단: **eslint-plugin-import의 import/no-unused-modules를
+      먼저 시도했으나 폐기했다** — 같은 코드에서 재실행마다 결과가 달라지는
+      비결정적 오탐을 발견함(1차 실행: RateLimitResult만 오탐, 2차 실행:
+      실사용 중인 checkRateLimit·clientKey까지 오탐). 게이트에 걸면 무작위로
+      죽는 규칙이 되므로 채택 불가 판단. 대신 **knip**(apps/web devDependency,
+      6.35.1)을 도입해 동일 3건을 결정적으로 재검증(2회 재실행 동일 결과).
+      `pnpm --filter web check:unused`로 실행 가능.
+
+      **gate.sh에는 아직 연결하지 않았다** — knip이 이 이슈와 무관한 기존
+      미사용 export 6건(text·rowToMock·OpportunityLoadStatus·SavedLoadStatus·
+      AnchorSlot·AuthUser)을 추가로 찾아냈는데, 지금 게이트에 걸면 오늘 밤과
+      무관한 사유로 막힌다. 그중 `text`(components/ui.tsx의 타이포 프리셋,
+      완전 미사용)는 M-115(모바일 타이포가 tokens 대신 손으로 재작성됨)와
+      타이포 소유권 문제가 겹쳐 이 이슈 범위에서 독립적으로 정리하기 애매하다고
+      판단했다. 나머지 5건도 함께 정리하고 gate.sh 편입을 마무리하는 후속
+      이슈가 필요하다(사람 또는 다음 audit 밤이 M-11x로 등재 검토).
+      bash scripts/gate.sh 최종 PASS(web 394/394, 전체 typecheck·lint·
+      secrets·pure-tests 클린). 커밋 708337f, dev 직접 커밋.
       [2026-09-11 조사] 상세 근거는 docs/audit/2026-09-11-state-management.md 축 4-C.
       **개별 이슈로 또 잡는 게 아니라 기계로 막아야 하는 건이다.** 선례가 이미 셋이다 —
       M-038(scoring 4종) → M-091(아이콘 11개) → M-093(어댑터 2건, 제목이 아예
