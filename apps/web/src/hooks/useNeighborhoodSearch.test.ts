@@ -11,7 +11,9 @@
  * advanceTimersByTimeAsync(+act로 감싸기)로 타이머 발화와 그 뒤 상태 갱신을 함께 처리한다.
  */
 import { act, cleanup, renderHook } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createElement, type ReactNode } from "react";
 import type { NeighborhoodSearchResult } from "@/lib/geo";
 import { MIN_QUERY_LEN, useNeighborhoodSearch } from "./useNeighborhoodSearch";
 
@@ -110,5 +112,33 @@ describe("useNeighborhoodSearch", () => {
 
     expect(mockedSearch).not.toHaveBeenCalled();
     expect(result.current.results).toEqual([]);
+  });
+
+  // M-107: useQuery로 옮긴 핵심 동기 — 같은 검색어를 다시 입력해도 캐시가 재요청을 막는다.
+  // 전역 테스트 wrapper(vitest.setup.ts)는 staleTime:0을 강제해 이 동작 자체를 가릴 수 있으므로
+  // (모든 데이터가 마운트 즉시 stale → 항상 재조회), useOpportunity.test.ts의 선례를 따라
+  // 실서비스 QueryProvider(lib/query.tsx)와 같은 staleTime을 가진 클라이언트를 직접 넘긴다.
+  it("같은 검색어를 다시 입력해도 캐시가 있으면 재요청하지 않는다(M-107)", async () => {
+    mockedSearch.mockResolvedValue([pick("망원동")]);
+    const client = new QueryClient({
+      defaultOptions: { queries: { staleTime: 5 * 60 * 1000, retry: false, gcTime: Infinity } },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client }, children);
+
+    const { result } = renderHook(() => useNeighborhoodSearch(), { wrapper });
+
+    act(() => result.current.setQuery("망원동"));
+    await advance(DEBOUNCE_MS);
+    expect(mockedSearch).toHaveBeenCalledTimes(1);
+    expect(result.current.results).toEqual([pick("망원동")]);
+
+    // 선택 완료로 검색창을 비웠다가 같은 동네를 다시 입력하는 흔한 경로(뒤로가기 후 재검색 등).
+    act(() => result.current.reset());
+    act(() => result.current.setQuery("망원동"));
+    await advance(DEBOUNCE_MS);
+
+    expect(mockedSearch).toHaveBeenCalledTimes(1);
+    expect(result.current.results).toEqual([pick("망원동")]);
   });
 });

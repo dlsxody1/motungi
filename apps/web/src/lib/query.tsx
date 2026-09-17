@@ -36,6 +36,8 @@ export const queryKeys = {
     ["report-fallback", point ? `${point.lat},${point.lng}` : "no-anchor"] as const,
   /** 걷기길 경로. */
   trailRoute: (id: string) => ["trail-route", id] as const,
+  /** 동네 검색(useNeighborhoodSearch). debouncedQuery만 키에 들어간다 — 입력 상태(query)는 아니다. */
+  neighborhoodSearch: (q: string) => ["neighborhood-search", q] as const,
   /**
    * LLM 근거 생성(M-044). breakdownKey는 breakdown 5축 직렬화값 —
    * 진단답변·앵커가 바뀌어 breakdown이 달라지면 자동으로 다른 캐시 항목이 된다.
