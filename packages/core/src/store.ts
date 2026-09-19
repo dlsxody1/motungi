@@ -54,13 +54,17 @@ export interface AppState<
   /**
    * 전체 활동 카탈로그(서버 실데이터). 세션 캐시.
    *
-   * **서버 상태다 — 신규 코드에서 쓰지 마라.** web은 이걸 버리고 TanStack Query로 옮겼다
-   * (`apps/web/src/lib/query.tsx`). 서버 데이터를 클라 스토어에 두니 캐시 무효화·요청
-   * 취소·재시도를 전부 손으로 짜게 됐고, "마지막 좌표 하나"만 기억해 동네를 왕복하면
-   * 매번 다시 받았다. mobile이 아직 참조해서 남겨둔 것뿐이다.
+   * **이 슬라이스는 mobile 전용이다 — 신규 코드에서 쓰지 마라.** web은 이걸 버리고
+   * TanStack Query로 옮겼다(`apps/web/src/lib/query.tsx`). 서버 데이터를 클라 스토어에
+   * 두니 캐시 무효화·요청 취소·재시도를 전부 손으로 짜게 됐고, "마지막 좌표 하나"만
+   * 기억해 동네를 왕복하면 매번 다시 받았다. mobile은 M-108(2026-09-11)에서 RN 배선
+   * 비용(AppState 포커스·NetInfo 온라인 감지)이 무인 1회 실행 범위를 넘는다고 판단해
+   * TanStack 도입을 보류했다 — 그래서 이 슬라이스가 core 공용 스토어에 남아 있다
+   * (M-109). mobile을 TanStack으로 옮기게 되면 catalog·catalogStatus·setCatalog를
+   * 여기서 제거할 것.
    */
   catalog: TOpportunity[];
-  /** 카탈로그 로드 상태. 아직 안 불러왔으면 "idle". (위와 같은 이유로 deprecated) */
+  /** 카탈로그 로드 상태. 아직 안 불러왔으면 "idle". mobile 전용(위와 같은 이유로 deprecated). */
   catalogStatus: TCatalogStatus | "idle";
   savedIds: string[];
   /** 로그인 사용자. null = 게스트. */
