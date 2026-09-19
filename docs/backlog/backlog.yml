@@ -2814,7 +2814,7 @@ backlog:
   - id: M-109
     title: "core 스토어의 catalog 슬라이스가 mobile 전용으로 남아 있다 — web은 0곳 구독"
     priority: medium
-    status: todo
+    status: doing
     scope: [packages/core/src/store.ts]
     done_when:
       - "M-108 결정에 종속 — mobile이 TanStack으로 가면 catalog·catalogStatus·setCatalog를 core 스토어에서 제거한다"
@@ -2827,6 +2827,12 @@ backlog:
       주석이 그 이전을 기록) mobile만 4곳에서 쓴다 — 공용 스토어에 한쪽 앱 전용 슬라이스가
       들어 있는 기형이다. 단독으로 처리하지 말고 M-108 결정 뒤에 따라갈 것.
 
+      [2026-09-19 야간 파이프라인] M-108 결정(2026-09-11, TanStack 비도입)이 이미
+      내려져 있어 done_when 두 번째 분기를 적용했다. packages/core/src/store.ts의
+      catalog·catalogStatus 필드 주석에 "mobile 전용" 문구와 M-108/M-109 판단 근거를
+      명시(커밋 fb663f6). setCatalog는 08-24에 이미 "mobile 전용" 문구가 있어 그대로
+      두었다. typecheck·test(core 429/429) 통과. status는 doing으로 올렸다 — 사람이
+      최종 리뷰 후 done 승격.
   - id: M-110
     title: "동네 폴백 문자열 \"우리 동네\"가 11곳에 복붙 — core로 통합"
     priority: low
