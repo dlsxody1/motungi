@@ -2853,7 +2853,7 @@ backlog:
   - id: M-111
     title: "itemListJsonLd가 두 곳에 각자 구현 — JSON-LD 이스케이프 규칙이 갈라질 수 있다"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/app/explore/[gu]/page.tsx, apps/web/src/lib/seo.ts]
     done_when:
       - "[gu]/page.tsx:126의 로컬 itemListJsonLd를 제거하고 lib/seo.ts의 export 버전을 쓴다(이미 name을 인자로 받는 시그니처다)"
