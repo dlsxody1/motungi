@@ -30,7 +30,7 @@ import {
 } from "@motungi/core";
 import { FaqSection } from "@/components/faq-section";
 import { SiteFooter, TopNav, WebContainer } from "@/components/web-shell";
-import { opportunityPath, SITE_URL } from "@/lib/seo";
+import { itemListJsonLd, opportunityPath } from "@/lib/seo";
 import { supabase } from "@/lib/supabase";
 
 /** 적재가 하루 1회라 sitemap·상세와 같은 주기로 캐시한다. */
@@ -118,26 +118,6 @@ export async function generateMetadata({
   };
 }
 
-/**
- * ItemList JSON-LD — 이 페이지가 "활동 목록"임을 명시한다.
- *
- * 값은 우리 DB에서 왔고 `<`를 이스케이프해 스크립트 조기 종료를 막는다(seo.ts와 같은 이유).
- */
-function itemListJsonLd(gu: string, items: readonly MockOpportunity[]): string {
-  return JSON.stringify({
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: `${gu} 퇴근 후·주말 활동`,
-    numberOfItems: items.length,
-    itemListElement: items.map((o, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      name: o.title,
-      url: `${SITE_URL}${opportunityPath(o.id)}`,
-    })),
-  }).replace(/</g, "\\u003c");
-}
-
 export default async function GuPage({ params }: { params: Promise<{ gu: string }> }) {
   const { gu: raw } = await params;
   const gu = decodeURIComponent(raw);
@@ -167,13 +147,11 @@ export default async function GuPage({ params }: { params: Promise<{ gu: string 
   }
 
   const { summary, items, all } = found;
+  const jsonLd = itemListJsonLd(items, `${gu} 퇴근 후·주말 활동`);
 
   return (
     <GuFrame gu={gu}>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: itemListJsonLd(gu, items) }}
-      />
+      {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />}
       {/* 한 줄로 붙여 쓴다 — 줄바꿈하면 JSX가 공백을 넣어 "종로구 에서"가 된다. */}
       <h1 className="text-[26px] font-extrabold leading-[34px] tracking-[-0.02em] text-balance text-ink md:text-[30px] md:leading-[39px]">{`${gu}에서 퇴근하고 뭐하지?`}</h1>
 
