@@ -2913,7 +2913,7 @@ backlog:
   - id: M-113
     title: "web↔mobile 동명 파일 17쌍 — 같은 계약인데 구현이 따로 산다"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/lib/geo.ts, apps/mobile/lib/geo.ts, packages/core/src]
     done_when:
       - "geo.ts의 타입(NeighborhoodSearchResult·ReverseGeoResult)과 응답 파싱을 core로 올린다 — 실제 차이는 오리진뿐(web 상대경로 vs EXPO_PUBLIC_WEB_ORIGIN)"
@@ -2928,6 +2928,14 @@ backlog:
       geo.ts:40 "웹과 동일 엔드포인트를 오리진 경유로 호출" 등.
       geo.ts만 먼저 떼는 이유: 순수 타입·파싱이라 M-108(mobile TanStack 결정)과 무관하게
       지금 올릴 수 있다. 훅 5쌍은 서버상태 전략이 정해져야 형태가 결정된다.
+      [2026-09-22 야간 파이프라인 완료] packages/core/src/geo.ts 신설
+      (ReverseGeoResult·NeighborhoodSearchResult 타입 + parseReverseGeoResponse·
+      parseNeighborhoodSearchResponse 순수 파서) + geo.test.ts(8케이스). web·mobile의
+      lib/geo.ts는 오리진별 fetch 호출과 에러 리포팅(web만 reportError 보유)만 남기고
+      파싱을 core 함수 호출로 교체, 기존 계약 테스트(web 10 · mobile 1)는 무변경으로 통과.
+      done_when 3개 모두 충족(훅 5쌍은 범위 밖으로 명시 제외). gate.sh(typecheck·test·
+      lint·secrets·pure-tests) PASS + web build 27/27 라우트 성공. 커밋 4f73adb, dev
+      직접 커밋(트렁크 모델, PR 없음). status는 사람의 최종 리뷰 전까지 doing으로 둠.
 
   - id: M-114
     title: "packages/core 공개 API 경계 명시 — export 141개 중 양쪽이 쓰는 건 44개(31%)뿐"
