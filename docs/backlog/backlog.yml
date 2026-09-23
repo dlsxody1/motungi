@@ -2940,7 +2940,7 @@ backlog:
   - id: M-114
     title: "packages/core 공개 API 경계 명시 — export 141개 중 양쪽이 쓰는 건 44개(31%)뿐"
     priority: medium
-    status: todo
+    status: doing
     scope: [packages/core/src/index.ts, packages/core/src/gu-summary.ts]
     done_when:
       - "index.ts의 export * 11줄을 명시적 재export로 바꿔 공개 API를 의도적으로 고른다(어댑터 파서·내부 타입은 표면에서 내린다)"
