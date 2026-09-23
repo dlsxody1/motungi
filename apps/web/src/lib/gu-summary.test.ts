@@ -6,7 +6,7 @@
  * 세지 않은 걸 세었다고 하거나, 임계 미달 구를 페이지로 만들면 그게 곧 오보다.
  */
 import { describe, expect, it } from "vitest";
-import type { MockOpportunity } from "./catalog";
+import type { MockOpportunity } from "@motungi/core";
 import {
   GU_MIN_ACTIVITIES,
   SEOUL_GU,

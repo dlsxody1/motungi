@@ -18,18 +18,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { fetchOpportunities, type MockOpportunity } from "@motungi/core";
+import { FaqSection } from "@/components/faq-section";
+import { SiteFooter, TopNav, WebContainer } from "@/components/web-shell";
 import {
-  fetchOpportunities,
   GU_MIN_ACTIVITIES,
   guFaqs,
   isSeoulGu,
   summarizeGu,
   summarySentence,
   type GuSummary,
-  type MockOpportunity,
-} from "@motungi/core";
-import { FaqSection } from "@/components/faq-section";
-import { SiteFooter, TopNav, WebContainer } from "@/components/web-shell";
+} from "@/lib/gu-summary";
 import { itemListJsonLd, opportunityPath } from "@/lib/seo";
 import { supabase } from "@/lib/supabase";
 

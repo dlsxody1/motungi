@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { summarizeGu } from "@motungi/core";
+import { summarizeGu } from "@/lib/gu-summary";
 import { Logo, SafeBottom, SafeTop } from "@/components/ui";
 import { HeroPosterStage } from "@/components/hero-poster-stage";
 import { DesktopShell } from "@/components/web-shell";

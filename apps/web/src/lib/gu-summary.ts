@@ -1,6 +1,10 @@
 /**
  * 구(區) 단위 집계 — AEO용 지역 페이지의 데이터 층 (M-073).
  *
+ * `packages/core/src/gu-summary.ts`에서 이 파일로 옮겨왔다(M-114) — 전량 web의
+ * SEO 구 페이지 전용이고 mobile은 이 개념을 쓴 적이 없어, core 공개 API 표면에
+ * 있을 이유가 없었다. 근거: `docs/architecture/core-public-api.md`.
+ *
  * ## 왜 동(洞)이 아니라 구인가
  * `neighborhoods` 426행 중 418행이 구 중심좌표를 공유한다(`coord_level='sigungu'`).
  * 그래서 반경 집계를 돌리면 종로구 15개 동이 전부 같은 숫자로 나온다 — 동별 페이지를
@@ -19,8 +23,8 @@
  * 문장을 만드는 `summarySentence`도 여기 둔 이유가 그것이다 — 숫자와 문장이 갈라지면
  * 그 순간 오보가 된다.
  */
-import type { MockOpportunity } from "./catalog";
-import { normalizeGu } from "./view";
+import type { MockOpportunity } from "@motungi/core";
+import { normalizeGu } from "@motungi/core";
 
 /** 서울 25개 자치구. `neighborhoods.sigungu` distinct와 일치(2026-09-03 실측). */
 export const SEOUL_GU = [

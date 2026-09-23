@@ -9,7 +9,8 @@
  * 로그인·진단 상태에 따라 내용이 달라져 공개 색인 대상이 아니다(robots.ts와 동일 목록).
  */
 import type { MetadataRoute } from "next";
-import { fetchOpportunities, summarizeGu } from "@motungi/core";
+import { fetchOpportunities } from "@motungi/core";
+import { summarizeGu } from "@/lib/gu-summary";
 import { isExpired, opportunityPath, SITE_URL } from "@/lib/seo";
 import { supabase } from "@/lib/supabase";
 
