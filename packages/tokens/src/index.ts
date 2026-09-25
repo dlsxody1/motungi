@@ -176,6 +176,22 @@ export const typography = {
   body2: { size: 14, lineHeight: 22, weight: fontWeight.regular, tracking: "0em" },
   label: { size: 13, lineHeight: 18, weight: fontWeight.medium, tracking: "0em" },
   caption: { size: 11, lineHeight: 16, weight: fontWeight.medium, tracking: "0.02em" },
+  /**
+   * 모바일(RN) 대응 스케일 — 웹보다 살짝 크다. 의도된 차이다(DESIGN.md "Typography" 참조:
+   * 작은 화면·터치 거리 보정, HIG/Material도 더 큰 기본값을 권장). apps/mobile/ui/theme.ts의
+   * `T`가 이 값을 그대로 재노출한다 — RN Text 스타일 형태(fontSize/fontWeight 문자열/
+   * letterSpacing px)로 두어 브리지에서 변환이 필요 없게 했다.
+   */
+  mobile: {
+    display: { fontSize: 32, lineHeight: 40, fontWeight: "800", letterSpacing: -0.6 },
+    h1: { fontSize: 24, lineHeight: 31, fontWeight: "800", letterSpacing: -0.4 },
+    h2: { fontSize: 21, lineHeight: 28, fontWeight: "800", letterSpacing: -0.2 },
+    headline: { fontSize: 17, lineHeight: 24, fontWeight: "700", letterSpacing: 0 },
+    body: { fontSize: 15, lineHeight: 23, fontWeight: "400", letterSpacing: 0 },
+    bodySm: { fontSize: 14, lineHeight: 22, fontWeight: "400", letterSpacing: 0 },
+    label: { fontSize: 13, lineHeight: 18, fontWeight: "600", letterSpacing: 0 },
+    caption: { fontSize: 12, lineHeight: 16, fontWeight: "500", letterSpacing: 0 },
+  },
 } as const;
 
 /**
@@ -190,6 +206,17 @@ export const shadow = {
   card: "0 1px 2px rgba(28, 26, 23, 0.06), 0 8px 24px rgba(28, 26, 23, 0.10)",
   hero: "0 12px 32px rgba(176, 52, 78, 0.18)",
   bottomBar: "0 -1px 0 rgba(28, 26, 23, 0.10)",
+  /**
+   * 모바일(RN) 카드 그림자 — shadowOffset/elevation 형태는 웹 box-shadow와 달라 변환이
+   * 불가피하지만 값의 출처는 여기다. apps/mobile/ui/theme.ts의 `cardShadow`가 재노출한다.
+   */
+  mobileCard: {
+    color: color.neutral.ink,
+    opacity: 0.12,
+    radius: 16,
+    offset: { width: 0, height: 6 },
+    elevation: 3,
+  },
 } as const;
 
 /** 접근성 최소 히트타깃(px) — §8 */

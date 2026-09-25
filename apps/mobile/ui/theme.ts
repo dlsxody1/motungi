@@ -2,7 +2,7 @@
  * 모바일 테마 브리지 — @motungi/tokens(웹·앱 공용 소스)를 RN에서 쓰기 편한
  * 플랫한 형태로 재노출한다. 색·간격·radius 값은 웹과 100% 동일.
  */
-import { color, radius, space } from "@motungi/tokens";
+import { color, radius, shadow, space, typography } from "@motungi/tokens";
 
 export const C = {
   primary: color.brand.primary,
@@ -44,27 +44,17 @@ export const C = {
 export const S = space;
 export const R = radius;
 
-/** 타이포 프리셋 — RN Text 스타일. 웹 typography 스케일과 맞춤. */
-export const T = {
-  display: { fontSize: 32, lineHeight: 40, fontWeight: "800" as const, letterSpacing: -0.6 },
-  h1: { fontSize: 24, lineHeight: 31, fontWeight: "800" as const, letterSpacing: -0.4 },
-  h2: { fontSize: 21, lineHeight: 28, fontWeight: "800" as const, letterSpacing: -0.2 },
-  headline: { fontSize: 17, lineHeight: 24, fontWeight: "700" as const },
-  body: { fontSize: 15, lineHeight: 23, fontWeight: "400" as const },
-  bodySm: { fontSize: 14, lineHeight: 22, fontWeight: "400" as const },
-  label: { fontSize: 13, lineHeight: 18, fontWeight: "600" as const },
-  caption: { fontSize: 12, lineHeight: 16, fontWeight: "500" as const },
-} as const;
+/** 타이포 프리셋 — RN Text 스타일. 웹 대비 +2px 스케일(의도된 차이, DESIGN.md 참조). 값 출처는 tokens.typography.mobile. */
+export const T = typography.mobile;
 
 /**
- * 그림자 — iOS/Android 공통 근사치.
- * 베이지 폐기 후 흰 배경 위 흰 카드를 띄우는 주 수단이라 예전보다 진하다(0.08 → 0.12).
- * 색도 웜 브라운에서 순중립으로 — 베이지 없는 배경에서 갈색 그림자는 누렇게 보인다.
+ * 그림자 — iOS/Android 공통 근사치. shadowOffset/elevation 형태는 웹 box-shadow와 달라
+ * 변환이 불가피하지만 값 출처는 tokens.shadow.mobileCard.
  */
 export const cardShadow = {
-  shadowColor: "#1c1a17",
-  shadowOpacity: 0.12,
-  shadowRadius: 16,
-  shadowOffset: { width: 0, height: 6 },
-  elevation: 3,
+  shadowColor: shadow.mobileCard.color,
+  shadowOpacity: shadow.mobileCard.opacity,
+  shadowRadius: shadow.mobileCard.radius,
+  shadowOffset: shadow.mobileCard.offset,
+  elevation: shadow.mobileCard.elevation,
 } as const;
