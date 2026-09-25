@@ -221,23 +221,3 @@ export const shadow = {
 
 /** 접근성 최소 히트타깃(px) — §8 */
 export const MIN_HIT_TARGET = 44;
-
-export type Tokens = {
-  space: typeof space;
-  radius: typeof radius;
-  color: typeof color;
-  typography: typeof typography;
-  fontFamily: typeof fontFamily;
-  fontWeight: typeof fontWeight;
-  shadow: typeof shadow;
-};
-
-export const tokens: Tokens = {
-  space,
-  radius,
-  color,
-  typography,
-  fontFamily,
-  fontWeight,
-  shadow,
-};
