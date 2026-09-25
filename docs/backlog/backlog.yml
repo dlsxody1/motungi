@@ -2476,7 +2476,7 @@ backlog:
   - id: M-092
     title: "packages/tokens의 집계 export tokens/Tokens — 개별 토큰만 쓰이고 통합 객체는 미참조"
     priority: low
-    status: todo
+    status: doing
     scope: [packages/tokens/src/index.ts]
     done_when:
       - "tokens/Tokens export를 제거하거나 최소 1곳에서 실제로 참조하도록 배선한다(방향은 사람/planner 판단, M-067 선례와 동일 처리 방식)"
@@ -2488,6 +2488,9 @@ backlog:
       묶은 tokens 객체와 타입 Tokens(index.ts:154,164)는 정의 파일 외 어디서도
       이름으로 import되지 않음을 grep으로 직접 확인했다. DESIGN.md도 tokens/Tokens를
       API 계약으로 언급하지 않는다.
+      [2026-09-25 야간 파이프라인] M-115와 scope 겹침(둘 다 packages/tokens/src/index.ts)
+      으로 클러스터에 합류. 재검증 결과 리포 전체 grep에서 여전히 정의부 외 참조 0건 —
+      (a) 제거 방향 채택(M-067 선례와 동일). 커밋 3fad509로 dev에 SHIPPED.
 
   - id: M-093
     title: "packages/core/adapters 외부 미사용 export 2건 — M-038 export-과다개방 패턴 재발"
@@ -2961,7 +2964,7 @@ backlog:
   - id: M-115
     title: "mobile 타이포가 tokens를 import하지 않고 손으로 재작성 — 7개 역할 중 6개가 웹과 어긋남"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/mobile/ui/theme.ts, packages/tokens/src/index.ts]
     done_when:
       - "모바일 타이포가 웹보다 큰 것이 의도된 차이인지 먼저 결정한다(작은 화면·터치 거리상 정당할 수 있다 — HIG/Material도 더 큰 기본값을 권한다)"
@@ -2980,3 +2983,14 @@ backlog:
       읽는 사람은 맞춰져 있다고 믿고 검증하지 않는다 — M-104에서 mobile explore 주석이
       "웹 explore와 동일"이라 적혀 있었지만 사실이 아니었던 것과 완전히 같은 사고 유형이다.
       **이 이슈는 구현이 아니라 결정이 먼저다** — 간극을 없앨지 의도된 차이로 인정할지.
+      [2026-09-25 야간 파이프라인] **결정: 의도된 차이(done_when #1 "의도" 분기 채택).**
+      근거: DESIGN.md "Typography" 절(현재 96행)이 이미 "모바일(RN)은 약간 큰 대응값
+      (display 32/40 등, ui/theme.ts의 T)"이라고 명시하고 있어 — 이 축이 감사 시점
+      (09-11)에 놓친 1차 출처다. 값 자체(웹 대비 +2px류)도 이미 DESIGN.md 표에 있는
+      수치와 정확히 일치해 "손으로 잘못 베낀 값"이 아니라 "잘 기록됐지만 코드에는
+      토큰화되지 않은 값"이었음을 확인했다. done_when #2대로 packages/tokens/src/index.ts
+      의 typography에 mobile 서브스케일을, shadow에 mobileCard를 추가하고
+      apps/mobile/ui/theme.ts의 T·cardShadow가 이를 그대로 재노출하도록 배선했다(숫자는
+      기존과 동일 — 시각 회귀 없음). theme.ts:47의 거짓 주석("웹과 맞춤")도 사실대로
+      고쳤다. M-092와 scope 겹침(같은 파일 packages/tokens/src/index.ts)으로 클러스터에
+      합류시켰다. 커밋 e6e30e0로 dev에 SHIPPED.
