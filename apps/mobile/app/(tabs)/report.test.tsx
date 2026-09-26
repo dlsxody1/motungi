@@ -90,6 +90,18 @@ describe("ReportScreen", () => {
     expect(screen.getByText("60초 진단하기")).toBeInTheDocument();
   });
 
+  it("catalogStatus가 idle이면(조회 중) 빈 상태 문구 대신 스켈레톤을 렌더한다(M-088)", () => {
+    state.catalogStatus = "idle";
+    state.results = [];
+    state.catalog = [];
+
+    const { container } = render(<ReportScreen />);
+
+    expect(container.querySelectorAll('[data-testid="report-skeleton"]')).toHaveLength(1);
+    expect(screen.queryByText("아직 추천할 활동이 없어요")).toBeNull();
+    expect(screen.queryByText("60초 진단하기")).toBeNull();
+  });
+
   it("catalogStatus가 error이면 에러 문구+다시 시도 CTA를 렌더한다", () => {
     state.catalogStatus = "error";
     state.results = [];

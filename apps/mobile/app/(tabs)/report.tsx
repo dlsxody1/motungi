@@ -5,6 +5,7 @@ import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
 import { Button, Tag, Txt } from "@/ui/components";
 import { Location, Refresh, Share } from "@/ui/icons";
+import { ReportSkeleton } from "@/ui/report-skeleton";
 import { Thumbnail } from "@/ui/thumbnail";
 import { C, R, cardShadow } from "@/ui/theme";
 
@@ -42,8 +43,11 @@ export default function ReportScreen() {
     }).catch(() => {});
   };
 
-  // 데이터 없으면 상태 화면.
+  // 데이터 없으면 상태 화면. catalogStatus는 조회가 끝나야 ok/empty/error로 바뀌므로
+  // "idle"이 곧 로딩이다 — 구분하지 않으면 조회 중에도 "아직 추천할 활동이 없어요"가
+  // 떠서 없다고 거짓말한다(M-088, explore.tsx M-054와 동일 패턴).
   if (!onePick) {
+    if (catalogStatus === "idle") return <ReportSkeleton dongName={dongName} />;
     const isError = catalogStatus === "error" || catalogStatus === "unconfigured";
     return (
       <View style={styles.emptyWrap}>
