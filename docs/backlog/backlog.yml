@@ -2401,7 +2401,7 @@ backlog:
   - id: M-088
     title: "모바일 리포트 화면이 로딩 중(idle)과 실제 빈 상태를 구분하지 않음"
     priority: low
-    status: todo
+    status: doing
     scope: ["apps/mobile/app/(tabs)/report.tsx"]
     done_when:
       - "catalogStatus === 'idle'일 때 빈 상태 문구 대신 스켈레톤(또는 로딩 인디케이터)을 렌더한다"
@@ -2414,6 +2414,18 @@ backlog:
       "아직 추천할 활동이 없어요"라는 거짓 정보가 노출된다. 탐색 화면은 이미 이
       정확한 패턴을 M-054로 고쳤는데(idle→스켈레톤, 빈 결과→문구) 같은 파이프라인을
       쓰는 리포트 화면은 고쳐지지 않았다.
+      [2026-09-26 야간 파이프라인 완료] apps/mobile/ui/report-skeleton.tsx 신설
+      (explore-skeleton.tsx의 Bar 정적 블록 패턴을 원픽 히어로+관련 행 골격에 맞게
+      이식, pulse 애니메이션 없음). report.tsx의 !onePick 분기 최상단에
+      `if (catalogStatus === "idle") return <ReportSkeleton dongName={dongName} />;`
+      추가로 idle→스켈레톤, 그 외(empty/error/unconfigured)→기존 문구 분기를 유지.
+      테스트: report-skeleton.test.tsx 신규 2건(렌더 스모크) + report.test.tsx에
+      idle 케이스 1건 추가(스켈레톤 렌더 + 빈 상태 문구·CTA 미노출 assert). 기존
+      "empty" 케이스는 그대로 둬 idle과 실제 빈 결과가 서로 다른 화면임을 검증.
+      mobile 24파일 187/187 통과, 4패키지 typecheck 클린. bash scripts/gate.sh
+      최종 PASS(typecheck·test·lint·secrets·pure-tests). 커밋 ba22cd8, dev 직접
+      커밋(트렁크 모델, PR 없음). qa PUSH GATE: PASS. status는 사람의 최종 리뷰
+      전까지 doing으로 둠(done 승격은 사람 담당).
 
   - id: M-089
     title: "모바일 보관함 카드에 썸네일 이미지가 없음"
