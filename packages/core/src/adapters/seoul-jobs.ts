@@ -61,7 +61,7 @@ export function parseShiftHours(time?: string): { start: number; end: number } |
  *
  * 시간 미상은 **제외**한다 — 모르는 걸 퇴근 후라고 우기면 낮 근무가 섞여 들어온다.
  */
-export const AFTER_WORK_END_HOUR = 19;
+const AFTER_WORK_END_HOUR = 19;
 
 export function isAfterWorkShift(time?: string): boolean {
   const shift = parseShiftHours(time);

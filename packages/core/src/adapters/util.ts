@@ -211,7 +211,7 @@ export function parsePoint(lat?: string, lng?: string): { lat: number; lng: numb
  *  - 드물게 "<br>"만 있는 빈 값
  * 형태를 구분해 돌려주고, 어느 쪽도 아니면 전부 undefined다.
  */
-export interface TrailGuide {
+interface TrailGuide {
   /** 시점 + 교통편(있으면 한 줄로 합침). */
   start?: string;
   /** 종점. */
