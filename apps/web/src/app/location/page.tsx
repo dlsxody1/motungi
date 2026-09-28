@@ -1,58 +1,29 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  LocationIcon,
-  SearchIcon,
-} from "@/components/icons";
-import {
-  Button,
-  Chip,
-  MobileScreen,
-  SafeBottom,
-  SafeTop,
-} from "@/components/ui";
-import { DesktopShell, WebContainer } from "@/components/web-shell";
-import {
-  DEFAULT_NEIGHBORHOOD,
-  type NeighborhoodPick,
-  POPULAR_NEIGHBORHOODS,
-} from "@/data/opportunities";
+import { Button } from "@/components/ui";
+import { LocationDesktop } from "@/components/location-desktop";
+import { LocationMobile } from "@/components/location-mobile";
+import { DEFAULT_NEIGHBORHOOD, type NeighborhoodPick } from "@/data/opportunities";
+import type { LocationPickSource } from "@/data/location";
 import { useGeolocationPick } from "@/hooks/useGeolocationPick";
 import { useNeighborhoodSearch } from "@/hooks/useNeighborhoodSearch";
 import { useAppStore } from "@/store/useAppStore";
 
-/** 검색 결과 → 선택 객체. 좌표를 그대로 실어 앵커에 주입 가능하게. */
-type SearchItem = {
-  admCode: string;
-  dongName: string;
-  sigungu: string;
-  lat: number;
-  lng: number;
-};
-
-/** 선택이 어디서 왔는지 — 배너·위치카드가 출처를 눈으로 알려주기 위한 태그. */
-type PickSource = "default" | "current" | "search" | "popular";
-
-function itemToPick(it: SearchItem): NeighborhoodPick {
-  return {
-    admCode: it.admCode,
-    dongName: it.dongName,
-    region: it.sigungu,
-    point: { lat: it.lat, lng: it.lng },
-  };
-}
-
-/** A2 · 위치 / 동네 설정 — 반응형 */
+/**
+ * A2 · 위치 / 동네 설정 — 반응형.
+ *
+ * **이 파일은 컨테이너다** — 훅·상태·핸들러만 들고 마크업은 두 자식이 그린다
+ * (선례: `app/report/page.tsx`). `md:hidden`은 CSS라 모바일·데스크톱 트리가
+ * **둘 다 마운트**된다. 권한 프라임 다이얼로그는 두 트리 어디에도 속하지 않는
+ * 단일 인스턴스라 여기 그대로 둔다.
+ */
 export default function LocationPage() {
   const router = useRouter();
   const setAnchor = useAppStore((s) => s.setAnchor);
   const [selected, setSelected] = useState<NeighborhoodPick>(DEFAULT_NEIGHBORHOOD);
-  const [source, setSource] = useState<PickSource>("default");
+  const [source, setSource] = useState<LocationPickSource>("default");
   // 디바운스·IME 보류·요청 취소는 훅이 소유한다(NeighborhoodMenu와 같은 구현을 공유).
   const search = useNeighborhoodSearch();
   const { query, results, searching, showDropdown } = search;
@@ -72,7 +43,7 @@ export default function LocationPage() {
     onNeedsPrime: () => primeRef.current?.showModal(),
   });
 
-  const choose = (pick: NeighborhoodPick, from: PickSource) => {
+  const choose = (pick: NeighborhoodPick, from: LocationPickSource) => {
     setSelected(pick);
     setSource(from);
     clearError();
@@ -89,7 +60,6 @@ export default function LocationPage() {
     router.push("/diagnosis");
   };
 
-
   // ── 위치 카드: 잡힌 위치를 카드 자체가 흡수해서 상태를 보여준다 ──
   const locatedHere = source === "current";
   const cardTitle = locating
@@ -103,208 +73,30 @@ export default function LocationPage() {
       ? "다른 위치면 다시 눌러 찾기"
       : "지금 있는 곳으로 동네를 잡아드려요";
 
-  /** 인기 동네 칩 (검색어 없을 때). */
-  const popularChips = (iconSize: number) => (
-    <div className="flex flex-wrap gap-2">
-      {POPULAR_NEIGHBORHOODS.map((n) => {
-        const active = source === "popular" && selected.dongName === n.dongName;
-        return (
-          <Chip key={n.dongName} active={active} onClick={() => choose(n, "popular")}>
-            {active && <LocationIcon size={iconSize} />}
-            {n.dongName}
-          </Chip>
-        );
-      })}
-    </div>
-  );
-
-  /** 검색 결과 드롭다운 (검색어 있을 때). */
-  const dropdown = (
-    <div className="mt-2 overflow-hidden rounded-xl border border-line-alt bg-surface shadow-card md:shadow-web">
-      {searching && results.length === 0 ? (
-        <p className="px-4 py-3 text-[14px] text-muted">검색 중…</p>
-      ) : results.length > 0 ? (
-        <>
-          <ul role="listbox" aria-label="동네 검색 결과">
-            {results.map((it) => (
-              <li key={it.admCode} role="option" aria-selected={false}>
-                <button
-                  onClick={() => choose(itemToPick(it), "search")}
-                  className="tap-safe flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-surface-alt"
-                >
-                  <LocationIcon size={16} className="shrink-0 text-faint" />
-                  <span className="text-[15px] font-medium text-ink">{it.dongName}</span>
-                  <span className="text-[13px] text-muted">{it.sigungu}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <p className="border-t border-line-alt px-4 py-2.5 text-[12px] text-muted">
-            고른 동네가 <b className="font-semibold text-label">추천의 기준점</b>이 돼요. 그 주변까지
-            함께 살펴드려요.
-          </p>
-        </>
-      ) : (
-        <p className="px-4 py-3 text-[14px] text-muted">검색 결과가 없어요. 다른 동네나 구 이름으로 검색해보세요.</p>
-      )}
-    </div>
-  );
+  const sharedProps = {
+    selected,
+    source,
+    locating,
+    geoError,
+    locatedHere,
+    cardTitle,
+    cardSub,
+    query,
+    results,
+    searching,
+    showDropdown,
+    onSetQuery: search.setQuery,
+    onCompositionStart: search.onCompositionStart,
+    onCompositionEnd: search.onCompositionEnd,
+    onRequestLocation: requestLocation,
+    onChoose: choose,
+    onStart: start,
+  };
 
   return (
     <>
-      {/* ── 모바일 ── */}
-      <div className="md:hidden">
-        <MobileScreen>
-          <div className="flex flex-1 flex-col bg-bg">
-            <SafeTop />
-            <div className="flex flex-1 flex-col overflow-y-auto px-6 pb-4">
-              <Link href="/" aria-label="홈으로" className="tap-safe -ml-2 flex w-11 items-center text-ink">
-                <ChevronLeftIcon size={24} />
-              </Link>
-
-              <h1 className="mt-2 text-[26px] font-extrabold leading-tight tracking-[-0.02em] text-ink">
-                어느 동네 기준으로
-                <br />
-                찾아드릴까요?
-              </h1>
-              <p className="mt-2 text-[15px] text-muted">설정한 동네가 추천의 기준이 돼요.</p>
-
-              <p className="mb-2.5 mt-6 text-[13px] font-semibold text-label">최근 · 인기 동네</p>
-              {popularChips(14)}
-
-              <button
-                onClick={requestLocation}
-                disabled={locating}
-                aria-live="polite"
-                className="mt-6 flex items-center gap-3 rounded-xl border border-line-alt bg-surface p-4 text-left shadow-card transition-colors disabled:opacity-60"
-              >
-                <span
-                  className={`grid size-11 place-items-center rounded-full transition-colors ${
-                    locatedHere ? "bg-primary text-white" : "bg-tint text-primary"
-                  }`}
-                >
-                  <LocationIcon size={22} />
-                </span>
-                <span className="flex-1">
-                  <span className="block text-[15px] font-bold text-ink">{cardTitle}</span>
-                  <span className="block text-[13px] text-muted">{cardSub}</span>
-                </span>
-                {locatedHere ? (
-                  <span className="text-[13px] font-semibold text-primary-deep">다시 찾기</span>
-                ) : (
-                  <ChevronRightIcon size={20} className="text-faint" />
-                )}
-              </button>
-
-              {geoError && (
-                <p role="alert" className="mt-3 text-[13px] font-medium text-primary-deep">
-                  {geoError}
-                </p>
-              )}
-
-              <div className="my-5 flex items-center gap-3">
-                <span className="h-px flex-1 bg-line" />
-                <span className="text-[12px] text-muted">또는 직접 선택</span>
-                <span className="h-px flex-1 bg-line" />
-              </div>
-
-              <div className="flex h-[52px] items-center gap-2 rounded-xl border border-line-alt bg-surface px-4 shadow-card">
-                <SearchIcon size={20} className="text-faint" />
-                <input
-                  value={query}
-                  onChange={(e) => search.setQuery(e.target.value)}
-                  onCompositionStart={search.onCompositionStart}
-                  onCompositionEnd={search.onCompositionEnd}
-                  aria-label="동네 또는 구 검색"
-                  className="flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-muted"
-                  placeholder="동네 또는 구 검색 (예: 역삼동, 강남구)"
-                />
-              </div>
-
-              {showDropdown && dropdown}
-            </div>
-
-            <div className="shrink-0 px-6 pb-2 pt-2">
-              <Button onClick={start}>{selected.dongName}으로 시작하기</Button>
-            </div>
-            <SafeBottom />
-          </div>
-        </MobileScreen>
-      </div>
-
-      {/* ── 데스크탑 ── */}
-      <DesktopShell active="home" variant="marketing" footer={false}>
-        <WebContainer className="py-14">
-          <div className="mx-auto max-w-[560px]">
-            {/* '홈으로' 뒤로가기 링크를 뺐다 — 상단 내비에 이미 '홈'이 있어
-                같은 목적지로 가는 링크가 한 화면에 둘이었다(모바일은 내비가 없어 유지). */}
-            <h1 className="text-[40px] font-extrabold leading-[1.2] tracking-[-0.025em] text-ink">
-              어느 동네 기준으로
-              <br />
-              찾아드릴까요?
-            </h1>
-            <p className="mt-3 text-[17px] text-muted">설정한 동네가 모든 추천의 기준이 돼요.</p>
-
-            <p className="mb-3 mt-8 text-[14px] font-semibold text-label">최근 · 인기 동네</p>
-            {popularChips(15)}
-
-            <button
-              onClick={requestLocation}
-              disabled={locating}
-              aria-live="polite"
-              className="mt-8 flex w-full items-center gap-4 rounded-[18px] border border-line-alt bg-surface p-5 text-left shadow-web transition-shadow hover:shadow-web-lift disabled:opacity-60"
-            >
-              <span
-                className={`grid size-12 place-items-center rounded-full transition-colors ${
-                  locatedHere ? "bg-primary text-white" : "bg-tint text-primary"
-                }`}
-              >
-                <LocationIcon size={24} />
-              </span>
-              <span className="flex-1">
-                <span className="block text-[16px] font-bold text-ink">{cardTitle}</span>
-                <span className="block text-[13px] text-muted">{cardSub}</span>
-              </span>
-              {locatedHere ? (
-                <span className="text-[14px] font-semibold text-primary-deep">다시 찾기</span>
-              ) : (
-                <ChevronRightIcon size={22} className="text-faint" />
-              )}
-            </button>
-
-            {geoError && (
-              <p role="alert" className="mt-3 text-[14px] font-medium text-primary-deep">
-                {geoError}
-              </p>
-            )}
-
-            <div className="my-6 flex items-center gap-3">
-              <span className="h-px flex-1 bg-line" />
-              <span className="text-[13px] text-muted">또는 직접 선택</span>
-              <span className="h-px flex-1 bg-line" />
-            </div>
-
-            <div className="flex h-14 items-center gap-2.5 rounded-[14px] border border-line-alt bg-surface px-4 shadow-web">
-              <SearchIcon size={20} className="text-faint" />
-              <input
-                value={query}
-                onChange={(e) => search.setQuery(e.target.value)}
-                onCompositionStart={search.onCompositionStart}
-                onCompositionEnd={search.onCompositionEnd}
-                aria-label="동네 또는 구 검색"
-                className="flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-muted"
-                placeholder="동네 또는 구 검색 (예: 역삼동, 강남구)"
-              />
-            </div>
-
-            {showDropdown && dropdown}
-
-            <Button onClick={start} className="mt-8 h-[56px] w-full text-[17px]">
-              {selected.dongName}으로 시작하기
-            </Button>
-          </div>
-        </WebContainer>
-      </DesktopShell>
+      <LocationMobile {...sharedProps} />
+      <LocationDesktop {...sharedProps} />
 
       {/* 권한 프롬프트 직전 설명. 모바일·데스크탑 레이아웃이 공유한다.
           native <dialog>라 top layer 렌더 + ESC/백드롭 닫기가 공짜다. */}

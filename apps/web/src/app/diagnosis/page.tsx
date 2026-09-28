@@ -1,73 +1,29 @@
 "use client";
 
 import { draftToAnswers } from "@motungi/core";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CheckCircleIcon, CheckIcon, ChevronLeftIcon, CloseIcon, TimerIcon } from "@/components/icons";
-import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
-import { WebLogo } from "@/components/web-shell";
+import { DiagnosisDesktop } from "@/components/diagnosis-desktop";
+import { DiagnosisMobile } from "@/components/diagnosis-mobile";
+import { DIAGNOSIS_MULTI_SELECT_STEP, DIAGNOSIS_QUESTIONS } from "@/data/diagnosis";
 import { useAppStore } from "@/store/useAppStore";
 
-/** 3문항 정의 — @motungi/core 의 DIAGNOSIS_STEPS(interests·timeSlot·energy) 순서와 맞춤. */
-type Option = { value: string; title: string; desc: string; soon?: boolean };
-type Question = {
-  eyebrow: string;
-  short: string;
-  title: string;
-  hint: string;
-  options: Option[];
-};
-
-const QUESTIONS: Question[] = [
-  {
-    eyebrow: "Q1. 관심사",
-    short: "관심사",
-    title: "퇴근하고 뭐 하고\n싶으세요?",
-    hint: "끌리는 걸 하나 골라주세요. 그쪽부터 골라드려요.",
-    options: [
-      { value: "culture", title: "문화·공연", desc: "전시 · 공연 · 영화" },
-      { value: "active", title: "운동·산책", desc: "러닝 · 걷기길 · 클래스" },
-      { value: "food", title: "먹거리·마켓", desc: "맛집 · 야시장 · 플리마켓" },
-      { value: "side_job", title: "동네 소일거리", desc: "짧게 · 부담 없이" },
-    ],
-  },
-  {
-    eyebrow: "Q2. 시간대",
-    short: "시간대",
-    title: "주로 언제\n시간이 나세요?",
-    hint: "퇴근 후·주말 중 즐기기 좋은 걸 맞춰드려요.",
-    options: [
-      { value: "weekday_evening", title: "평일 저녁", desc: "퇴근 후 2~3시간" },
-      { value: "weekend", title: "주말", desc: "토·일 오전/오후" },
-      { value: "flexible", title: "유동적", desc: "그때그때 가능한 시간" },
-    ],
-  },
-  {
-    eyebrow: "Q3. 에너지",
-    short: "오늘 에너지",
-    title: "요즘 에너지는 어떠세요?",
-    hint: "무리 없는 강도로 맞춰드려요.",
-    options: [
-      { value: "drained", title: "방전형", desc: "가볍게 · 앉아서 쉬듯" },
-      { value: "moderate", title: "보통", desc: "적당한 활동까지 OK" },
-      { value: "active", title: "활동형", desc: "몸 좀 움직이고 싶어요" },
-    ],
-  },
-];
-
-/** Q1(관심사)만 다중선택 — Q2·Q3는 단일선택 그대로(M-049). */
-const MULTI_SELECT_STEP = 0;
-
+/**
+ * A1 · 60초 진단(3문항) — 반응형.
+ *
+ * **이 파일은 컨테이너다** — 훅·상태·핸들러만 들고 마크업은 두 자식이 그린다
+ * (질문 정의는 두 자식이 함께 참조하므로 `data/diagnosis.ts`에 있다).
+ * `md:hidden`은 CSS라 모바일·데스크톱 트리가 **둘 다 마운트**된다(선례: `app/report/page.tsx`).
+ */
 export default function DiagnosisPage() {
   const router = useRouter();
   const saveAnswers = useAppStore((s) => s.setAnswers);
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
 
-  const q = QUESTIONS[step]!;
-  const total = QUESTIONS.length;
-  const isMultiStep = step === MULTI_SELECT_STEP;
+  const question = DIAGNOSIS_QUESTIONS[step]!;
+  const total = DIAGNOSIS_QUESTIONS.length;
+  const isMultiStep = step === DIAGNOSIS_MULTI_SELECT_STEP;
   const stepAnswer = answers[step];
   const selectedValues = isMultiStep && Array.isArray(stepAnswer) ? stepAnswer : [];
   const hasSelection = isMultiStep ? selectedValues.length > 0 : !!stepAnswer;
@@ -87,9 +43,9 @@ export default function DiagnosisPage() {
     if (soon) return;
     if (isMultiStep) {
       setAnswers((a) => {
-        const cur = Array.isArray(a[MULTI_SELECT_STEP]) ? (a[MULTI_SELECT_STEP] as string[]) : [];
+        const cur = Array.isArray(a[DIAGNOSIS_MULTI_SELECT_STEP]) ? (a[DIAGNOSIS_MULTI_SELECT_STEP] as string[]) : [];
         const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
-        return { ...a, [MULTI_SELECT_STEP]: next };
+        return { ...a, [DIAGNOSIS_MULTI_SELECT_STEP]: next };
       });
       return;
     }
@@ -102,225 +58,32 @@ export default function DiagnosisPage() {
 
   return (
     <>
-      {/* ── 모바일 ── */}
-      <div className="md:hidden" data-testid="diagnosis-mobile">
-        <MobileScreen>
-          <div className="flex flex-1 flex-col bg-bg">
-            <SafeTop />
-            <div className="flex items-center gap-3 px-6 py-2">
-              <button
-                onClick={goBack}
-                aria-label="뒤로가기"
-                className="tap-safe -ml-2 flex h-9 w-9 items-center justify-center text-ink"
-              >
-                <ChevronLeftIcon size={22} />
-              </button>
-              <div className="h-[6px] flex-1 overflow-hidden rounded-full bg-line-alt">
-                <div
-                  className="h-full rounded-full bg-primary transition-all duration-300"
-                  style={{ width: `${((step + 1) / total) * 100}%` }}
-                />
-              </div>
-              <span className="text-[13px] font-semibold tabular-nums text-muted">
-                {step + 1} / {total}
-              </span>
-            </div>
-
-            {/* MobileScreen이 h-dvh 고정이라 넘치는 내용은 여기서 스크롤돼야 한다
-                (안 그러면 작은 화면에서 마지막 선택지에 닿을 수 없다). */}
-            <div className="flex flex-1 flex-col overflow-y-auto px-6 pt-4">
-              <p className="text-[13px] font-bold text-primary">{q.eyebrow}</p>
-              <h1 className="mt-1.5 whitespace-pre-line text-[24px] font-extrabold leading-snug tracking-[-0.01em] text-ink">
-                {q.title}
-              </h1>
-              <p className="mt-2 text-[14px] text-muted">{q.hint}</p>
-
-              <div className="mt-5 space-y-3">
-                {q.options.map((o) => {
-                  const on = isMultiStep ? selectedValues.includes(o.value) : stepAnswer === o.value;
-                  return (
-                    <button
-                      key={o.value}
-                      onClick={() => pick(o.value, o.soon)}
-                      disabled={o.soon}
-                      className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
-                        o.soon
-                          ? "border-line-alt bg-gray-100 text-faint"
-                          : on
-                            ? "border-primary bg-surface shadow-card"
-                            : "border-transparent bg-surface shadow-card"
-                      }`}
-                    >
-                      <span className="flex-1">
-                        <span className={`block text-[16px] font-bold ${o.soon ? "text-faint" : "text-ink"}`}>
-                          {o.title}
-                        </span>
-                        {o.desc && <span className="mt-0.5 block text-[13px] text-muted">{o.desc}</span>}
-                      </span>
-                      {o.soon ? (
-                        <span className="rounded-md bg-surface px-2 py-1 text-[11px] font-semibold text-faint">
-                          준비중
-                        </span>
-                      ) : (
-                        on && <CheckCircleIcon size={22} className="text-primary" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="mt-auto pb-6" />
-
-              <button
-                onClick={goNext}
-                disabled={!hasSelection}
-                className="tap-safe mb-3 flex h-[52px] w-full items-center justify-center rounded-xl bg-primary text-[16px] font-bold text-white disabled:opacity-40"
-              >
-                {step === total - 1 ? "결과 보기" : "다음"}
-              </button>
-            </div>
-            <SafeBottom />
-          </div>
-        </MobileScreen>
-      </div>
-
-      {/* ── 데스크탑 ── */}
-      <div className="hidden min-h-dvh flex-col bg-bg md:flex" data-testid="diagnosis-desktop">
-        {/* 슬림 앱바 */}
-        <header className="flex h-[66px] items-center justify-between border-b border-line-alt bg-surface px-10">
-          <WebLogo size={32} />
-          <span className="flex items-center gap-1.5 text-[15px] font-bold text-primary">
-            <TimerIcon size={18} /> 60초 진단
-          </span>
-          <Link href="/location" className="flex items-center gap-1 text-[14px] font-semibold text-muted hover:text-ink">
-            나가기 <CloseIcon size={18} />
-          </Link>
-        </header>
-
-        {/* 진행바 */}
-        <div className="h-[6px] bg-track">
-          <div
-            className="h-full bg-primary transition-all duration-300"
-            /* 진행바는 솔리드 — sun(#e8834a)은 흰 글씨를 못 얹는 장식색이고,
-               그라데이션은 랜딩 전용이다. 진행률은 길이가 말하지 색이 말하지 않는다. */
-            style={{ width: `${((step + 1) / total) * 100}%` }}
-          />
-        </div>
-
-        <div className="mx-auto flex w-full max-w-[1280px] flex-1 gap-14 px-16 pb-15 pt-13">
-          {/* 스텝 레일 */}
-          <aside className="w-[264px] shrink-0 self-start rounded-2xl bg-surface p-6 shadow-web">
-            <p className="text-[13px] font-extrabold tracking-[0.06em] text-primary">
-              STEP {step + 1} / {total}
-            </p>
-            <div className="mt-4 space-y-1">
-              {QUESTIONS.map((qq, i) => {
-                const done = i < step;
-                const active = i === step;
-                return (
-                  <div
-                    key={qq.short}
-                    className={`flex items-center gap-3 rounded-xl px-3.5 py-3 ${
-                      active ? "border border-primary/30 bg-surface shadow-[0_2px_8px_rgba(85,52,30,0.05)]" : ""
-                    }`}
-                  >
-                    <span
-                      className={`grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-bold ${
-                        done
-                          ? "bg-mint-tint text-mint"
-                          : active
-                            ? "bg-primary text-white"
-                            : "border-[1.5px] border-line text-faint"
-                      }`}
-                    >
-                      {done ? <CheckIcon size={15} /> : i + 1}
-                    </span>
-                    <span className="min-w-0">
-                      <span
-                        className={`block truncate text-[14px] font-semibold ${
-                          active ? "text-ink" : done ? "text-label" : "text-faint"
-                        }`}
-                      >
-                        {qq.short}
-                      </span>
-                      {done && answers[i] && (
-                        <span className="block truncate text-[12px] text-mint">
-                          {Array.isArray(answers[i])
-                            ? (answers[i] as string[])
-                                .map((v) => qq.options.find((o) => o.value === v)?.title)
-                                .filter(Boolean)
-                                .join(", ")
-                            : qq.options.find((o) => o.value === answers[i])?.title}
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </aside>
-
-          {/* 질문 영역 */}
-          <div className="max-w-[720px] flex-1">
-            <p className="text-[15px] font-semibold text-primary">{q.eyebrow}</p>
-            <h1 className="mt-2 whitespace-pre-line text-[34px] font-extrabold leading-[1.28] tracking-[-0.025em] text-ink">
-              {q.title}
-            </h1>
-            <p className="mt-2.5 text-[16px] leading-relaxed text-muted">{q.hint}</p>
-
-            <div className="mt-7 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-              {q.options.map((o) => {
-                const on = isMultiStep ? selectedValues.includes(o.value) : stepAnswer === o.value;
-                return (
-                  <button
-                    key={o.value}
-                    onClick={() => pick(o.value, o.soon)}
-                    disabled={o.soon}
-                    className={`relative flex items-center gap-3.5 rounded-2xl border p-[22px] text-left transition-all ${
-                      o.soon
-                        ? "cursor-not-allowed border-line-alt bg-gray-100 text-faint"
-                        : on
-                          ? "border-[1.5px] border-primary bg-surface shadow-web"
-                          : "border-[1.5px] border-transparent bg-surface hover:border-line"
-                    }`}
-                  >
-                    <span className="flex-1">
-                      <span className={`block text-[17px] font-bold ${o.soon ? "text-faint" : "text-ink"}`}>
-                        {o.title}
-                      </span>
-                      {o.desc && <span className="mt-0.5 block text-[13px] text-muted">{o.desc}</span>}
-                    </span>
-                    {o.soon ? (
-                      <span className="rounded-md bg-surface px-2 py-1 text-[11px] font-semibold text-faint">
-                        준비중
-                      </span>
-                    ) : (
-                      on && <CheckCircleIcon size={22} className="shrink-0 text-primary" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-10 flex items-center gap-3">
-              <button
-                onClick={goBack}
-                className="flex h-[52px] items-center rounded-xl border border-line bg-surface px-6 text-[15px] font-semibold text-label hover:border-faint"
-              >
-                이전
-              </button>
-              <div className="flex-1" />
-              <button
-                onClick={goNext}
-                disabled={!hasSelection}
-                className="flex h-[52px] w-[220px] items-center justify-center rounded-xl bg-primary text-[16px] font-bold text-white transition-colors hover:bg-primary-deep disabled:opacity-40"
-              >
-                {step === total - 1 ? "결과 보기" : "다음"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <DiagnosisMobile
+        question={question}
+        step={step}
+        total={total}
+        isMultiStep={isMultiStep}
+        selectedValues={selectedValues}
+        stepAnswer={stepAnswer}
+        hasSelection={hasSelection}
+        onPick={pick}
+        onGoBack={goBack}
+        onGoNext={goNext}
+      />
+      <DiagnosisDesktop
+        questions={DIAGNOSIS_QUESTIONS}
+        question={question}
+        step={step}
+        total={total}
+        isMultiStep={isMultiStep}
+        selectedValues={selectedValues}
+        stepAnswer={stepAnswer}
+        answers={answers}
+        hasSelection={hasSelection}
+        onPick={pick}
+        onGoBack={goBack}
+        onGoNext={goNext}
+      />
     </>
   );
 }
