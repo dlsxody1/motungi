@@ -2645,7 +2645,7 @@ backlog:
   - id: M-102
     title: "300줄 초과 잔여 2파일 분할 — diagnosis·location (poster-ring·web-landing·report는 완료)"
     priority: low
-    status: todo
+    status: doing
     scope: [apps/web/src/app/diagnosis/page.tsx, apps/web/src/app/location/page.tsx]
     done_when:
       - "각 파일이 300줄(주석·공백 제외) 이하로 내려가거나, 내려갈 수 없는 이유를 파일 상단 주석으로 남긴다"
@@ -2670,7 +2670,7 @@ backlog:
   - id: M-103
     title: "max-lines는 error로 승격 가능 · complexity/max-lines-per-function은 임계값 재설정 필요"
     priority: low
-    status: todo
+    status: doing
     scope: [apps/web/.eslintrc.json]
     done_when:
       - "max-lines(파일 300줄)는 잔여 2건(diagnosis·location)을 처리한 뒤 error로 승격한다"
