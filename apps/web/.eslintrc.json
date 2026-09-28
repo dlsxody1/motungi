@@ -14,9 +14,9 @@
         ]
       }
     ],
-    "max-lines": ["warn", { "max": 300, "skipBlankLines": true, "skipComments": true }],
-    "max-lines-per-function": ["warn", { "max": 150, "skipComments": true }],
-    "complexity": ["warn", 15]
+    "max-lines": ["error", { "max": 300, "skipBlankLines": true, "skipComments": true }],
+    "max-lines-per-function": ["warn", { "max": 200, "skipComments": true }],
+    "complexity": ["warn", 25]
   },
   "overrides": [
     {

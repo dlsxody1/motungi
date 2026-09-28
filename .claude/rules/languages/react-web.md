@@ -53,6 +53,23 @@ app/ → components/ → hooks/ → lib/ · @motungi/core     (store/는 hooks �
 - 격리는 주장하지 말고 **측정**한다 — `*/render-isolation.test.tsx`가 실제 렌더 횟수를 센다.
   "격리됐다"와 "바뀌어야 할 때는 바뀐다"를 항상 쌍으로 단언할 것.
 
+## ESLint 규모 규율 (max-lines · max-lines-per-function · complexity)
+`apps/web/.eslintrc.json`의 세 규칙은 성격이 다르므로 취급도 다르다 (M-103, 2026-09-28).
+- **`max-lines`(파일 300줄)는 `error`다.** 파일 분할은 실제로 듣는다 — M-102에서 diagnosis·
+  location을 컨테이너+모바일/데스크톱 뷰로 쪼개자 경고 7건 → 0건. 새로 300줄을 넘기면 게이트가
+  막는다: 마크업을 `components/*-mobile.tsx`·`*-desktop.tsx`로 쪼개거나(선례:
+  `report-mobile.tsx`/`report-desktop.tsx`, `diagnosis-mobile.tsx`/`diagnosis-desktop.tsx`), 정말
+  못 쪼개면 `poster-ring.tsx`처럼 파일 상단에 이유를 남기고 개별 `eslint-disable`을 쓴다 — 규칙을
+  전역으로 끄지 마라.
+- **`max-lines-per-function`(200)·`complexity`(25)는 여전히 `warn`이고, 승격하지 않는다.**
+  M-099에서 explore의 도메인 로직을 core로 전부 들어냈는데도 complexity가 31 → 31로 그대로였다 —
+  출처가 계산이 아니라 JSX 조건부 렌더(`&&`/`??`/`||`)였기 때문이다. 이 두 규칙은 **JSX를 쓰는
+  React 컴포넌트에서 구조적으로 임계를 넘는다**: 더 쪼개도 분기 총량이 자식으로 옮겨갈 뿐이고,
+  숫자를 맞추려 들면 재사용되지 않는 파편 컴포넌트만 늘어난다(과분할 — `gate.sh`가 커버리지 %
+  게이트를 일부러 안 넣은 것과 같은 이유). 임계값(150→200, 15→25)은 M-102 이후 실측
+  분포(설명 6개 파일이 150~264줄, complexity 최댓값이 explore의 31)에서 "구조적으로 못 피하는
+  JSX 분기"와 "진짜 커진 함수"를 가르는 지점으로 재보정한 것이다 — 0으로 밀어붙이지 않는다.
+
 ## 스킬 (도메인 라우팅)
 - 컴포넌트/훅/서버·클라 경계 → **react-patterns**
 - 큐레이션 피드·카드 UI·상태·성능·토큰 → **frontend-patterns**
