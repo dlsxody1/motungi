@@ -2856,7 +2856,7 @@ backlog:
   - id: M-110
     title: "동네 폴백 문자열 \"우리 동네\"가 11곳에 복붙 — core로 통합"
     priority: low
-    status: todo
+    status: doing
     scope: [packages/core/src/view.ts]
     done_when:
       - "anchors에서 표시용 동네 이름을 만드는 순수 함수를 core에 추가한다(예: displayDongName)"
@@ -2869,6 +2869,9 @@ backlog:
       mobile: (tabs)/explore · (tabs)/report · (tabs)/saved · loading · opportunity
       작아 보이지만 11곳이면 갈라짐이 시작될 만한 숫자이고, M-104(검색 로직 복붙)와
       같은 패턴의 씨앗이다. 문구를 바꿀 일이 생기면 그때 11곳을 다 찾아야 한다.
+      [2026-09-29 야간 파이프라인] shipped(커밋 e96f9c2). core `displayDongName(dongName?)` 추가 —
+      done_when의 "anchors에서" 대신 dongName을 받게 해 활동 상세(o.location?.dongName) 호출부 4곳도 같은
+      함수로 통일(web 6·mobile 5 = 11곳 전부 치환). 빈 문자열·공백도 폴백. gate.sh PASS.
 
   - id: M-111
     title: "itemListJsonLd가 두 곳에 각자 구현 — JSON-LD 이스케이프 규칙이 갈라질 수 있다"
