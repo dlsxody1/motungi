@@ -6,7 +6,7 @@ import { ReportDesktop } from "@/components/report-desktop";
 import { ReportEmpty } from "@/components/report-empty";
 import { ReportMobile } from "@/components/report-mobile";
 import { ReportSkeleton } from "@/components/report-skeleton";
-import { deadlineLabel, diagnosisSummaryChips, displayNameOf } from "@motungi/core";
+import { deadlineLabel, diagnosisSummaryChips, displayDongName, displayNameOf } from "@motungi/core";
 import { useReportFallback } from "@/hooks/useReportFallback";
 import { shareContent } from "@/lib/kakao";
 import { SITE_URL } from "@/lib/seo";
@@ -28,7 +28,7 @@ export default function ReportPage() {
   const answers = useAppStore((s) => s.answers);
   const user = useAppStore((s) => s.user);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
-  const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
+  const dongName = displayDongName(useAppStore((s) => s.anchors.home?.dongName));
 
   /**
    * 원픽 id를 훅보다 **위에서** 구한다. 아래 early return이 있어서 여기서 못 구하면

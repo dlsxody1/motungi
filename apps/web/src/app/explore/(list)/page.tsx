@@ -5,6 +5,7 @@ import {
   exploreCategoryCounts,
   exploreRegionCounts,
   filterExplore,
+  displayDongName,
   scoreAll,
   searchTerms,
   sortByDistance,
@@ -37,7 +38,7 @@ function ExploreInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const homeDong = useAppStore((s) => s.anchors.home?.dongName);
-  const dongName = homeDong ?? "우리 동네";
+  const dongName = displayDongName(homeDong);
   const user = useAppStore((s) => s.user);
   const answers = useAppStore((s) => s.answers);
   /**

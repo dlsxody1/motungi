@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef } from "react";
+import { displayDongName } from "@motungi/core";
 import { BottomNav } from "@/components/bottom-nav";
 import { BookmarkIcon, LocationIcon, UserIcon } from "@/components/icons";
 import { SavedCard } from "@/components/saved-card";
@@ -18,7 +19,7 @@ export default function SavedPage() {
   const toggleSaved = useAppStore((s) => s.toggleSaved);
   const savedIds = useAppStore((s) => s.savedIds);
   const user = useAppStore((s) => s.user);
-  const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
+  const dongName = displayDongName(useAppStore((s) => s.anchors.home?.dongName));
 
   // 저장 id를 id 조회로 해소한다 — 300건 창 밖이라고 사라지지 않는다(useSavedOpportunities 주석).
   // status를 버리면 **조회 실패가 "저장한 게 없어요"로 보인다** — 사용자에게 틀린 정보다.

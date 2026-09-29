@@ -1,6 +1,6 @@
 "use client";
 
-import { PREFILTERED_WEIGHTS, pickTop } from "@motungi/core";
+import { displayDongName, PREFILTERED_WEIGHTS, pickTop } from "@motungi/core";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { MobileScreen, SafeBottom, SafeTop } from "@/components/ui";
@@ -13,7 +13,7 @@ export default function LoadingPage() {
   const answers = useAppStore((s) => s.answers);
   const anchors = useAppStore((s) => s.anchors);
   const setResults = useAppStore((s) => s.setResults);
-  const dongName = anchors.home?.dongName ?? "우리 동네";
+  const dongName = displayDongName(anchors.home?.dongName);
 
   /**
    * anchors를 **값**으로 요약한 키. 객체를 그대로 deps에 넣으면 setAnchor가 매번

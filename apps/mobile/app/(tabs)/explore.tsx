@@ -5,6 +5,7 @@ import {
   exploreCategoryCounts,
   exploreRegionCounts,
   filterExplore,
+  displayDongName,
   scoreAll,
   searchTerms,
   sortByDistance,
@@ -78,7 +79,7 @@ const FILTERS = EXPLORE_CATEGORY_FILTERS;
 export default function ExploreScreen() {
   useEnsureCatalog();
   const router = useRouter();
-  const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
+  const dongName = displayDongName(useAppStore((s) => s.anchors.home?.dongName));
   const [filter, setFilter] = useState<string>("전체");
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState<string | null>(null);

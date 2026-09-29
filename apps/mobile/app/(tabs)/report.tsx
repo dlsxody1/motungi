@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, Share as RNShare, StyleSheet, Text, View } from "react-native";
-import { deadlineLabel } from "@motungi/core";
+import { deadlineLabel, displayDongName } from "@motungi/core";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useAppStore } from "@/store/useAppStore";
 import { Button, Tag, Txt } from "@/ui/components";
@@ -23,7 +23,7 @@ export default function ReportScreen() {
   const results = useAppStore((s) => s.results);
   const catalog = useAppStore((s) => s.catalog);
   const catalogStatus = useAppStore((s) => s.catalogStatus);
-  const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
+  const dongName = displayDongName(useAppStore((s) => s.anchors.home?.dongName));
 
   // 스코어링 결과 우선, 없으면 카탈로그 상위 6개. 원픽1 + 함께 최대5.
   const list = results.length > 0 ? results : catalog.slice(0, 6);

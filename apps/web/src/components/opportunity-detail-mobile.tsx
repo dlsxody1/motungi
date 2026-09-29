@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import type { MockOpportunity } from "@/data/opportunities";
-import { isWeekendOuting } from "@motungi/core";
+import { displayDongName, isWeekendOuting } from "@motungi/core";
 import { CourseGuide } from "@/components/course-guide";
 import {
   BookmarkIcon,
@@ -96,7 +96,7 @@ export const OpportunityDetailMobile = memo(function OpportunityDetailMobile({
             </h1>
             <p className="mt-2 flex items-center gap-1 text-[14px] text-muted">
               <LocationIcon size={16} className="text-primary" />
-              {o.location?.dongName ?? "우리 동네"}
+              {displayDongName(o.location?.dongName)}
             </p>
             {o.summary && <p className="mt-2 text-[14px] leading-relaxed text-label">{o.summary}</p>}
 

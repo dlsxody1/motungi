@@ -1,4 +1,5 @@
 import type { Opportunity } from "@motungi/core";
+import { displayDongName } from "@motungi/core";
 import { useRouter } from "expo-router";
 import { memo, useCallback } from "react";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -64,7 +65,7 @@ export default function SavedScreen() {
   const router = useRouter();
   const savedIds = useAppStore((s) => s.savedIds);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
-  const dongName = useAppStore((s) => s.anchors.home?.dongName) ?? "우리 동네";
+  const dongName = displayDongName(useAppStore((s) => s.anchors.home?.dongName));
 
   const catalog = useAppStore((s) => s.catalog);
   // 저장 id를 해소. catalog(반경으로 좁힌 창)에 있으면 그대로 쓰고, 없으면 단건 조회한다

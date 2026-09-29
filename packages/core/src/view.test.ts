@@ -8,6 +8,7 @@ import {
   deadlineLabel,
   decodeHtmlEntities,
   diagnosisSummaryChips,
+  displayDongName,
   displayNameOf,
   ENERGY_LABEL,
   EXPLORE_CATEGORY_FILTERS,
@@ -509,5 +510,20 @@ describe("EXPLORE_CATEGORY_FILTERS — 탐색 필터 taxonomy 단일 출처(M-08
     const cultureFilterLabel = EXPLORE_CATEGORY_FILTERS.find((f) => f.category === "culture")?.label;
     expect(cultureFilterLabel).toBe("문화·공연");
     expect(cultureFilterLabel).not.toBe(CATEGORY_LABEL.culture);
+  });
+});
+
+describe("displayDongName", () => {
+  it("dongName이 있으면 그대로 돌려준다", () => {
+    expect(displayDongName("망원동")).toBe("망원동");
+  });
+  it("undefined·null이면 '우리 동네'", () => {
+    expect(displayDongName(undefined)).toBe("우리 동네");
+    expect(displayDongName(null)).toBe("우리 동네");
+    expect(displayDongName()).toBe("우리 동네");
+  });
+  it("빈 문자열·공백뿐이면 '우리 동네' — 빈 지명이 화면에 나가지 않는다", () => {
+    expect(displayDongName("")).toBe("우리 동네");
+    expect(displayDongName("   ")).toBe("우리 동네");
   });
 });

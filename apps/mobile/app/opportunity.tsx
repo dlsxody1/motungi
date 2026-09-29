@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { deadlineLabel, displayNameOf, isWeekendOuting, parseHttpUrl } from "@motungi/core";
+import { deadlineLabel, displayDongName, displayNameOf, isWeekendOuting, parseHttpUrl } from "@motungi/core";
 import { useEnsureCatalog } from "@/hooks/useEnsureCatalog";
 import { useOpportunity } from "@/hooks/useOpportunity";
 import { useTrailRoute } from "@/hooks/useTrailRoute";
@@ -123,7 +123,7 @@ export default function OpportunityScreen() {
         <Text style={styles.title}>{o.title}</Text>
         <View style={styles.locRow}>
           <Location size={16} color={C.primary} />
-          <Text style={styles.locText}>{o.location?.dongName ?? "우리 동네"}</Text>
+          <Text style={styles.locText}>{displayDongName(o.location?.dongName)}</Text>
         </View>
 
         {/*

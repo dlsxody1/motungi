@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { memo } from "react";
-import { CATEGORY_LABEL, isWeekendOuting } from "@motungi/core";
+import { CATEGORY_LABEL, displayDongName, isWeekendOuting } from "@motungi/core";
 import type { MockOpportunity } from "@/data/opportunities";
 import { CourseGuide } from "@/components/course-guide";
 import {
@@ -96,7 +96,7 @@ export const OpportunityDetailDesktop = memo(function OpportunityDetailDesktop({
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[14px]">
               <span className="flex items-center gap-1 text-muted">
                 <LocationIcon size={16} className="text-primary" />
-                {o.location?.dongName ?? "우리 동네"}
+                {displayDongName(o.location?.dongName)}
               </span>
               {timeText && <span className="text-muted">{timeText}</span>}
               {o.sourceLabel && <span className="text-muted">{o.sourceLabel}</span>}

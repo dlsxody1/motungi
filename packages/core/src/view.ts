@@ -314,6 +314,17 @@ export const TIMESLOT_LABEL: Record<TimeSlot, string> = {
   flexible: "시간 자유",
 };
 
+/** 동네(dongName)를 알 수 없을 때 화면이 쓰는 표시용 이름. */
+const DONG_NAME_FALLBACK = "우리 동네";
+
+/**
+ * 표시용 동네 이름. 앵커·활동 위치의 dongName이 없거나 공백뿐이면 "우리 동네".
+ * web·mobile 11곳에 복붙돼 있던 `?? "우리 동네"`를 한 곳으로 모은 것이다.
+ */
+export function displayDongName(dongName?: string | null): string {
+  return dongName?.trim() || DONG_NAME_FALLBACK;
+}
+
 /** 로그인 사용자 표시 이름. displayName 없으면 회원/게스트. */
 export function displayNameOf(
   user?: { displayName?: string } | null,

@@ -43,6 +43,7 @@ export {
   CATEGORY_LABEL,
   deadlineLabel,
   diagnosisSummaryChips,
+  displayDongName,
   displayNameOf,
   ENERGY_LABEL,
   EXPLORE_CATEGORY_FILTERS,

@@ -1,4 +1,4 @@
-import { PREFILTERED_WEIGHTS, pickTop } from "@motungi/core";
+import { displayDongName, PREFILTERED_WEIGHTS, pickTop } from "@motungi/core";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
@@ -13,7 +13,7 @@ export default function LoadingScreen() {
   const answers = useAppStore((s) => s.answers);
   const anchors = useAppStore((s) => s.anchors);
   const setResults = useAppStore((s) => s.setResults);
-  const dongName = anchors.home?.dongName ?? "우리 동네";
+  const dongName = displayDongName(anchors.home?.dongName);
 
   useEffect(() => {
     let cancelled = false;
