@@ -3018,7 +3018,7 @@ backlog:
   - id: M-116
     title: "core store.toggleSaved의 서버 동기화가 실제로는 전송되지 않는다 — void 처리된 PostgREST 빌더는 lazy"
     priority: high
-    status: todo
+    status: doing
     scope: [packages/core/src/store.ts, packages/core/src/store.test.ts]
     done_when:
       - "SavedOpportunitiesClient의 upsert/delete 반환 타입이 unknown이 아니라 PromiseLike<{ error: unknown }>이고, apps/web/src/store/useAppStore.ts·apps/mobile/store/useAppStore.ts가 실제 SupabaseClient로 계속 타입체크된다"
