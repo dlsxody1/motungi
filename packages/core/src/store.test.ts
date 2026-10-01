@@ -17,15 +17,31 @@ type TestCatalogStatus = "ok" | "empty" | "error";
 
 /** 저장 목록 서버 동기화용 체이너블 가짜 supabase 클라이언트. */
 function createFakeSupabase() {
+  // PostgREST 빌더처럼 lazy thenable — then이 호출돼야만 "전송"으로 기록된다(M-116).
+  const sent = vi.fn();
+  const result = { error: null as unknown, reject: false };
+  const chain: Record<string, unknown> = {
+    then: (
+      onFulfilled: (v: { error: unknown }) => unknown,
+      onRejected?: (e: unknown) => unknown,
+    ) => {
+      sent();
+      return result.reject
+        ? Promise.reject(new Error("network")).then(onFulfilled, onRejected)
+        : Promise.resolve({ error: result.error }).then(onFulfilled, onRejected);
+    },
+  };
   const eq = vi.fn(() => chain);
   const del = vi.fn(() => chain);
   const upsert = vi.fn(() => chain);
-  const chain = { eq, delete: del, upsert } as const;
+  chain.eq = eq;
+  chain.delete = del;
+  chain.upsert = upsert;
   const from = vi.fn((..._args: unknown[]) => chain);
   const client: SavedOpportunitiesClient = {
     from: (table) => from(table) as never,
   };
-  return { client, from, del, upsert, eq };
+  return { client, from, del, upsert, eq, sent, result };
 }
 
 /** 동기 in-memory StateStorage (localStorage와 동일한 계약). */
@@ -196,6 +212,35 @@ describe("createAppStore", () => {
       expect(supa.eq).toHaveBeenNthCalledWith(1, "user_id", "u1");
       expect(supa.eq).toHaveBeenNthCalledWith(2, "opportunity_id", "op-1");
       expect(supa.upsert).not.toHaveBeenCalled();
+    });
+
+    it("로그인 저장/해제는 빌더를 실제로 소비해 요청을 전송한다 (lazy then)", async () => {
+      store.getState().setUser({ id: "u1" });
+
+      store.getState().toggleSaved("op-1");
+      await vi.waitFor(() => expect(supa.sent).toHaveBeenCalledTimes(1));
+
+      store.getState().toggleSaved("op-1");
+      await vi.waitFor(() => expect(supa.sent).toHaveBeenCalledTimes(2));
+    });
+
+    it("서버가 error를 돌려주면 낙관적 추가를 되돌린다", async () => {
+      store.getState().setUser({ id: "u1" });
+      supa.result.error = { message: "rls" };
+
+      store.getState().toggleSaved("op-1");
+      expect(store.getState().savedIds).toEqual(["op-1"]);
+      await vi.waitFor(() => expect(store.getState().savedIds).toEqual([]));
+    });
+
+    it("해제 요청이 reject되면 낙관적 해제를 되돌린다", async () => {
+      store.getState().setUser({ id: "u1" });
+      store.getState().setSavedIds(["op-1"]);
+      supa.result.reject = true;
+
+      store.getState().toggleSaved("op-1");
+      expect(store.getState().savedIds).toEqual([]);
+      await vi.waitFor(() => expect(store.getState().savedIds).toEqual(["op-1"]));
     });
 
     it("로그아웃 후 toggleSaved는 다시 로컬 전용이 된다", () => {

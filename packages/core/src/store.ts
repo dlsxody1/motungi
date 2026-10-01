@@ -28,17 +28,29 @@ export interface AuthUser {
  * 실제 SupabaseClient(`from().upsert()` / `from().delete().eq().eq()` 체인)가
  * 구조적으로 이를 만족한다. core는 @supabase/supabase-js를 의존하지 않는다.
  */
+/**
+ * PostgREST 빌더는 lazy thenable이다 — `.then`(await)이 호출돼야만 HTTP 요청이 나간다.
+ * 반환을 unknown으로 두면 `void builder`가 타입체크를 통과해 요청이 전송되지 않는 버그를
+ * 가린다(M-116). PromiseLike<{ error }>로 좁혀 반드시 소비하게 한다.
+ */
+export type SavedOpportunitiesResult = PromiseLike<{ error: unknown }>;
+
 export interface SavedOpportunitiesClient {
   from(table: "saved_opportunities"): {
     upsert(
       values: { user_id: string; opportunity_id: string },
       options: { onConflict: string },
-    ): unknown;
+    ): SavedOpportunitiesResult;
     delete(): {
       eq(
         column: "user_id" | "opportunity_id",
         value: string,
-      ): { eq(column: "user_id" | "opportunity_id", value: string): unknown };
+      ): {
+        eq(
+          column: "user_id" | "opportunity_id",
+          value: string,
+        ): SavedOpportunitiesResult;
+      };
     };
   };
 }
@@ -185,20 +197,34 @@ export function createAppStore<
           // 로그인 상태면 서버에도 반영(비로그인은 로컬만).
           const userId = s.user?.id;
           if (userId && deps.supabase) {
-            if (wasSaved) {
-              void deps.supabase
-                .from("saved_opportunities")
-                .delete()
-                .eq("user_id", userId)
-                .eq("opportunity_id", id);
-            } else {
-              void deps.supabase
-                .from("saved_opportunities")
-                .upsert(
-                  { user_id: userId, opportunity_id: id },
-                  { onConflict: "user_id,opportunity_id" },
-                );
-            }
+            const request = wasSaved
+              ? deps.supabase
+                  .from("saved_opportunities")
+                  .delete()
+                  .eq("user_id", userId)
+                  .eq("opportunity_id", id)
+              : deps.supabase
+                  .from("saved_opportunities")
+                  .upsert(
+                    { user_id: userId, opportunity_id: id },
+                    { onConflict: "user_id,opportunity_id" },
+                  );
+            // 빌더는 lazy라 then을 호출해야 전송된다. 실패(error·reject)하면 낙관적
+            // 변경을 되돌려 로컬과 서버가 어긋나지 않게 한다.
+            const rollback = () =>
+              set((cur) => ({
+                savedIds: wasSaved
+                  ? cur.savedIds.includes(id)
+                    ? cur.savedIds
+                    : [...cur.savedIds, id]
+                  : cur.savedIds.filter((x) => x !== id),
+              }));
+            Promise.resolve(request).then(
+              (res) => {
+                if (res.error) rollback();
+              },
+              rollback,
+            );
           }
         },
         isSaved: (id) => get().savedIds.includes(id),
