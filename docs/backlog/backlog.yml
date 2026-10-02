@@ -3118,7 +3118,7 @@ backlog:
   - id: M-122
     title: "mobile expo-linear-gradient·react-native-svg가 Expo SDK 52 핀에서 벗어남 + 미사용 의존성 2개"
     priority: high
-    status: todo
+    status: doing
     scope: [apps/mobile/package.json, pnpm-lock.yaml]
     done_when:
       - "expo-linear-gradient는 ~14.0.2, react-native-svg는 15.8.0(expo@52 bundledNativeModules.json 기준)으로 맞추고 pnpm-lock.yaml을 재생성한다"
@@ -3340,7 +3340,7 @@ backlog:
   - id: M-135
     title: "mobile·core에 lint 스크립트 없음 — 레이어·경계 규칙이 웹에만 강제됨"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/mobile/package.json, apps/mobile/eslint.config.mjs, packages/core/package.json, packages/core/eslint.config.mjs]
     done_when:
       - "pnpm lint가 mobile과 core에서도 돈다(gate.sh에 편입)"
@@ -3394,7 +3394,7 @@ backlog:
   - id: M-138
     title: "모바일 Supabase 세션 토큰이 평문 AsyncStorage에 저장됨"
     priority: low
-    status: todo
+    status: doing
     scope: [apps/mobile/lib/supabase.ts, apps/mobile/package.json]
     done_when:
       - "auth storage를 SecureStore 기반 어댑터로 바꾼다(약 2KB 값 제한 때문에 청크 분할 또는 암호화+AsyncStorage인 Supabase LargeSecureStore 패턴). zustand 영속 상태는 AsyncStorage 유지"
