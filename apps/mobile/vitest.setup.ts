@@ -39,6 +39,14 @@ vi.mock("expo-linear-gradient", () => ({
   LinearGradient: passthrough("div"),
 }));
 
+// expo-secure-store는 expo-modules-core 네이티브 바인딩이 필요해 jsdom에서 import부터 터진다
+// (lib/supabase → lib/secure-storage 경로로 화면 테스트 대부분이 끌어온다). 어댑터 동작은 secure-storage.test.ts가 따로 검증.
+vi.mock("expo-secure-store", () => ({
+  getItemAsync: async () => null,
+  setItemAsync: async () => {},
+  deleteItemAsync: async () => {},
+}));
+
 vi.mock("react-native-safe-area-context", () => ({
   SafeAreaView: passthrough("div"),
   SafeAreaProvider: passthrough("div"),
