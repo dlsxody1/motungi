@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "clean": "rm -rf .expo .turbo"
+    "clean": "rm -rf .expo .turbo",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@babel/runtime": "^7.29.7",
@@ -39,6 +40,9 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "~18.3.12",
+    "@typescript-eslint/parser": "^8.62.1",
+    "eslint": "^9.18.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "jsdom": "^25.0.1",
     "react-native-web": "~0.19.13",
     "typescript": "^5.7.3",

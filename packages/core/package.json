@@ -12,13 +12,16 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "clean": "rm -rf dist .turbo"
+    "clean": "rm -rf dist .turbo",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.47.10",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@typescript-eslint/parser": "^8.62.1",
+    "eslint": "^9.18.0",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
   }
