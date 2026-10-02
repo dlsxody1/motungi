@@ -34,6 +34,11 @@ vi.mock("react-native-svg", () => ({
   Stop: passthrough("stop"),
 }));
 
+// expo-linear-gradient@14(SDK 52 핀)는 Flow 소스를 그대로 배포해 vite가 파싱하지 못한다.
+vi.mock("expo-linear-gradient", () => ({
+  LinearGradient: passthrough("div"),
+}));
+
 vi.mock("react-native-safe-area-context", () => ({
   SafeAreaView: passthrough("div"),
   SafeAreaProvider: passthrough("div"),
