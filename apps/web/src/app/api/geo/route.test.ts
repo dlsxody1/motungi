@@ -97,6 +97,26 @@ describe("GET /api/geo", () => {
     expect((await res.json()).error).toBe("invalid_coords");
   });
 
+  it.each([
+    ["lat 누락", null, "127.0"],
+    ["lng 누락", "37.5", null],
+    ["lat 빈 문자열", "", "127.0"],
+    ["lng 공백", "37.5", "  "],
+    ["lat 범위 초과", "91", "127.0"],
+    ["lat 음의 범위 초과", "-90.1", "127.0"],
+    ["lng 범위 초과", "37.5", "180.5"],
+    ["거대 값", "1e9", "127.0"],
+  ])("%s이면 400 invalid_coords이고 NAVER를 호출하지 않는다", async (_label, lat, lng) => {
+    setEnv("id", "secret");
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await GET(req(lat, lng));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("invalid_coords");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it("NAVER_MAP_CLIENT_ID/SECRET이 없으면 503 not_configured", async () => {
     setEnv(undefined, undefined);
     const fetchSpy = vi.fn();

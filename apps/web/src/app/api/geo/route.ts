@@ -106,10 +106,22 @@ const loadGeo = unstable_cache(
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const lat = Number(searchParams.get("lat"));
-  const lng = Number(searchParams.get("lng"));
+  const rawLat = searchParams.get("lat");
+  const rawLng = searchParams.get("lng");
+  // 누락(null)·빈 문자열은 Number()가 0으로 바꿔 isFinite를 통과한다 — 숫자 변환 전에 걸러낸다.
+  const lat = rawLat?.trim() ? Number(rawLat) : NaN;
+  const lng = rawLng?.trim() ? Number(rawLng) : NaN;
 
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+  // 범위 기준은 api/opportunities/route.ts와 동일(±90/±180). 범위 밖 값이 snap 캐시 키마다
+  // 새 유료 NAVER 호출을 만들지 못하게 한다.
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    lat < -90 ||
+    lat > 90 ||
+    lng < -180 ||
+    lng > 180
+  ) {
     return apiError("invalid_coords", "lat, lng 쿼리 파라미터가 필요합니다.", 400);
   }
 
