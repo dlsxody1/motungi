@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import bundleAnalyzer from "@next/bundle-analyzer";
 import { withSentryConfig } from "@sentry/nextjs";
+import { SECURITY_HEADERS } from "./security-headers.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -15,6 +16,8 @@ const nextConfig = {
   transpilePackages: ["@motungi/core", "@motungi/tokens"],
   async headers() {
     return [
+      // 보안 응답 헤더(M-119) — 전 경로. 목록·근거는 security-headers.mjs.
+      { source: "/:path*", headers: SECURITY_HEADERS },
       {
         // public/ 정적 파일의 기본 헤더는 `max-age=0`이라 재방문마다 재검증한다.
         // 폰트는 버전이 박힌 불변 자산(pretendard 1.3.9)이므로 1년 immutable로 준다.
