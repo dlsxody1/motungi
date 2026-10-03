@@ -62,6 +62,17 @@ describe("LoginPage — next 파라미터 오픈 리다이렉트 방어", () => 
     expect(screen.getByText("나중에 할게요")).toHaveAttribute("href", "/my");
   });
 
+  it.each(["/\\evil.com", "/\t/evil.com", "/\n/evil.com"])(
+    "next=%j(역슬래시·제어문자 우회)는 /my로 폴백한다",
+    (bad) => {
+      seed({ next: bad });
+
+      render(<LoginPage />);
+
+      expect(screen.getByText("나중에 할게요")).toHaveAttribute("href", "/my");
+    },
+  );
+
   it("next=https://evil.com(절대 URL)은 /my로 폴백한다", () => {
     seed({ next: "https://evil.com" });
 

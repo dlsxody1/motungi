@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { KakaoLoginButton } from "@/components/kakao-login-button";
 import { Logo } from "@/components/ui";
 import { signInWithKakao } from "@/lib/auth";
+import { safeNextPath } from "@/lib/safe-next";
 import { useAppStore } from "@/store/useAppStore";
 
 /**
@@ -29,9 +30,8 @@ function LoginContent() {
   const [busy, setBusy] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  /** 로그인 후 돌아갈 곳. 오픈 리다이렉트 방지를 위해 내부 경로(/로 시작)만 허용한다. */
-  const rawNext = params.get("next");
-  const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/my";
+  /** 로그인 후 돌아갈 곳. 오픈 리다이렉트 방지를 위해 내부 경로만 허용한다(`/\evil.com`·탭 접두 우회 포함 — lib/safe-next.ts). */
+  const next = safeNextPath(params.get("next"));
 
   // 이미 로그인된 사용자가 이 화면에 올 이유가 없다 — 돌려보낸다.
   useEffect(() => {
