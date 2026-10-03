@@ -3035,7 +3035,7 @@ backlog:
   - id: M-117
     title: "로그인 next 파라미터 오픈 리다이렉트 우회 — /\\evil.com, 탭/개행 접두 통과"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/app/login/page.tsx, apps/web/src/app/login/page.test.tsx]
     done_when:
       - "next는 /^\\/(?![\\\\/])/ 에 맞고 제어문자·역슬래시가 없을 때만 허용(또는 new URL(next, origin).origin === origin 검증)하고 아니면 /my로 폴백한다"
@@ -3051,7 +3051,7 @@ backlog:
   - id: M-118
     title: "/api/geo가 lat/lng 누락·범위를 검증하지 않는다 — 누락 시 (0,0)으로 유료 NAVER 호출"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/app/api/geo/route.ts, apps/web/src/app/api/geo/route.test.ts]
     done_when:
       - "lat 또는 lng가 없거나 빈 문자열이면 400 invalid_coords를 반환하고 NAVER fetch가 호출되지 않는다"
@@ -3067,7 +3067,7 @@ backlog:
   - id: M-119
     title: "웹 보안 응답 헤더 전무 — CSP·X-Frame-Options·nosniff·Referrer-Policy 없음"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/next.config.mjs]
     done_when:
       - "headers()에 /:path* 규칙으로 X-Content-Type-Options: nosniff, Referrer-Policy: strict-origin-when-cross-origin, X-Frame-Options: DENY(또는 CSP frame-ancestors 'none'), Permissions-Policy를 추가한다"
