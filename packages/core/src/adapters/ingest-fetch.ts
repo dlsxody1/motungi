@@ -190,6 +190,60 @@ export function isAllowedGpxUrl(url: string | null | undefined): url is string {
   return u.protocol === "https:" && u.hostname === ALLOWED_GPX_HOST;
 }
 
+/** GPX 한 번 fetch의 총 대기 상한(M-120). 코스 파일 하나는 평소 1초 안팎이다. */
+export const GPX_FETCH_TIMEOUT_MS = 5_000;
+
+/** GPX 본문 크기 상한(M-120). 실측 코스 파일이 약 460KB — 넉넉히 2MB까지만 읽는다. */
+export const GPX_MAX_BYTES = 2 * 1024 * 1024;
+
+/** 리다이렉트를 따라갈 최대 횟수. 홉마다 호스트를 다시 검증한다. */
+const GPX_MAX_REDIRECTS = 3;
+
+/**
+ * 두루누비 GPX를 안전하게 받아 텍스트로 돌려준다 (M-120). 실패는 전부 throw.
+ *
+ * isAllowedGpxUrl은 **첫 URL만** 검사해서 `redirect:"follow"`면 durunubi.kr이 다른 호스트로
+ * 리다이렉트할 때 SSRF 가드가 우회됐다. 여기선 redirect:"manual"로 홉마다 Location을
+ * isAllowedGpxUrl로 다시 검증한다. 또 타임아웃(AbortSignal)과 본문 크기 상한이 없어 느리거나
+ * 거대한 응답이 함수 시간·메모리를 먹을 수 있었다 — Content-Length와 스트리밍 누적 바이트 양쪽으로 자른다.
+ *
+ * web(trail-route)·edge(ingest)가 같은 규칙을 쓰도록 여기 한 곳에 둔다. leaf 유지를 위해 전역 fetch만 쓴다.
+ */
+export async function fetchGpxText(url: string): Promise<string> {
+  const signal = AbortSignal.timeout(GPX_FETCH_TIMEOUT_MS);
+  let current = url;
+  for (let hop = 0; hop <= GPX_MAX_REDIRECTS; hop++) {
+    if (!isAllowedGpxUrl(current)) throw new Error("GPX URL not allowed");
+    const res = await fetch(current, { redirect: "manual", signal });
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get("location");
+      if (!loc) throw new Error(`GPX redirect ${res.status} without Location`);
+      current = new URL(loc, current).toString();
+      continue;
+    }
+    if (!res.ok) throw new Error(`GPX HTTP ${res.status}`);
+    const declared = Number(res.headers.get("content-length"));
+    if (Number.isFinite(declared) && declared > GPX_MAX_BYTES) throw new Error("GPX too large");
+    if (!res.body) return "";
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let received = 0;
+    let text = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.byteLength;
+      if (received > GPX_MAX_BYTES) {
+        await reader.cancel();
+        throw new Error("GPX too large");
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+    return text + decoder.decode();
+  }
+  throw new Error("GPX too many redirects");
+}
+
 /** key가 이미 등장한 이후 항목을 제거(첫 등장만 유지). */
 export function dedupByKey<T>(items: T[], keyFn: (item: T) => string): T[] {
   const seen = new Set<string>();

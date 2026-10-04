@@ -7,6 +7,7 @@
  */
 import { NextResponse } from "next/server";
 import { apiError, reportError } from "@/lib/api-error";
+import { checkRateLimit, clientKey } from "@/lib/rate-limit";
 import { supabase } from "@/lib/supabase";
 
 /** 응답 상한(묶은 뒤) — 드롭다운이 감당할 만큼만. 강남구 전체(묶으면 17개)도 안 잘린다. */
@@ -17,6 +18,10 @@ const SEARCH_LIMIT = 30;
  * SEARCH_LIMIT개 그룹을 채우려면 그보다 넉넉히 받아야 한다. 426행짜리 테이블이라 비용은 무시할 만하다.
  */
 const RAW_LIMIT = 200;
+
+/** 타입어헤드라 키 입력마다 호출된다 — 정상 사용은 넘지 않되 trigram ILIKE 남용은 막는 선. */
+const RATE_LIMIT = 60;
+const RATE_WINDOW_MS = 60_000;
 
 export async function GET(request: Request) {
   try {
@@ -33,6 +38,17 @@ async function handle(request: Request) {
 
   // 빈 검색어는 조회 없이 빈 결과 — 전체 424개를 실어보내지 않는다.
   if (!q) return NextResponse.json({ items: [] });
+
+  const { allowed, retryAfterSec } = checkRateLimit(
+    `neighborhoods:${clientKey(request)}`,
+    RATE_LIMIT,
+    RATE_WINDOW_MS,
+  );
+  if (!allowed) {
+    const res = apiError("rate_limited", "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", 429);
+    res.headers.set("Retry-After", String(retryAfterSec));
+    return res;
+  }
 
   if (!supabase) {
     return apiError("not_configured", "동네 검색이 설정되지 않았습니다.", 503);

@@ -11,8 +11,9 @@
  *    호스트도 두루누비로 제한한다(SSRF 방지). 임의 URL 프록시가 되면 내부망 스캔에 쓰인다.
  */
 import { NextResponse } from "next/server";
-import { parseGpxPoints } from "@motungi/core";
+import { fetchGpxText, parseGpxPoints } from "@motungi/core";
 import { apiError, reportError } from "@/lib/api-error";
+import { checkRateLimit, clientKey } from "@/lib/rate-limit";
 import { supabase } from "@/lib/supabase";
 
 /** 지도 표시용 상한. 14km 코스에서 약 70m 간격이라 육안으로 원본과 구분되지 않는다. */
@@ -20,6 +21,13 @@ const MAX_POINTS = 200;
 
 /** gpx_url로 허용할 호스트. */
 const ALLOWED_HOST = "www.durunubi.kr";
+
+/** 클라이언트당 분당 요청 상한 — GPX 한 번이 약 460KB 업스트림 fetch라 /api/geo보다 빡빡하게 잡는다. */
+const RATE_LIMIT = 30;
+const RATE_WINDOW_MS = 60_000;
+
+/** opportunities.id는 uuid — 형식이 아니면 Postgres까지 가 502가 되기 전에 400으로 거절한다. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** 경로는 사실상 불변 — 하루 캐시로 460KB 재fetch를 막는다. */
 export const revalidate = 86400;
@@ -40,6 +48,20 @@ async function handle(request: Request) {
   const id = searchParams.get("id")?.trim() ?? "";
   if (!id) {
     return apiError("invalid_id", "id가 필요합니다.", 400);
+  }
+  if (!UUID_RE.test(id)) {
+    return apiError("invalid_id", "id 형식이 올바르지 않습니다.", 400);
+  }
+
+  const { allowed, retryAfterSec } = checkRateLimit(
+    `trail-route:${clientKey(request)}`,
+    RATE_LIMIT,
+    RATE_WINDOW_MS,
+  );
+  if (!allowed) {
+    const res = apiError("rate_limited", "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", 429);
+    res.headers.set("Retry-After", String(retryAfterSec));
+    return res;
   }
 
   if (!supabase) {
@@ -75,9 +97,8 @@ async function handle(request: Request) {
 
   let xml: string;
   try {
-    const res = await fetch(gpxUrl, { redirect: "follow" });
-    if (!res.ok) throw new Error(`두루누비 GPX HTTP ${res.status}`);
-    xml = await res.text();
+    // 리다이렉트 홉마다 호스트 재검증 + 5초 타임아웃 + 본문 크기 상한(M-120) — core 공용 규칙.
+    xml = await fetchGpxText(gpxUrl.toString());
   } catch (err) {
     reportError("api/trail-route", err);
     return apiError("upstream_error", "경로 파일을 가져오지 못했습니다.", 502);

@@ -2,7 +2,7 @@
  * /api/neighborhoods 검색 라우트 테스트.
  * supabase 클라이언트를 모킹해 쿼리 계약(ilike 패턴·limit)과 응답 매핑을 검증한다.
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // @/lib/supabase의 `supabase`를 테스트별로 교체할 수 있도록 mock 훅을 노출.
 const state: { supabase: unknown } = { supabase: null };
@@ -12,6 +12,7 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 
+import { __resetRateLimitForTests } from "@/lib/rate-limit";
 import { GET } from "./route";
 
 function req(q: string | null): Request {
@@ -28,6 +29,10 @@ function makeClient(result: { data: unknown; error: unknown }) {
   const from = vi.fn(() => ({ select }));
   return { from, select, or, order, limit };
 }
+
+beforeEach(() => {
+  __resetRateLimitForTests();
+});
 
 afterEach(() => {
   state.supabase = null;
@@ -174,5 +179,17 @@ describe("GET /api/neighborhoods", () => {
 
     const res = await GET(req("역삼"));
     expect(res.status).toBe(502);
+  });
+
+  // M-120: trigram ILIKE를 무캐시로 치는 공개 검색 — 분당 상한 초과는 429 + Retry-After.
+  it("분당 60회를 넘으면 429 + Retry-After, 그 요청은 조회하지 않는다", async () => {
+    const client = makeClient({ data: [], error: null });
+    state.supabase = client;
+    for (let i = 0; i < 60; i++) expect((await GET(req("역삼"))).status).toBe(200);
+    const callsBefore = client.from.mock.calls.length;
+    const res = await GET(req("역삼"));
+    expect(res.status).toBe(429);
+    expect(Number(res.headers.get("Retry-After"))).toBeGreaterThan(0);
+    expect(client.from.mock.calls.length).toBe(callsBefore);
   });
 });

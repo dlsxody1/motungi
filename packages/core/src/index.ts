@@ -34,7 +34,7 @@ export { PREFILTERED_WEIGHTS, pickTop, scoreAll, scoreOpportunity } from "./scor
 
 // ── adapters/ (barrel 자체는 core 내부 공용 유틸도 함께 내보내지만,
 //    앱이 실제로 쓰는 건 이 둘뿐이다 — 나머지는 여기서 재노출하지 않는다) ──
-export { parseGpxPoints, parseHttpUrl } from "./adapters";
+export { fetchGpxText, parseGpxPoints, parseHttpUrl } from "./adapters";
 
 // ── view.ts ──────────────────────────────────────────────
 export type { WhyReasonsPromptInput } from "./view";

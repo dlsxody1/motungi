@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   dedupByKey,
+  fetchGpxText,
+  GPX_MAX_BYTES,
   inMetro,
   isAllowedGpxUrl,
   isCronAuthorized,
@@ -279,5 +281,71 @@ describe("isExpiredDeadline / planPurge — M-126 마감 purge 판정(실제 함
     const ok = (source: string): IngestSourceResult => ({ source, fetched: 1, upserted: 1 });
     expect(planPurge(judgeIngest([fail("a"), fail("b")]), today).purge).toBe(false);
     expect(planPurge(judgeIngest([fail("a"), ok("b")]), today).purge).toBe(true);
+  });
+});
+
+describe("fetchGpxText — M-120 리다이렉트 재검증·타임아웃·크기 상한", () => {
+  const OK = "https://www.durunubi.kr/a.gpx";
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("정상 응답은 텍스트를 반환하고 redirect:manual + AbortSignal로 호출한다", async () => {
+    const f = vi.fn().mockResolvedValue(new Response("<gpx/>", { status: 200 }));
+    vi.stubGlobal("fetch", f);
+    expect(await fetchGpxText(OK)).toBe("<gpx/>");
+    const init = f.mock.calls[0]?.[1] as RequestInit;
+    expect(init.redirect).toBe("manual");
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("허용되지 않은 URL은 fetch 없이 throw", async () => {
+    const f = vi.fn();
+    vi.stubGlobal("fetch", f);
+    await expect(fetchGpxText("https://evil.example.com/a.gpx")).rejects.toThrow(/not allowed/);
+    expect(f).not.toHaveBeenCalled();
+  });
+
+  it("허용 호스트 안의 리다이렉트는 따라가고, 밖으로 나가면 throw", async () => {
+    const inHost = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 301, headers: { location: "/b.gpx" } }))
+      .mockResolvedValueOnce(new Response("<gpx/>", { status: 200 }));
+    vi.stubGlobal("fetch", inHost);
+    expect(await fetchGpxText(OK)).toBe("<gpx/>");
+    expect(inHost.mock.calls[1]?.[0]).toBe("https://www.durunubi.kr/b.gpx");
+
+    const out = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 302, headers: { location: "http://10.0.0.1/x" } }));
+    vi.stubGlobal("fetch", out);
+    await expect(fetchGpxText(OK)).rejects.toThrow(/not allowed/);
+    expect(out).toHaveBeenCalledTimes(1);
+  });
+
+  it("리다이렉트 루프는 횟수 상한에서 throw", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => new Response(null, { status: 302, headers: { location: OK } })),
+    );
+    await expect(fetchGpxText(OK)).rejects.toThrow(/redirects/);
+  });
+
+  it("Content-Length가 상한을 넘으면 본문을 읽기 전에 throw", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("x", { status: 200, headers: { "content-length": String(GPX_MAX_BYTES + 1) } }),
+      ),
+    );
+    await expect(fetchGpxText(OK)).rejects.toThrow(/too large/);
+  });
+
+  it("Content-Length 없이 상한을 넘는 스트림도 throw", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("x".repeat(GPX_MAX_BYTES + 1))));
+    await expect(fetchGpxText(OK)).rejects.toThrow(/too large/);
+  });
+
+  it("HTTP 오류는 throw", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("no", { status: 500 })));
+    await expect(fetchGpxText(OK)).rejects.toThrow(/HTTP 500/);
   });
 });

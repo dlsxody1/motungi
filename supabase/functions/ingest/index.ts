@@ -29,6 +29,7 @@ import {
 import { parsePoint } from "../../../packages/core/src/adapters/util.ts";
 import {
   dedupByKey,
+  fetchGpxText,
   inMetro,
   isAllowedGpxUrl,
   isCronAuthorized,
@@ -229,9 +230,8 @@ async function fetchTrailStartCoord(
 ): Promise<{ lat: number; lng: number } | null> {
   if (!isAllowedGpxUrl(gpxUrl)) return null;
   try {
-    const res = await fetch(gpxUrl, { redirect: "follow" });
-    if (!res.ok) return null;
-    const xml = await res.text();
+    // 리다이렉트 홉 재검증·타임아웃·크기 상한은 core의 fetchGpxText가 소유한다(M-120).
+    const xml = await fetchGpxText(gpxUrl);
     const m = xml.match(/<trkpt\b[^>]*>/);
     if (!m) return null;
     const lat = Number(m[0].match(/\blat="([^"]+)"/)?.[1]);

@@ -20,7 +20,10 @@ vi.mock("@/lib/api-error", async () => {
   return { ...actual, reportError: vi.fn() };
 });
 
+import { __resetRateLimitForTests } from "@/lib/rate-limit";
 import { GET } from "./route";
+
+const ID = "123e4567-e89b-12d3-a456-426614174000";
 
 const GPX_URL = "https://www.durunubi.kr/api/rest/course.gpx";
 
@@ -44,6 +47,7 @@ function clientWithGpx(gpxUrl: string = GPX_URL) {
 }
 
 beforeEach(() => {
+  __resetRateLimitForTests();
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
@@ -63,13 +67,13 @@ describe("GET /api/trail-route", () => {
 
   it("supabase 미설정이면 503", async () => {
     state.supabase = null;
-    const res = await GET(req("abc"));
+    const res = await GET(req(ID));
     expect(res.status).toBe(503);
   });
 
   it("gpx_url이 없는 활동은 404", async () => {
     state.supabase = makeClient({ data: { gpx_url: null }, error: null });
-    const res = await GET(req("abc"));
+    const res = await GET(req(ID));
     expect(res.status).toBe(404);
   });
 
@@ -79,7 +83,7 @@ describe("GET /api/trail-route", () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
 
-    const res = await GET(req("abc"));
+    const res = await GET(req(ID));
     expect(res.status).toBe(404);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -88,7 +92,7 @@ describe("GET /api/trail-route", () => {
     state.supabase = clientWithGpx();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("nope", { status: 500 })));
 
-    const res = await GET(req("abc"));
+    const res = await GET(req(ID));
     expect(res.status).toBe(502);
     expect((await res.json()).error).toBe("upstream_error");
   });
@@ -99,7 +103,7 @@ describe("GET /api/trail-route", () => {
     // XML이 아닌 쓰레기 — 파서가 던지든 빈 배열을 주든 응답은 반드시 JSON이어야 한다.
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("<<<not xml at all", { status: 200 })));
 
-    const res = await GET(req("abc"));
+    const res = await GET(req(ID));
 
     // 던져서 나가는 500(=스택 트레이스 노출)이 아니어야 한다.
     expect(res.status).not.toBe(500);
@@ -117,7 +121,7 @@ describe("GET /api/trail-route", () => {
     </trkseg></trk></gpx>`;
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(gpx, { status: 200 })));
 
-    const res = await GET(req("abc"));
+    const res = await GET(req(ID));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.points.length).toBeGreaterThan(0);
@@ -131,8 +135,52 @@ describe("GET /api/trail-route", () => {
     const select = vi.fn(() => ({ eq }));
     state.supabase = { from: vi.fn(() => ({ select })) };
 
-    const res = await GET(req("abc"));
+    const res = await GET(req(ID));
     expect(res.status).toBe(500);
     expect((await res.json()).error).toBe("internal_error");
+  });
+
+  // M-120: 형식이 아닌 id는 Postgres까지 가지 않고 400.
+  it("UUID 형식이 아닌 id는 DB 조회 없이 400", async () => {
+    const client = clientWithGpx();
+    state.supabase = client;
+    for (const bad of ["abc", "1; drop table opportunities", "123e4567-e89b-12d3-a456-42661417400"]) {
+      const res = await GET(req(bad));
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe("invalid_id");
+    }
+    expect(client.from).not.toHaveBeenCalled();
+  });
+
+  // M-120: 분당 상한 초과는 429 + Retry-After, 업스트림 호출 없음.
+  it("분당 30회를 넘으면 429 + Retry-After", async () => {
+    state.supabase = makeClient({ data: { gpx_url: null }, error: null });
+    for (let i = 0; i < 30; i++) expect((await GET(req(ID))).status).toBe(404);
+    const res = await GET(req(ID));
+    expect(res.status).toBe(429);
+    expect((await res.json()).error).toBe("rate_limited");
+    expect(Number(res.headers.get("Retry-After"))).toBeGreaterThan(0);
+  });
+
+  // M-120: durunubi.kr이 다른 호스트로 리다이렉트해도 따라가지 않는다(SSRF 가드 우회 방지).
+  it("허용 호스트 밖으로의 리다이렉트는 따라가지 않고 502", async () => {
+    state.supabase = clientWithGpx();
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(null, { status: 302, headers: { location: "http://169.254.169.254/latest/meta-data" } }),
+    );
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await GET(req(ID));
+    expect(res.status).toBe(502);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy.mock.calls[0]?.[1]).toMatchObject({ redirect: "manual" });
+  });
+
+  it("상한(2MB)을 넘는 GPX 본문은 502", async () => {
+    state.supabase = clientWithGpx();
+    const huge = "x".repeat(2 * 1024 * 1024 + 1);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(huge, { status: 200 })));
+    const res = await GET(req(ID));
+    expect(res.status).toBe(502);
   });
 });
