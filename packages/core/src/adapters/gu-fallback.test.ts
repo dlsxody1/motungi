@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyGuCoordFallback,
   buildGuCentroids,
+  buildUpsertPayload,
   normalizeGu,
   type CoordFallbackRow,
   type GuCentroidRow,
@@ -119,5 +120,41 @@ describe("applyGuCoordFallback", () => {
     const row: CoordFallbackRow = { dong_name:"마포구", lat: null, lng: null };
     const once = applyGuCoordFallback(row, centroids);
     expect(applyGuCoordFallback(once, centroids)).toEqual(once);
+  });
+});
+
+describe("buildUpsertPayload — M-126 upsert 페이로드 정형(index.ts에서 추출)", () => {
+  const centroids = buildGuCentroids(NEIGHBORHOODS);
+  const NOW = "2026-10-04T00:00:00.000Z";
+  const base: CoordFallbackRow = { lat: null, lng: null, dong_name: "서울 종로구" };
+
+  it("venue_name(DB 컬럼 아님)을 제거한다", () => {
+    const [p] = buildUpsertPayload([{ ...base, venue_name: "예술의전당" }], centroids, NOW);
+    expect(p).not.toHaveProperty("venue_name");
+  });
+
+  it("'서울 종로구' 입력: 폴백이 먼저 매칭돼 좌표가 채워지고, 그 뒤에 dong_name이 '종로구'로 정규화된다", () => {
+    const [p] = buildUpsertPayload([base], centroids, NOW);
+    expect(p?.lat).toBeCloseTo(37.58);
+    expect(p?.lng).toBeCloseTo(126.99);
+    expect(p?.coord_level).toBe("sigungu");
+    expect(p?.dong_name).toBe("종로구");
+  });
+
+  it("원본 좌표는 덮어쓰지 않는다", () => {
+    const [p] = buildUpsertPayload([{ ...base, lat: 1, lng: 2 }], centroids, NOW);
+    expect(p?.lat).toBe(1);
+    expect(p?.lng).toBe(2);
+    expect(p?.dong_name).toBe("종로구");
+  });
+
+  it("fetched_at을 모든 행에 싣고, dong_name이 null이면 null 유지", () => {
+    const out = buildUpsertPayload([{ ...base, dong_name: null }, base], centroids, NOW);
+    expect(out.map((r) => r.fetched_at)).toEqual([NOW, NOW]);
+    expect(out[0]?.dong_name).toBeNull();
+  });
+
+  it("빈 입력은 빈 배열", () => {
+    expect(buildUpsertPayload([], centroids, NOW)).toEqual([]);
   });
 });

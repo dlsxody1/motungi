@@ -126,6 +126,32 @@ export function judgeIngest(results: IngestSourceResult[]): IngestOutcome {
 }
 
 /**
+ * 마감 지난 행인가 (순수 함수, M-126). deadline은 core의 toIsoDate가 만드는 YYYY-MM-DD라
+ * 문자열 사전식 비교가 날짜 비교와 일치한다. null(상시)·미래·당일(경계)은 보존한다.
+ */
+export function isExpiredDeadline(deadline: string | null | undefined, today: string): boolean {
+  return deadline != null && deadline < today;
+}
+
+/** 마감 purge 계획. */
+export interface PurgePlan {
+  /** false면 삭제 쿼리를 아예 보내지 않는다. */
+  purge: boolean;
+  /** purge=true일 때 `deadline < cutoff`인 행을 지운다. isExpiredDeadline(·, cutoff)와 같은 기준이다. */
+  cutoff: string;
+}
+
+/**
+ * 이번 적재 결과로 마감 purge를 해도 되는지와 기준일을 정한다 (순수 함수, M-126).
+ *
+ * 전 소스 실패(allFailed)면 purge하지 않는다 — 새로 적재된 게 없는데 마감 지난 행만 지우면
+ * 카탈로그가 조용히 비어간다(M-040). index.ts는 이 계획의 cutoff를 그대로 `.lt("deadline", …)`에 쓴다.
+ */
+export function planPurge(outcome: Pick<IngestOutcome, "allFailed">, today: string): PurgePlan {
+  return { purge: !outcome.allFailed, cutoff: today };
+}
+
+/**
  * cron 시크릿 검증 (순수 함수, M-026).
  *
  * Edge Function은 SERVICE_ROLE 키로 동작해 upsert/delete 권한을 갖는다. 인증 없이 배포되면

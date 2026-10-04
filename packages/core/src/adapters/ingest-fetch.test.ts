@@ -4,10 +4,12 @@ import {
   inMetro,
   isAllowedGpxUrl,
   isCronAuthorized,
+  isExpiredDeadline,
   isPlainRecord,
   judgeIngest,
   parseJsonItems,
   parseXmlItems,
+  planPurge,
   safeMapItems,
   type IngestSourceResult,
 } from "./ingest-fetch";
@@ -248,5 +250,34 @@ describe("judgeIngest — 적재 결과 판정", () => {
     const r = judgeIngest([ok("trail", 0)]);
     expect(r.allFailed).toBe(false);
     expect(r.failedSources).toEqual([]);
+  });
+});
+
+describe("isExpiredDeadline / planPurge — M-126 마감 purge 판정(실제 함수)", () => {
+  const today = "2026-08-08";
+  it("과거 마감은 purge 대상", () => {
+    expect(isExpiredDeadline("2026-07-01", today)).toBe(true);
+  });
+  it("null·undefined(상시)는 보존", () => {
+    expect(isExpiredDeadline(null, today)).toBe(false);
+    expect(isExpiredDeadline(undefined, today)).toBe(false);
+  });
+  it("미래 마감은 보존", () => {
+    expect(isExpiredDeadline("2026-12-31", today)).toBe(false);
+  });
+  it("오늘(경계)은 보존 — .lt이므로 당일은 아직 안 지운다", () => {
+    expect(isExpiredDeadline(today, today)).toBe(false);
+  });
+  it("정상 적재면 purge하고 cutoff는 today", () => {
+    expect(planPurge({ allFailed: false }, today)).toEqual({ purge: true, cutoff: today });
+  });
+  it("전 소스 실패면 purge를 생략한다(M-040)", () => {
+    expect(planPurge({ allFailed: true }, today).purge).toBe(false);
+  });
+  it("judgeIngest 결과를 그대로 넘길 수 있다 — 전부 실패 → 생략, 일부 실패 → 진행", () => {
+    const fail = (source: string): IngestSourceResult => ({ source, fetched: 0, upserted: 0, error: "x" });
+    const ok = (source: string): IngestSourceResult => ({ source, fetched: 1, upserted: 1 });
+    expect(planPurge(judgeIngest([fail("a"), fail("b")]), today).purge).toBe(false);
+    expect(planPurge(judgeIngest([fail("a"), ok("b")]), today).purge).toBe(true);
   });
 });

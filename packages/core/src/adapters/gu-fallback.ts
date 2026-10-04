@@ -94,3 +94,30 @@ export function applyGuCoordFallback<T extends CoordFallbackRow>(
   if (!hit) return row;
   return { ...row, lat: hit.lat, lng: hit.lng, coord_level: "sigungu" };
 }
+
+/**
+ * opportunities upsert 페이로드 정형 (순수 함수, M-126).
+ *
+ * ingest/index.ts의 upsertRows가 인라인으로 하던 일을 꺼낸 것 — Deno.serve가 모듈 최상위에서
+ * 실행돼 index.ts는 테스트에서 import할 수 없으므로, 로직을 여기 두고 vitest가 실제 함수를 건다.
+ *
+ * 순서가 계약이다: applyGuCoordFallback은 raw(시도 접두사 포함) dong_name으로 neighborhoods.
+ * sigungu와 매칭하므로 그 **뒤에** normalizeGu를 적용한다(M-098). 순서가 뒤집히면 "서울 종로구"가
+ * 폴백 매칭에서 빠지거나 "종로구"/"서울 종로구"가 분열된다.
+ * venue_name은 kopis 좌표 백필용 임시 필드라 DB 컬럼이 아니다 — 실으면 upsert가 죽으므로 뺀다.
+ */
+export function buildUpsertPayload<T extends CoordFallbackRow & { venue_name?: unknown }>(
+  rows: T[],
+  centroids: Map<string, { lat: number; lng: number }>,
+  fetchedAt: string,
+): (Omit<T, "venue_name"> & { fetched_at: string })[] {
+  return rows.map((row) => {
+    const { venue_name: _venue, ...r } = row;
+    const withCoordFallback = applyGuCoordFallback(r as unknown as T, centroids);
+    return {
+      ...withCoordFallback,
+      dong_name: normalizeGu(withCoordFallback.dong_name),
+      fetched_at: fetchedAt,
+    } as Omit<T, "venue_name"> & { fetched_at: string };
+  });
+}

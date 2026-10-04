@@ -36,12 +36,12 @@ import {
   judgeIngest,
   parseJsonItems,
   parseXmlItems,
+  planPurge,
   safeMapItems,
 } from "../../../packages/core/src/adapters/ingest-fetch.ts";
 import {
-  applyGuCoordFallback,
   buildGuCentroids,
-  normalizeGu,
+  buildUpsertPayload,
   type GuCentroidRow,
 } from "../../../packages/core/src/adapters/gu-fallback.ts";
 
@@ -287,18 +287,8 @@ async function upsertRows(rows: OppRow[]): Promise<number> {
    * 한 곳에서 건다. 원본 좌표는 덮어쓰지 않는다(applyGuCoordFallback 계약).
    */
   const centroids = await getGuCentroids();
-  // venue_name은 kopis 좌표 백필용 임시 필드다 — DB 컬럼이 아니라 실으면 upsert가 죽는다.
-  const payload = rows.map(({ venue_name: _venue, ...r }) => {
-    // applyGuCoordFallback은 raw(시도 접두사 포함) dong_name으로 neighborhoods.sigungu와
-    // 매칭해야 하므로 그 전에는 정규화하지 않는다(M-098). 정규화는 폴백이 끝난 뒤,
-    // DB에 실제로 쓰이는 최종 payload에서만 적용해 "종로구"/"서울 종로구" 분열을 막는다.
-    const withCoordFallback = applyGuCoordFallback(r, centroids);
-    return {
-      ...withCoordFallback,
-      dong_name: normalizeGu(withCoordFallback.dong_name),
-      fetched_at: now,
-    };
-  });
+  // venue_name 제거 → 좌표 폴백 → normalizeGu 순서는 core의 buildUpsertPayload가 소유한다(M-126).
+  const payload = buildUpsertPayload(rows, centroids, now);
   const { error, count } = await supabase
     .from("opportunities")
     .upsert(payload, { onConflict: "source,external_id", count: "exact" });
@@ -457,15 +447,18 @@ Deno.serve(async (req) => {
   // 마감 지난 활동 정리: 새로 적재한 뒤 오래된 것을 치운다. 상시(deadline null)·미래 마감은
   // 보존 — deadline이 있고 오늘보다 과거인 것만 삭제.
   // 일부 소스만 실패한 경우는 그대로 진행한다(그 소스의 신규분만 빠질 뿐 카탈로그는 갱신됐다).
-  const today = new Date().toISOString().slice(0, 10);
+  // 기준일·실행 여부는 core의 planPurge가 정한다(테스트 소유: ingest-fetch.test.ts, M-126).
+  const plan = planPurge({ allFailed }, new Date().toISOString().slice(0, 10));
   let purged = 0;
   try {
-    const { count } = await supabase
-      .from("opportunities")
-      .delete({ count: "exact" })
-      .not("deadline", "is", null)
-      .lt("deadline", today);
-    purged = count ?? 0;
+    if (plan.purge) {
+      const { count } = await supabase
+        .from("opportunities")
+        .delete({ count: "exact" })
+        .not("deadline", "is", null)
+        .lt("deadline", plan.cutoff);
+      purged = count ?? 0;
+    }
   } catch (e) {
     // 삭제 실패는 적재 성공을 무효화하지 않는다 — 응답에 표기만.
     return new Response(

@@ -39,7 +39,10 @@
  * 뜻이다. 코드를 읽고 손으로 추적한 결론이며, 실행 검증은 아니다.
  */
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { dedupByKey } from "../../../packages/core/src/adapters/ingest-fetch.ts";
+import {
+  dedupByKey,
+  isExpiredDeadline,
+} from "../../../packages/core/src/adapters/ingest-fetch.ts";
 
 // ── culture_info 페이지네이션 누적 패턴(index.ts의 실제 알고리즘을 그대로 구동) ──
 //
@@ -100,16 +103,13 @@ Deno.test("M-036: culture_info 페이지네이션 — LIMIT에 도달하면 더 
   assertEquals(rows.map((r) => r.external_id), ["a", "b"]);
 });
 
-// ── 마감(deadline) purge 필터의 명세(캐릭터라이제이션) ──────────────────────
+// ── 마감(deadline) purge 판정 ──────────────────────────────────────────────
 //
-// index.ts: supabase.from("opportunities").delete().not("deadline","is",null).lt("deadline", today)
-// 이 필터는 "deadline이 not null이고 오늘보다 과거인 행만 지운다"는 뜻이다. 아래
-// isPurged는 그 판정을 코드로 고정해 둔 것이다 — 실제 Postgrest 호출을 흉내내는 게
-// 아니라 "무엇이 지워지고 무엇이 보존돼야 하는가"의 스펙을 못 박아 둔다. deadline은
-// core의 toIsoDate가 만드는 YYYY-MM-DD라 문자열 사전식 비교가 날짜 비교와 일치한다.
-function isPurged(deadline: string | null, today: string): boolean {
-  return deadline != null && deadline < today;
-}
+// M-126: 예전엔 여기서 isPurged()를 직접 정의해 그 복제본만 검증했다(동어반복 — index.ts의 필터를
+// 바꿔도 초록). 이제 판정은 core의 isExpiredDeadline/planPurge가 소유하고 index.ts가 그 cutoff를
+// 쓴다. 본격 케이스는 packages/core/src/adapters/ingest-fetch.test.ts(vitest, CI 게이트)가 소유하며,
+// 여기는 Deno 쪽에서도 같은 실제 함수가 import되는지 확인하는 얇은 스모크다.
+const isPurged = isExpiredDeadline;
 
 Deno.test("M-036: deadline purge 명세 — 과거 deadline은 지워진다", () => {
   assertEquals(isPurged("2026-07-01", "2026-08-08"), true);

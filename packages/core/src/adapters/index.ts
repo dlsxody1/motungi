@@ -24,6 +24,7 @@ export * from "./culture-info-detail";
 export {
   applyGuCoordFallback,
   buildGuCentroids,
+  buildUpsertPayload,
   type CoordFallbackRow,
   type GuCentroidRow,
 } from "./gu-fallback";
