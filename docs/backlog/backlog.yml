@@ -3084,7 +3084,7 @@ backlog:
   - id: M-120
     title: "/api/trail-route·/api/neighborhoods 레이트리밋 없음 + GPX fetch에 타임아웃·크기 상한·리다이렉트 재검증 없음"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/app/api/trail-route/route.ts, apps/web/src/app/api/neighborhoods/route.ts, supabase/functions/ingest/index.ts, packages/core/src/adapters/ingest-fetch.ts]
     done_when:
       - "두 라우트가 checkRateLimit을 적용해 429+Retry-After를 반환한다(geo/route.ts:116과 동일 패턴)"
@@ -3101,7 +3101,7 @@ backlog:
   - id: M-121
     title: "/api/trail-route가 캐시된다고 주석에 적혀 있지만 실제로는 요청마다 DB 조회+460KB GPX fetch+파싱"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/app/api/trail-route/route.ts]
     done_when:
       - "DB 조회·GPX fetch·파싱을 id 키의 unstable_cache(revalidate 약 86400)로 감싸고 에러는 throw해 캐시되지 않게 한다(geo·catalog 라우트와 동일)"
@@ -3186,7 +3186,7 @@ backlog:
   - id: M-126
     title: "edge ingest 마감 purge 테스트가 프로덕션 코드가 아닌 복제 함수(isPurged)만 검증 — 동어반복 + Deno 테스트 CI 미실행"
     priority: medium
-    status: todo
+    status: doing
     scope: [supabase/functions/ingest/index.ts, supabase/functions/ingest/index.test.ts, packages/core/src/adapters/ingest-fetch.ts, packages/core/src/adapters/ingest-fetch.test.ts]
     done_when:
       - "purge 판정과 upsert 페이로드 정형(venue_name 제거, applyGuCoordFallback 후 normalizeGu)을 순수 함수로 추출해 export하고 packages/core vitest가 그 실제 함수를 import한다"
