@@ -7,6 +7,21 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// unstable_cache는 Next 요청 컨텍스트 밖에서 못 돈다 — 성공한 결과만 인자별로 기억하는 가짜로 대체해
+// "캐시된다 / 실패는 캐시되지 않는다"는 계약을 검증한다. 테스트마다 비운다.
+const cacheStore = new Map<string, unknown>();
+vi.mock("next/cache", () => ({
+  unstable_cache:
+    (fn: (...args: never[]) => Promise<unknown>) =>
+    async (...args: never[]) => {
+      const key = JSON.stringify(args);
+      if (cacheStore.has(key)) return cacheStore.get(key);
+      const value = await fn(...args); // throw면 저장되지 않는다
+      cacheStore.set(key, value);
+      return value;
+    },
+}));
+
 const state: { supabase: unknown } = { supabase: null };
 vi.mock("@/lib/supabase", () => ({
   get supabase() {
@@ -48,6 +63,7 @@ function clientWithGpx(gpxUrl: string = GPX_URL) {
 
 beforeEach(() => {
   __resetRateLimitForTests();
+  cacheStore.clear();
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
@@ -182,5 +198,49 @@ describe("GET /api/trail-route", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(huge, { status: 200 })));
     const res = await GET(req(ID));
     expect(res.status).toBe(502);
+  });
+
+  // M-121: 같은 id의 두 번째 호출은 DB·upstream fetch를 부르지 않는다.
+  it("같은 id를 두 번 부르면 두 번째는 DB 조회·GPX fetch 없이 캐시에서 응답한다", async () => {
+    const client = clientWithGpx();
+    state.supabase = client;
+    const gpx = `<gpx><trk><trkseg><trkpt lat="37.5" lon="127.0"/><trkpt lat="37.6" lon="127.1"/></trkseg></trk></gpx>`;
+    const fetchSpy = vi.fn().mockImplementation(async () => new Response(gpx, { status: 200 }));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const first = await GET(req(ID));
+    const second = await GET(req(ID));
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(await second.json()).toEqual(await first.json());
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(client.from).toHaveBeenCalledTimes(1);
+  });
+
+  it("성공 응답에 Cache-Control(s-maxage=86400, stale-while-revalidate)을 싣는다", async () => {
+    state.supabase = clientWithGpx();
+    const gpx = `<gpx><trk><trkseg><trkpt lat="37.5" lon="127.0"/></trkseg></trk></gpx>`;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(gpx, { status: 200 })));
+    const res = await GET(req(ID));
+    expect(res.headers.get("Cache-Control")).toBe(
+      "public, s-maxage=86400, stale-while-revalidate=86400",
+    );
+  });
+
+  it("실패(502)는 캐시되지 않는다 — 다음 호출이 upstream을 다시 시도하고 복구되면 200", async () => {
+    state.supabase = clientWithGpx();
+    const gpx = `<gpx><trk><trkseg><trkpt lat="37.5" lon="127.0"/></trkseg></trk></gpx>`;
+    const fetchSpy = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("nope", { status: 500 }))
+      .mockResolvedValueOnce(new Response(gpx, { status: 200 }));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const bad = await GET(req(ID));
+    expect(bad.status).toBe(502);
+    expect(bad.headers.get("Cache-Control")).toBeNull();
+    const good = await GET(req(ID));
+    expect(good.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 });
