@@ -61,7 +61,7 @@ export default function LoadingPage() {
 
     // 최소 로딩 시간 유지(스코어링이 더 빨라도 2.4초 후 이동).
     const t = window.setTimeout(() => {
-      if (!cancelled) router.push("/report");
+      if (!cancelled) router.replace("/report");
     }, 2400);
     return () => {
       cancelled = true;

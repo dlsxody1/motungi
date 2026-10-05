@@ -3,7 +3,7 @@
  * Body가 모바일/데스크탑에 동시에 렌더되므로(CSS로만 토글) role="status" 요소가
  * 2개(모바일·데스크탑) 존재하는 게 정상이다 — 버그 아님.
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 // vitest-axe 0.1.0 의 최상위 `matchers.d.ts` 는 `export type *` 로만 재노출해
@@ -12,6 +12,11 @@ import { toHaveNoViolations } from "vitest-axe/dist/matchers";
 import type { CatalogResult } from "@/data/opportunities";
 import { useAppStore } from "@/store/useAppStore";
 import LoadingPage from "./page";
+
+const routerMock = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => routerMock,
+}));
 
 vi.mock("@/data/opportunities", () => ({
   fetchOpportunities: vi.fn(),
@@ -41,6 +46,8 @@ function seed() {
 
 beforeEach(() => {
   mockedFetch.mockReset();
+  routerMock.push.mockReset();
+  routerMock.replace.mockReset();
   seed();
 });
 
@@ -67,5 +74,25 @@ describe("LoadingPage 라이브 리전 (M-014)", () => {
     statuses.forEach((el) => {
       expect(el).toHaveAttribute("aria-live", "polite");
     });
+  });
+});
+
+describe("LoadingPage 네비게이션 (M-123)", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("2.4초 뒤 /report로 replace 한다 — push는 쓰지 않아 뒤로가기가 /loading 루프를 만들지 않는다", async () => {
+    vi.useFakeTimers();
+    mockedFetch.mockResolvedValueOnce({ data: [], status: "empty" });
+
+    render(<LoadingPage />);
+    expect(routerMock.replace).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2400);
+    });
+
+    expect(routerMock.replace).toHaveBeenCalledTimes(1);
+    expect(routerMock.replace).toHaveBeenCalledWith("/report");
+    expect(routerMock.push).not.toHaveBeenCalled();
   });
 });
