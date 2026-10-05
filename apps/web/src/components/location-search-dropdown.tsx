@@ -16,12 +16,18 @@ export function LocationSearchDropdown({ searching, results, onChoose }: Props) 
   return (
     <div className="mt-2 overflow-hidden rounded-xl border border-line-alt bg-surface shadow-card md:shadow-web">
       {searching && results.length === 0 ? (
-        <p className="px-4 py-3 text-[14px] text-muted">검색 중…</p>
+        <p role="status" aria-live="polite" className="px-4 py-3 text-[14px] text-muted">
+          검색 중…
+        </p>
       ) : results.length > 0 ? (
         <>
-          <ul role="listbox" aria-label="동네 검색 결과">
+          {/* 결과 수 안내(스크린리더 전용). listbox/option 대신 버튼 목록 — option 안 버튼은 ARIA 오용이다(M-129). */}
+          <p role="status" aria-live="polite" className="sr-only">
+            동네 검색 결과 {results.length}건
+          </p>
+          <ul aria-label="동네 검색 결과">
             {results.map((it) => (
-              <li key={it.admCode} role="option" aria-selected={false}>
+              <li key={it.admCode}>
                 <button
                   onClick={() => onChoose(locationSearchItemToPick(it), "search")}
                   className="tap-safe flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-surface-alt"
@@ -39,7 +45,9 @@ export function LocationSearchDropdown({ searching, results, onChoose }: Props) 
           </p>
         </>
       ) : (
-        <p className="px-4 py-3 text-[14px] text-muted">검색 결과가 없어요. 다른 동네나 구 이름으로 검색해보세요.</p>
+        <p role="status" aria-live="polite" className="px-4 py-3 text-[14px] text-muted">
+          검색 결과가 없어요. 다른 동네나 구 이름으로 검색해보세요.
+        </p>
       )}
     </div>
   );

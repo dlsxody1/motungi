@@ -123,13 +123,15 @@ describe("LocationPage — 검색 드롭다운(요청 2)", () => {
 
     await user.type(screen.getAllByLabelText("동네 또는 구 검색")[0]!, "역삼");
 
-    // 드롭다운 옵션이 뜬다(디바운스 300ms 이후).
+    // 드롭다운 결과 목록이 뜬다(디바운스 300ms 이후). listbox/option이 아닌 버튼 목록이다(M-129).
     await waitFor(
-      () => expect(screen.getAllByRole("option").length).toBeGreaterThan(0),
+      () => expect(screen.getAllByRole("list", { name: "동네 검색 결과" }).length).toBeGreaterThan(0),
       { timeout: 1500 },
     );
-    // 옵션(li) 안의 실제 클릭 대상은 내부 button — 그걸 눌러 choose가 발화한다.
-    await user.click(within(screen.getAllByRole("option")[0]!).getByRole("button"));
+    // 목록(li) 안의 button을 눌러 choose가 발화한다.
+    await user.click(
+      within(screen.getAllByRole("list", { name: "동네 검색 결과" })[0]!).getAllByRole("button")[0]!,
+    );
 
     // 선택 후 시작 버튼 라벨이 역삼동으로 바뀐다(별도 확인 배너 없이).
     await waitFor(() =>
