@@ -3138,7 +3138,7 @@ backlog:
   - id: M-123
     title: "웹 /loading이 router.push(\"/report\") — 리포트에서 뒤로가기하면 로딩 루프"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/app/loading/page.tsx, apps/web/src/app/loading/page.test.tsx]
     done_when:
       - "웹 loading이 router.replace(\"/report\")를 쓴다(모바일과 동일)"
@@ -3204,7 +3204,7 @@ backlog:
   - id: M-127
     title: "웹 initAuthListener(useAuthBoot.ts) 테스트 0건 — 로컬↔서버 저장 병합·세션 분기"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/hooks/useAuthBoot.ts, apps/web/src/hooks/useAuthBoot.test.ts]
     done_when:
       - "supabase가 null이면 initAuthListener()가 no-op cleanup을 반환한다"
@@ -3238,7 +3238,7 @@ backlog:
   - id: M-129
     title: "웹 위치 검색 드롭다운의 listbox/option 시맨틱 오용 + 결과 안내 live region 없음"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/web/src/components/location-search-dropdown.tsx, apps/web/src/components/location-desktop.tsx, apps/web/src/components/location-mobile.tsx]
     done_when:
       - "listbox/option 역할을 버리고 버튼 목록(neighborhood-menu.tsx ~178-190 방식)으로 하거나, 접근 가능한 이름·aria-controls·aria-expanded·화살표 키를 갖춘 완전한 combobox 패턴을 구현한다"
