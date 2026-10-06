@@ -18,7 +18,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { Button, FlowHeader, Screen, Tag } from "@/ui/components";
 import { Bookmark, CheckCircle, ExternalLink, Location, Share } from "@/ui/icons";
 import { Thumbnail } from "@/ui/thumbnail";
-import { C, R, cardShadow } from "@/ui/theme";
+import { C, R, alpha, cardShadow } from "@/ui/theme";
 import { VenueMap } from "@/ui/venue-map";
 
 /**
@@ -264,11 +264,11 @@ const styles = StyleSheet.create({
   locRow: { marginTop: 8, flexDirection: "row", alignItems: "center", gap: 4 },
   locText: { fontSize: 14, color: C.muted },
   summary: { marginTop: 8, fontSize: 14, lineHeight: 20, color: C.label },
-  costCard: { marginTop: 16, backgroundColor: "rgba(251,232,236,0.6)", borderRadius: R.lg, padding: 16 },
+  costCard: { marginTop: 16, backgroundColor: alpha(C.tint, 0.6), borderRadius: R.lg, padding: 16 },
   costCap: { fontSize: 12, fontWeight: "600", color: C.primaryDeep },
   costVal: { fontSize: 30, fontWeight: "800", color: C.primaryDeep },
   costUnit: { fontSize: 15, fontWeight: "700", color: C.muted },
-  costLine: { marginTop: 8, height: 1, backgroundColor: "rgba(226,80,103,0.15)" },
+  costLine: { marginTop: 8, height: 1, backgroundColor: alpha(C.primary, 0.15) },
   costSub: { marginTop: 8, fontSize: 13, color: C.muted },
   whyCard: { marginTop: 16, backgroundColor: C.surface, borderRadius: R.lg, padding: 16, ...cardShadow },
   whyTitle: { fontSize: 15, fontWeight: "700", color: C.ink, marginBottom: 12 },

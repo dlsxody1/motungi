@@ -22,11 +22,11 @@ OKLCH가 아니라 커밋된 hex 소스를 유지한다(브랜드 정체성 보�
 
 | Token | Hex | 용도 |
 | --- | --- | --- |
-| `primary` | `#9e2b41` | 메인 로즈 · 주요 CTA·강조·현재 선택 |
-| `primary-deep` | `#7e2836` | hover/press · 진지한 강조 |
-| `tint` | `#fbe8ec` | 연한 로즈 틴트 · 배경·칩·secondary 버튼 |
-| `sun` | `#f2a06a` | 선셋 오렌지 · 히어로 그라데이션 |
-| `purple` | `#6e4e9c` | 보조 강조 |
+| `primary` | `#6b3d6e` | 메인 노을 보라 · 주요 CTA·강조·현재 선택 (2026-08-06 로즈→보라 전환, 값 출처 `packages/tokens`) |
+| `primary-deep` | `#5d3460` | hover/press · 진지한 강조 |
+| `tint` | `#f3ebf4` | 연한 보라 틴트 · 배경·칩·secondary 버튼 |
+| `sun` | `#e8834a` | 선셋 오렌지 · 히어로 그라데이션 |
+| `purple` | `#3d2b56` | (deprecated) 남보라 `duskDeep`을 가리킴 |
 | `mint` | `#1e6e64` | 지원금/정책 강조 |
 | `mint-tint` | `#e0f0ec` | 민트 배경 |
 

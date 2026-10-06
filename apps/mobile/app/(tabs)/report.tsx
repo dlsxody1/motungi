@@ -7,7 +7,7 @@ import { Button, Tag, Txt } from "@/ui/components";
 import { Location, Refresh, Share } from "@/ui/icons";
 import { ReportSkeleton } from "@/ui/report-skeleton";
 import { Thumbnail } from "@/ui/thumbnail";
-import { C, R, cardShadow } from "@/ui/theme";
+import { C, R, alpha, cardShadow } from "@/ui/theme";
 
 /**
  * 공유 링크용 오리진 — apps/mobile/app/opportunity.tsx의 SITE_URL과 **같은 값을 유지해야 한다**
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   hero: {
     borderRadius: R["2xl"],
     borderWidth: 1,
-    borderColor: "rgba(226,80,103,0.25)",
+    borderColor: alpha(C.primary, 0.25),
     backgroundColor: C.surface,
     overflow: "hidden",
     ...cardShadow,
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   pillTextImminent: { color: C.white },
   pillComfortable: { backgroundColor: C.tint },
   pillTextComfortable: { color: C.primaryDeep },
-  heroBody: { backgroundColor: "rgba(251,232,236,0.5)", padding: 20 },
+  heroBody: { backgroundColor: alpha(C.tint, 0.5), padding: 20 },
   heroTitle: { marginTop: 12, fontSize: 21, lineHeight: 28, fontWeight: "800", color: C.ink },
   heroSummary: { marginTop: 10, fontSize: 14, lineHeight: 22, color: C.label },
   costBox: {

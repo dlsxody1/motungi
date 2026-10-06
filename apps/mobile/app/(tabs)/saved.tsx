@@ -9,7 +9,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { Txt } from "@/ui/components";
 import { Bookmark, Location, User } from "@/ui/icons";
 import { Thumbnail } from "@/ui/thumbnail";
-import { C, R } from "@/ui/theme";
+import { C, R, alpha } from "@/ui/theme";
 
 /** 보관함 목록 뷰 모델 — catalog 원소에 뷰 필드(categoryLabel/costLabel/tone)가 붙은 형태. */
 type SavedRow = Opportunity & { categoryLabel: string; costLabel: string; tone?: "mint" | string };
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "rgba(251,232,236,0.6)",
+    backgroundColor: alpha(C.tint, 0.6),
     borderRadius: R.xl,
     padding: 16,
   },

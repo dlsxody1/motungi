@@ -9,7 +9,7 @@
  */
 import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { Location } from "./icons";
-import { C, R, cardShadow } from "./theme";
+import { C, R, alpha, cardShadow } from "./theme";
 
 type BarWidth = number | `${number}%`;
 
@@ -84,13 +84,13 @@ const styles = StyleSheet.create({
   hero: {
     borderRadius: R["2xl"],
     borderWidth: 1,
-    borderColor: "rgba(226,80,103,0.25)",
+    borderColor: alpha(C.primary, 0.25),
     backgroundColor: C.surface,
     overflow: "hidden",
     ...cardShadow,
   },
   heroImage: { width: "100%", aspectRatio: 16 / 9, backgroundColor: C.gray100 },
-  heroBody: { backgroundColor: "rgba(251,232,236,0.5)", padding: 20 },
+  heroBody: { backgroundColor: alpha(C.tint, 0.5), padding: 20 },
   costBox: {
     marginTop: 16,
     flexDirection: "row",

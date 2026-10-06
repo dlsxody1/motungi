@@ -41,6 +41,17 @@ export const C = {
   white: color.staticWhite,
 } as const;
 
+/**
+ * #rrggbb 토큰에 알파를 입힌다 — 웹의 `bg-tint/60`·`ring-primary/25`와 같은 값을 토큰에서 뽑는다.
+ * rgba 리터럴을 하드코딩하면 토큰(색 전환)과 어긋난다(옛 로즈 rgba 잔재, M-124).
+ */
+export function alpha(hex: string, a: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m || !m[1]) return hex;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
 export const S = space;
 export const R = radius;
 
