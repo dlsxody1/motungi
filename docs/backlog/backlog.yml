@@ -2877,7 +2877,7 @@ backlog:
     title: "itemListJsonLd가 두 곳에 각자 구현 — JSON-LD 이스케이프 규칙이 갈라질 수 있다"
     priority: medium
     status: doing
-    scope: [apps/web/src/app/explore/[gu]/page.tsx, apps/web/src/lib/seo.ts]
+    scope: ["apps/web/src/app/explore/[gu]/page.tsx", apps/web/src/lib/seo.ts]
     done_when:
       - "[gu]/page.tsx:126의 로컬 itemListJsonLd를 제거하고 lib/seo.ts의 export 버전을 쓴다(이미 name을 인자로 받는 시그니처다)"
       - "구 페이지의 name 문자열(`${gu} 퇴근 후·주말 활동`)이 그대로 유지된다"
@@ -3153,7 +3153,7 @@ backlog:
   - id: M-124
     title: "모바일 제품 UI가 옛 로즈 rgba를 하드코딩 — tokens의 노을 보라와 어긋남"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/mobile/app/opportunity.tsx, "apps/mobile/app/(tabs)/saved.tsx", "apps/mobile/app/(tabs)/report.tsx", apps/mobile/ui/report-skeleton.tsx, apps/mobile/ui/theme.ts, DESIGN.md]
     done_when:
       - "apps/mobile 아래에 rgba(251,232,236 · rgba(226,80,103 이 남지 않고 C.tint/C.primary 기반(알파 헬퍼 또는 theme 토큰)을 쓴다"
@@ -3171,7 +3171,7 @@ backlog:
   - id: M-125
     title: "모바일 앱에 라우트 에러 경계·404 화면이 없다 (웹엔 있음)"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/mobile/app/+not-found.tsx, apps/mobile/app/_layout.tsx]
     done_when:
       - "+not-found.tsx가 웹 404와 같은 한국어 카피에 '홈으로'·'탐색 둘러보기' 버튼을 렌더한다"
@@ -3221,7 +3221,7 @@ backlog:
   - id: M-128
     title: "모바일 a11y 3차 스윕 — location·index의 Pressable 역할/상태 없음, 검색 TextInput 라벨 없음, 동네 시트 선택 상태 미노출"
     priority: medium
-    status: todo
+    status: doing
     scope: [apps/mobile/app/location.tsx, apps/mobile/app/index.tsx, "apps/mobile/app/(tabs)/explore.tsx", apps/mobile/ui/neighborhood-menu.tsx]
     done_when:
       - "location.tsx:140·:185, index.tsx:72·:77 Pressable에 accessibilityRole=\"button\"을 주고 :140에는 accessibilityState={{disabled: locating}}도 준다"
