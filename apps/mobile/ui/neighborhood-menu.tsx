@@ -79,6 +79,7 @@ export function NeighborhoodMenu({ dongLabel }: { dongLabel: string }) {
                     key={n.dongName}
                     style={styles.row}
                     accessibilityRole="button"
+                    aria-selected={active}
                     onPress={() =>
                       pick({
                         dongName: n.dongName,

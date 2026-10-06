@@ -137,7 +137,13 @@ export default function LocationScreen() {
         </Txt>
 
         {/* 현재 위치로 찾기 */}
-        <Pressable style={styles.locCard} onPress={useCurrentLocation} disabled={locating}>
+        <Pressable
+          style={styles.locCard}
+          onPress={useCurrentLocation}
+          disabled={locating}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: locating }}
+        >
           <View style={styles.locIcon}>
             <Location size={22} color={C.primary} />
           </View>
@@ -151,9 +157,11 @@ export default function LocationScreen() {
         </Pressable>
 
         {!!geoError && (
-          <Txt preset="bodySm" color={C.primaryDeep} style={{ marginTop: 10 }}>
-            {geoError}
-          </Txt>
+          <View style={{ marginTop: 10 }} accessibilityRole="alert" accessibilityLiveRegion="polite">
+            <Txt preset="bodySm" color={C.primaryDeep}>
+              {geoError}
+            </Txt>
+          </View>
         )}
 
         {/* 구분선 */}
@@ -168,6 +176,7 @@ export default function LocationScreen() {
           <Search size={20} color={C.faint} />
           <TextInput
             style={styles.searchInput}
+            accessibilityLabel="동네 또는 구 검색"
             placeholder="동네 또는 구 검색 (예: 역삼동, 강남구)"
             placeholderTextColor={C.muted}
             value={query}
@@ -185,6 +194,7 @@ export default function LocationScreen() {
                 <Pressable
                   key={it.admCode}
                   style={styles.dropdownRow}
+                  accessibilityRole="button"
                   onPress={() => choose(itemToPick(it))}
                 >
                   <Location size={16} color={C.faint} />

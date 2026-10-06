@@ -123,4 +123,11 @@ describe("OnboardingScreen", () => {
     expect(pushMock).toHaveBeenCalledWith("/explore");
     expect(pushMock).not.toHaveBeenCalledWith("/report");
   });
+
+  it("랜딩 CTA 둘은 button 역할이다(M-128)", () => {
+    fetchOpportunitiesMock.mockResolvedValueOnce({ data: [], status: "empty" });
+    render(<OnboardingScreen />);
+    expect(screen.getByRole("button", { name: "내 동네에서 찾기" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "동네 활동 둘러보기" })).toBeInTheDocument();
+  });
 });

@@ -167,6 +167,7 @@ export default function ExploreScreen() {
         <Search size={20} color={C.muted} />
         <TextInput
           style={styles.searchInput}
+          accessibilityLabel="활동·키워드 검색"
           placeholder="활동·키워드 검색"
           placeholderTextColor={C.muted}
           value={query}

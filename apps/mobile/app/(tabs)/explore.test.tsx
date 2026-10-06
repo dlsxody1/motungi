@@ -329,4 +329,11 @@ describe("ExploreScreen", () => {
       expect(setAnchorMock).not.toHaveBeenCalled();
     });
   });
+
+  it("검색 TextInput에 접근성 라벨이 있다(M-128)", () => {
+    state.catalog = [makeOpp({ id: "a", title: "활동 A" })];
+    state.catalogStatus = "ready";
+    render(<ExploreScreen />);
+    expect(screen.getByLabelText("활동·키워드 검색")).toBeInTheDocument();
+  });
 });

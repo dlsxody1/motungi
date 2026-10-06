@@ -264,4 +264,50 @@ describe("LocationScreen — 검색 디바운스", () => {
     expect(screen.getByText("최근 · 인기 동네")).toBeInTheDocument();
     expect(searchNeighborhoodsMock).toHaveBeenCalledTimes(1);
   });
+
+  describe("a11y(M-128)", () => {
+    it("현재 위치 Pressable은 button 역할이고 조회 중엔 disabled 상태를 노출한다", async () => {
+      getForegroundPermMock.mockReturnValueOnce(new Promise(() => {})); // 영원히 pending → locating 유지
+      render(<LocationScreen />);
+      const btn = screen.getByRole("button", { name: /현재 위치로 찾기/ });
+      expect(btn).not.toHaveAttribute("aria-disabled", "true");
+
+      await act(async () => {
+        fireEvent.click(btn);
+        await Promise.resolve();
+      });
+
+      expect(screen.getByRole("button", { name: /위치 확인 중/ })).toHaveAttribute("aria-disabled", "true");
+    });
+
+    it("geoError는 alert/live region으로 노출된다", async () => {
+      getForegroundPermMock.mockResolvedValueOnce({ status: "undetermined", canAskAgain: true });
+      requestPermMock.mockResolvedValueOnce({ status: "denied" });
+      render(<LocationScreen />);
+      await act(async () => {
+        fireEvent.click(screen.getByText("현재 위치로 찾기"));
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent("위치 권한이 없어요");
+      expect(alert).toHaveAttribute("aria-live", "polite");
+    });
+
+    it("검색 입력엔 라벨이 있고 결과 행은 button 역할이다", async () => {
+      vi.useFakeTimers();
+      searchNeighborhoodsMock.mockResolvedValue([
+        { admCode: "1168010100", dongName: "역삼동", sigungu: "강남구", point: { lat: 37.5, lng: 127.03 } },
+      ]);
+      render(<LocationScreen />);
+      const input = screen.getByLabelText("동네 또는 구 검색");
+      fireEvent.change(input, { target: { value: "역삼" } });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      expect(screen.getByRole("button", { name: /역삼동/ })).toBeInTheDocument();
+    });
+  });
 });
